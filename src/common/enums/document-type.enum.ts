@@ -1,0 +1,15 @@
+export enum DocumentTypeEnum {
+  AADHAAR = 'AADHAAR',
+
+  PAN = 'PAN',
+
+  RESUME = 'RESUME',
+
+  OFFER_LETTER = 'OFFER_LETTER',
+
+  DEGREE = 'DEGREE',
+
+  EXPERIENCE_LETTER = 'EXPERIENCE_LETTER',
+
+  OTHER = 'OTHER',
+}
