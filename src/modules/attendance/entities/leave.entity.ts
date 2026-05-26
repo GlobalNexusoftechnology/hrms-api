@@ -1,7 +1,15 @@
-import { LeaveStatusEnum } from "../../../common/enums/leave-status.enum";
-import { LeaveTypeEnum } from "../../..//common/enums/leave-type.enum";
-import { Employee } from "../../employees/entities/employee.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
+import { LeaveTypeEnum } from '../../..//common/enums/leave-type.enum';
+import { Employee } from '../../employees/entities/employee.entity';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('leaves')
 export class Leave {

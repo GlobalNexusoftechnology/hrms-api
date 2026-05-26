@@ -8,6 +8,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 import { Department } from '../../departments/entities/department.entity';
 import { Role } from '../../roles/entities/role.entity';
@@ -17,6 +18,7 @@ import { GenderEnum } from '../../../common/enums/gender.enum';
 import { EmployeeDocument } from '../../employee-documents/entities/employee-document.entity';
 import { Attendance } from '../../attendance/entities/attendance.entity';
 import { AttendanceCorrection } from '../../attendance/entities/correction.entity';
+import { SalaryStructure } from '../../salary-structure/entities/salary-structure.entity';
 
 @Entity('employees')
 export class Employee {
@@ -95,6 +97,12 @@ export class Employee {
     name: 'department_id',
   })
   department!: Department;
+
+  @OneToOne(
+    () => SalaryStructure,
+    (salaryStructure) => salaryStructure.employee,
+  )
+  salaryStructure!: SalaryStructure;
 
   @Column({
     name: 'designation_id',

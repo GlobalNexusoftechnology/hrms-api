@@ -23,6 +23,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import type { Response } from 'express';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { RoleEnum } from '../../common/enums/role.enum';
 
 @Controller('employees')
 // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -39,6 +41,7 @@ export class EmployeesController {
 
   // @Public()
   // @Permissions(PermissionEnum.EMPLOYEE_READ)
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions('employee.read')
   @Get()
   findAll(
@@ -48,7 +51,6 @@ export class EmployeesController {
     return this.employeesService.findAll(query);
   }
 
-  // @Permissions('employee.read')
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')
   findOne(
@@ -58,6 +60,7 @@ export class EmployeesController {
     return this.employeesService.findOne(id);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id/id-card')
   generateIdCard(
     @Param('id', ParseUUIDPipe)
@@ -67,7 +70,6 @@ export class EmployeesController {
     return this.employeesService.generateIdCard(id, res);
   }
 
-  // @Permissions('employee.update')
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id')
   update(
@@ -80,6 +82,7 @@ export class EmployeesController {
     return this.employeesService.update(id, dto);
   }
 
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id/profile-photo')
   @UseInterceptors(
@@ -127,6 +130,7 @@ export class EmployeesController {
     return this.employeesService.uploadProfilePhoto(id, file);
   }
 
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions('employee.delete')
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
@@ -137,6 +141,7 @@ export class EmployeesController {
     return this.employeesService.remove(id);
   }
 
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id/restore')
   restore(

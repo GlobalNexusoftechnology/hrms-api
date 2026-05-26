@@ -190,7 +190,7 @@ export class AuthService {
 
       return {
         accessToken,
-        refreshToken: newRefreshToken,
+        // refreshToken: newRefreshToken,
       };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');

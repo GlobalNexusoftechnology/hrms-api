@@ -6,16 +6,21 @@ import {
   Patch,
   Query,
   ParseUUIDPipe,
-  Req,
 } from '@nestjs/common';
 
-import { Request } from 'express';
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { PermissionEnum } from 'src/common/enums/permission.enum';
-import { RoleEnum } from '../../../common/enums/role.enum';
+
 import { Permissions } from '../../auth/decorators/permissions.decorator';
-import { LeaveService } from '../Service/leave.service';
+
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+
+import { RoleEnum } from '../../../common/enums/role.enum';
+
+import { PermissionEnum } from '../../../common/enums/permission.enum';
+
 import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
+
+import { LeaveService } from '../Service/leave.service';
 
 @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
 @Controller('hr/leave')
@@ -36,7 +41,7 @@ export class HrLeaveController {
   }
 
   // =====================
-  // APPROVE
+  // APPROVE LEAVE
   // =====================
 
   @Permissions(PermissionEnum.LEAVE_UPDATE)
@@ -45,10 +50,8 @@ export class HrLeaveController {
     @Param('id', ParseUUIDPipe)
     id: string,
 
-    @Req()
-    req: Request & {
-      user: any;
-    },
+    @CurrentUser()
+    employee: any,
 
     @Body('comment')
     comment?: string,
@@ -58,14 +61,14 @@ export class HrLeaveController {
 
       LeaveStatusEnum.APPROVED,
 
-      req.user.id,
+      employee.id,
 
       comment,
     );
   }
 
   // =====================
-  // REJECT
+  // REJECT LEAVE
   // =====================
 
   @Permissions(PermissionEnum.LEAVE_UPDATE)
@@ -74,19 +77,30 @@ export class HrLeaveController {
     @Param('id', ParseUUIDPipe)
     id: string,
 
-    @Req()
-    req: Request & {
-      user: any;
-    },
+    @CurrentUser()
+    employee: any,
 
     @Body('comment')
     comment?: string,
   ) {
     return this.leaveService.reviewLeave(
       id,
+
       LeaveStatusEnum.REJECTED,
-      req.user.id,
+
+      employee.id,
+
       comment,
     );
   }
+
+  // =====================
+  // LEAVE DASHBOARD
+  // =====================
+
+  // @Permissions(PermissionEnum.LEAVE_READ)
+  // @Get('dashboard')
+  // getDashboard() {
+  //   return this.leaveService.getDashboard();
+  // }
 }

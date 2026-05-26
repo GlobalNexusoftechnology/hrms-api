@@ -7,17 +7,24 @@ import {
   Post,
   Query,
   ParseUUIDPipe,
-  Req,
+  UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
-import { UseGuards } from '@nestjs/common';
+
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+
+import { RolesGuard } from '../../../common/guards/roles.guard';
+
 import { Permissions } from '../../auth/decorators/permissions.decorator';
+
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+
 import { PermissionEnum } from '../../../common/enums/permission.enum';
+
 import { LeaveService } from '../Service/leave.service';
+
 import { CreateLeaveDto } from '../dto/create-leave.dto';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('leave')
 export class LeaveController {
   constructor(private readonly leaveService: LeaveService) {}
@@ -29,15 +36,17 @@ export class LeaveController {
   @Permissions(PermissionEnum.LEAVE_CREATE)
   @Post('request')
   requestLeave(
-    @Req()
-    req: Request & {
-      user: any;
-    },
+    @CurrentUser()
+    employee: any,
 
     @Body()
     dto: CreateLeaveDto,
   ) {
-    return this.leaveService.requestLeave(req.user.id, dto);
+    return this.leaveService.requestLeave(
+      employee.id,
+
+      dto,
+    );
   }
 
   // =====================
@@ -47,15 +56,17 @@ export class LeaveController {
   @Permissions(PermissionEnum.LEAVE_READ)
   @Get('me')
   getMyLeaves(
-    @Req()
-    req: Request & {
-      user: any;
-    },
+    @CurrentUser()
+    employee: any,
 
     @Query('status')
     status?: string,
   ) {
-    return this.leaveService.getMyLeaves(req.user.id, status);
+    return this.leaveService.getMyLeaves(
+      employee.id,
+
+      status,
+    );
   }
 
   // =====================
@@ -68,11 +79,26 @@ export class LeaveController {
     @Param('id', ParseUUIDPipe)
     id: string,
 
-    @Req()
-    req: Request & {
-      user: any;
-    },
+    @CurrentUser()
+    employee: any,
   ) {
-    return this.leaveService.cancelLeave(id, req.user.id);
+    return this.leaveService.cancelLeave(
+      id,
+
+      employee.id,
+    );
   }
+
+  // =====================
+  // MY LEAVE DASHBOARD
+  // =====================
+
+  // @Permissions(PermissionEnum.LEAVE_READ)
+  // @Get('dashboard')
+  // getDashboard(
+  //   @CurrentUser()
+  //   employee: any,
+  // ) {
+  //   return this.leaveService.getEmployeeDashboard(employee.id);
+  // }
 }

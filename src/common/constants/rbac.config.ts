@@ -31,22 +31,38 @@ export const RBAC_CONFIG = {
     PermissionEnum.LEAVE_READ,
     PermissionEnum.LEAVE_UPDATE,
 
+    PermissionEnum.WEEKEND_CREATE,
+    PermissionEnum.WEEKEND_READ,
+    PermissionEnum.WEEKEND_UPDATE,
 
+    PermissionEnum.HOLIDAY_CREATE,
+    PermissionEnum.HOLIDAY_READ,
+    PermissionEnum.HOLIDAY_UPDATE,
+
+    PermissionEnum.PAYROLL_CREATE,
+    PermissionEnum.PAYROLL_ALL_READ,
+    PermissionEnum.PAYROLL_READ,
+    PermissionEnum.PAYROLL_UPDATE,
+
+    PermissionEnum.HR_DASHBOARD_READ,
+
+    PermissionEnum.EMPLOYEE_DASHBOARD_READ,
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],
 
   [RoleEnum.EMPLOYEE]: [
-    PermissionEnum.EMPLOYEE_READ,
     PermissionEnum.ATTENDANCE_CREATE,
-    PermissionEnum.ATTENDANCE_READ,
-    
+    PermissionEnum.EMPLOYEE_READ,
 
     PermissionEnum.ATTENDANCE_CORRECTION_CREATE,
-    PermissionEnum.ATTENDANCE_CORRECTION_READ,
 
     PermissionEnum.LEAVE_CREATE,
     PermissionEnum.LEAVE_READ,
     PermissionEnum.LEAVE_UPDATE,
+
+    PermissionEnum.EMPLOYEE_DASHBOARD_READ,
+
+    PermissionEnum.PAYROLL_READ,
   ],
 };

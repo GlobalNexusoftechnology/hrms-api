@@ -9,7 +9,6 @@ import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../../modules/auth/decorators/permissions.decorator';
 import { IS_PUBLIC_KEY } from '../../modules/auth/decorators/public.decorator';
 
-
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(private reflector: Reflector) {}

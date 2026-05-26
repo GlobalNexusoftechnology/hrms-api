@@ -28,7 +28,7 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsString()
   mobile?: string;
-  
+
   @IsOptional()
   @IsString()
   currentAddress?: string;

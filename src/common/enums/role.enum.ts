@@ -3,7 +3,7 @@ export enum RoleEnum {
 
   HR = 'HR',
 
-//   MANAGER = 'MANAGER',
+  //   MANAGER = 'MANAGER',
 
   EMPLOYEE = 'EMPLOYEE',
 }

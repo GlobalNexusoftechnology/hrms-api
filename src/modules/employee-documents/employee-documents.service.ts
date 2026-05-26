@@ -4,13 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { UpdateEmployeeDocumentDto } from './dto/update-employee-document.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EmployeeDocument } from './entities/employee-document.entity';
 import { IsNull, Repository } from 'typeorm';
 import { Employee } from '../employees/entities/employee.entity';
 import { extname } from 'path';
-import { DocumentTypeEnum } from 'src/common/enums/document-type.enum';
+import { DocumentTypeEnum } from '../../common/enums/document-type.enum';
 import * as fs from 'fs';
 
 @Injectable()

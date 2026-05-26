@@ -1,8 +1,7 @@
-
-import { RBAC_CONFIG } from "../../common/constants/rbac.config";
-import { Permission } from "../../modules/permissions/entities/permission.entity";
-import { Role } from "../../modules/roles/entities/role.entity";
-import { DataSource } from "typeorm";
+import { RBAC_CONFIG } from '../../common/constants/rbac.config';
+import { Permission } from '../../modules/permissions/entities/permission.entity';
+import { Role } from '../../modules/roles/entities/role.entity';
+import { DataSource } from 'typeorm';
 
 export async function syncRBAC(dataSource: DataSource) {
   const roleRepo = dataSource.getRepository(Role);

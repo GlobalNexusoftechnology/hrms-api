@@ -30,7 +30,7 @@ async function bootstrap() {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('Giga Enterprise API')
+    .setTitle('HR System Management API')
     .setDescription('Backend API Documentation')
     .setVersion('1.0')
     .addBearerAuth()

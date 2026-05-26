@@ -12,7 +12,8 @@ import { CreateLeaveDto } from '../dto/create-leave.dto';
 import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
 import { Attendance } from '../entities/attendance.entity';
 import { DataSource } from 'typeorm';
-import { AttendanceStatus } from 'src/common/enums/AttendanceStatus.enum';
+import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
+import { LeaveBalanceService } from '../../leave-balance/leave-balance.service';
 
 @Injectable()
 export class LeaveService {
@@ -26,12 +27,10 @@ export class LeaveService {
     @InjectRepository(Attendance)
     private readonly attendanceRepo: Repository<Attendance>,
 
+    private leaveBalanceService: LeaveBalanceService,
+
     private readonly dataSource: DataSource,
   ) {}
-
-  // =====================
-  // REQUEST LEAVE
-  // =====================
 
   async requestLeave(employeeId: string, dto: CreateLeaveDto) {
     const today = dayjs().startOf('day');
@@ -40,21 +39,18 @@ export class LeaveService {
 
     const endDate = dayjs(dto.endDate);
 
-    // FUTURE DATE ONLY
     if (startDate.isBefore(today)) {
       throw new BadRequestException(
         'Leave can only be requested for future dates',
       );
     }
 
-    // START <= END
     if (startDate.isAfter(endDate)) {
       throw new BadRequestException(
         'Start date cannot be greater than end date',
       );
     }
 
-    // OVERLAP CHECK
     const overlappingLeave = await this.leaveRepo
       .createQueryBuilder('leave')
       .where('leave.employee_id = :employeeId', {
@@ -100,10 +96,6 @@ export class LeaveService {
     return this.leaveRepo.save(leave);
   }
 
-  // =====================
-  // MY LEAVES
-  // =====================
-
   async getMyLeaves(employeeId: string, status?: string) {
     const qb = this.leaveRepo.createQueryBuilder('leave');
 
@@ -121,10 +113,6 @@ export class LeaveService {
 
     return qb.getMany();
   }
-
-  // =====================
-  // CANCEL LEAVE
-  // =====================
 
   async cancelLeave(id: string, employeeId: string) {
     const leave = await this.leaveRepo.findOne({
@@ -150,10 +138,6 @@ export class LeaveService {
 
     return this.leaveRepo.save(leave);
   }
-
-  // =====================
-  // HR ALL LEAVES
-  // =====================
 
   async findAll(query: any) {
     const { status, employeeId, page = 1, limit = 10 } = query;
@@ -199,10 +183,6 @@ export class LeaveService {
     };
   }
 
-  // =====================
-  // APPROVE / REJECT
-  // =====================
-
   async reviewLeave(
     id: string,
 
@@ -227,66 +207,80 @@ export class LeaveService {
         throw new BadRequestException('Already reviewed');
       }
 
+      if (status === LeaveStatusEnum.APPROVED) {
+        // TOTAL DAYS
+        const totalDays =
+          dayjs(leave.endDate).diff(dayjs(leave.startDate), 'day') + 1;
+
+        // DEDUCT BALANCE
+        const deduction = await this.leaveBalanceService.deductLeave(
+          leave.employeeId,
+
+          totalDays,
+        );
+
+        const systemComment =
+          `Paid Leave: ${deduction.paidLeaves}, ` +
+          `Unpaid Leave: ${deduction.unpaidLeaves}, ` +
+          `Remaining: ${deduction.remainingLeaves}`;
+
+        leave.reviewComment = comment
+          ? `${comment} | ${systemComment}`
+          : systemComment;
+
+        await this.createLeaveAttendance(leave);
+      }
+
+      if (status === LeaveStatusEnum.REJECTED) {
+        leave.reviewComment = comment ?? null;
+      }
+
+      // FINAL UPDATE
       leave.status = status;
 
       leave.reviewedById = reviewerId;
 
-      leave.reviewComment = comment ?? null;
-
       leave.reviewedAt = new Date();
 
-      await manager.save(leave);
+      return manager.save(leave);
+    });
+  }
 
-      // ====================
-      // APPROVED
-      // CREATE ATTENDANCE
-      // ====================
+  private async createLeaveAttendance(leave: Leave) {
+    const start = dayjs(leave.startDate);
 
-      if (status === LeaveStatusEnum.APPROVED) {
-        let currentDate = dayjs(leave.startDate);
+    const end = dayjs(leave.endDate);
 
-        const endDate = dayjs(leave.endDate);
+    for (
+      let current = start;
+      current.isBefore(end) || current.isSame(end, 'day');
+      current = current.add(1, 'day')
+    ) {
+      const date = current.format('YYYY-MM-DD');
 
-        while (
-          currentDate.isSame(endDate, 'day') ||
-          currentDate.isBefore(endDate)
-        ) {
-          const date = currentDate.format('YYYY-MM-DD');
+      const existing = await this.attendanceRepo.findOne({
+        where: {
+          employeeId: leave.employeeId,
 
-          // already attendance?
-          const existingAttendance = await manager.findOne(Attendance, {
-            where: {
-              employeeId: leave.employeeId,
+          date,
+        },
+      });
 
-              date,
-            },
-          });
-
-          if (!existingAttendance) {
-            const attendance = manager.create(Attendance, {
-              employeeId: leave.employeeId,
-
-              date,
-
-              status: AttendanceStatus.LEAVE,
-
-              workedMinutes: 0,
-
-              overtimeMinutes: 0,
-
-              checkIn: null,
-
-              checkOut: null,
-            });
-
-            await manager.save(attendance);
-          }
-
-          currentDate = currentDate.add(1, 'day');
-        }
+      if (existing) {
+        continue;
       }
 
-      return leave;
-    });
+      await this.attendanceRepo.save({
+        employeeId: leave.employeeId,
+
+        date,
+
+        status: AttendanceStatus.LEAVE,
+
+        workedMinutes: 0,
+
+        overtimeMinutes: 0,
+      });
+    }
   }
 }

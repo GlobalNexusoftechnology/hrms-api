@@ -4,28 +4,43 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 import { RolesGuard } from '../../../common/guards/roles.guard';
 
-import { AttendanceService } from '../Service/attendance.service';
-
-import { CheckOutDto } from '../dto/check-out.dto';
-
 import { Permissions } from '../../auth/decorators/permissions.decorator';
+
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
 import { PermissionEnum } from '../../../common/enums/permission.enum';
 
-import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { CheckInDto } from '../dto/check-In.dto';
+// SERVICES
+import { AttendanceService } from '../Service/attendance.service';
+
+import { AttendanceQueryService } from '../Service/attendance-query.service';
+
+import { AttendanceDashboardService } from '../Service/attendance-dashboard.service';
+
 import { CorrectionService } from '../Service/correction.service';
 
+// DTO
+import { CheckInDto } from '../dto/check-In.dto';
+
+import { CheckOutDto } from '../dto/check-out.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('attendance')
 export class AttendanceController {
   constructor(
     private readonly attendanceService: AttendanceService,
+
+    private readonly attendanceQueryService: AttendanceQueryService,
+
+    private readonly attendanceDashboardService: AttendanceDashboardService,
+
     private readonly correctionService: CorrectionService,
   ) {}
 
+  // =====================
   // CHECK-IN
+  // =====================
+
   @Permissions(PermissionEnum.ATTENDANCE_CREATE)
   @Post('check-in')
   checkIn(
@@ -35,11 +50,18 @@ export class AttendanceController {
     @Body()
     dto: CheckInDto,
   ) {
-    return this.attendanceService.checkIn(employee.id, dto.location);
+    return this.attendanceService.checkIn(
+      employee.id,
+
+      dto.location,
+    );
   }
 
+  // =====================
   // CHECK-OUT
-  @Permissions(PermissionEnum.ATTENDANCE_UPDATE)
+  // =====================
+
+  @Permissions(PermissionEnum.ATTENDANCE_CREATE)
   @Post('check-out')
   checkOut(
     @CurrentUser()
@@ -57,32 +79,80 @@ export class AttendanceController {
     );
   }
 
+  // =====================
   // MY ATTENDANCE
-  @Permissions(PermissionEnum.ATTENDANCE_READ)
+  // =====================
+
+  // @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('me')
   getMyAttendance(
     @CurrentUser()
     employee: any,
   ) {
-    return this.attendanceService.getMyAttendance(employee.id);
+    return this.attendanceQueryService.getMyAttendance(employee.id);
   }
 
-  // FILTER
+  // =====================
+  // FILTER ATTENDANCE
+  // =====================
+
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get()
   getFilteredAttendance(
     @Query()
     query: any,
   ) {
-    return this.attendanceService.getFilteredAttendance(query);
+    return this.attendanceQueryService.getFilteredAttendance(query);
   }
 
-  @Permissions(PermissionEnum.ATTENDANCE_READ)
+  // =====================
+  // EMPLOYEE DASHBOARD
+  // =====================
+
+  @Permissions(PermissionEnum.EMPLOYEE_DASHBOARD_READ)
   @Get('dashboard')
   getDashboard(
     @CurrentUser()
     employee: any,
   ) {
-    return this.attendanceService.getEmployeeDashboard(employee.id);
+    return this.attendanceDashboardService.getEmployeeDashboard(employee.id);
+  }
+
+  // =====================
+  // TODAY ATTENDANCE
+  // =====================
+
+  @Permissions(PermissionEnum.ATTENDANCE_READ)
+  @Get('today')
+  getTodayAttendance(
+    @Query()
+    query: any,
+  ) {
+    return this.attendanceQueryService.getTodayAttendance(query);
+  }
+
+  // =====================
+  // ATTENDANCE CALENDAR
+  // =====================
+
+  @Permissions(PermissionEnum.ATTENDANCE_READ)
+  @Get('calendar')
+  getAttendanceCalendar(
+    @CurrentUser()
+    employee: any,
+
+    @Query('month')
+    month: number,
+
+    @Query('year')
+    year: number,
+  ) {
+    return this.attendanceQueryService.getAttendanceCalendar(
+      employee.id,
+
+      Number(month),
+
+      Number(year),
+    );
   }
 }

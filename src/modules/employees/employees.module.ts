@@ -10,7 +10,9 @@ import { Designation } from '../designations/entities/designation.entity';
 import { Role } from '../roles/entities/role.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Employee, Department, Designation,Role])],
+  imports: [
+    TypeOrmModule.forFeature([Employee, Department, Designation, Role]),
+  ],
 
   controllers: [EmployeesController],
 

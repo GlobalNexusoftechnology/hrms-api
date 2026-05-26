@@ -19,6 +19,7 @@ import { AttendanceCorrection } from './correction.entity';
   unique: true,
 })
 export class Attendance {
+  @Index(['employeeId', 'date'], { unique: true })
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

@@ -24,10 +24,6 @@ export class CorrectionService {
   ) {}
 
   async requestCorrection(employeeId: string, dto: CorrectionRequestDto) {
-    // =====================
-    // FIND ATTENDANCE
-    // =====================
-
     const attendance = await this.attendanceRepo.findOne({
       where: {
         employeeId,
@@ -39,10 +35,6 @@ export class CorrectionService {
     if (!attendance) {
       throw new BadRequestException('Attendance not found');
     }
-
-    // =====================
-    // DUPLICATE PENDING CHECK
-    // =====================
 
     const existing = await this.correctionRepo.findOne({
       where: {
@@ -58,10 +50,6 @@ export class CorrectionService {
       throw new BadRequestException('Correction already requested');
     }
 
-    // =====================
-    // VALIDATION
-    // =====================
-
     const requestedCheckIn = dto.requestedCheckIn
       ? new Date(dto.requestedCheckIn)
       : null;
@@ -72,19 +60,16 @@ export class CorrectionService {
 
     const reason = dto.reason?.trim();
 
-    // MUST CHANGE SOMETHING
     if (!requestedCheckIn && !requestedCheckOut) {
       throw new BadRequestException(
         'Please provide requested check-in or check-out time',
       );
     }
 
-    // REASON REQUIRED
     if (!reason) {
       throw new BadRequestException('Reason is required');
     }
 
-    // PREVENT SAME REQUEST
     const sameCheckIn =
       attendance.checkIn &&
       requestedCheckIn &&
@@ -101,21 +86,15 @@ export class CorrectionService {
       );
     }
 
-    // =====================
-    // SAVE REQUEST
-    // =====================
-
     const correction = this.correctionRepo.create({
       employeeId,
 
       attendanceId: attendance.id,
 
-      // CURRENT VALUES
       currentCheckIn: attendance.checkIn,
 
       currentCheckOut: attendance.checkOut,
 
-      // REQUESTED VALUES
       requestedCheckIn,
 
       requestedCheckOut,
@@ -124,8 +103,6 @@ export class CorrectionService {
 
       status: CorrectionStatus.PENDING,
     });
-
-    // return this.correctionRepo.save(correction);
 
     const saved = await this.correctionRepo.save(correction);
 
@@ -145,21 +122,18 @@ export class CorrectionService {
   private calculateStatus(checkIn: Date): AttendanceStatus {
     const time = dayjs(checkIn);
 
-    const presentEnd = time.startOf('day').hour(10).minute(0).second(0);
+    const presentEnd = time.startOf('day').hour(10).minute(30).second(0);
 
     const lateEnd = time.startOf('day').hour(12).minute(30).second(0);
 
-    // BEFORE 11:00 AM
-    if (time.isBefore(presentEnd)) {
+    if (time.isBefore(presentEnd) || time.isSame(presentEnd)) {
       return AttendanceStatus.PRESENT;
     }
 
-    // 10:00 AM - 12:30 PM
-    if (time.isBefore(lateEnd)) {
+    if (time.isBefore(lateEnd) || time.isSame(lateEnd)) {
       return AttendanceStatus.LATE;
     }
 
-    // AFTER 12:30 PM
     return AttendanceStatus.HALF_DAY;
   }
 
@@ -183,10 +157,6 @@ export class CorrectionService {
         throw new BadRequestException('Already reviewed');
       }
 
-      // =====================
-      // REVIEW UPDATE
-      // =====================
-
       correction.status = status;
 
       correction.reviewedById = reviewerId;
@@ -194,10 +164,6 @@ export class CorrectionService {
       correction.reviewedAt = new Date();
 
       let updatedAttendance: Attendance | null = null;
-
-      // =====================
-      // APPROVAL FLOW
-      // =====================
 
       if (status === CorrectionStatus.APPROVED) {
         const attendance = await manager.findOne(Attendance, {
@@ -285,21 +251,18 @@ export class CorrectionService {
 
     const qb = this.correctionRepo.createQueryBuilder('correction');
 
-    // RELATIONS
     qb.leftJoinAndSelect('correction.employee', 'employee');
 
     qb.leftJoinAndSelect('correction.reviewer', 'reviewer');
 
     qb.leftJoinAndSelect('correction.attendance', 'attendance');
 
-    // STATUS FILTER
     if (status) {
       qb.andWhere('correction.status = :status', {
         status,
       });
     }
 
-    // EMPLOYEE FILTER
     if (employeeId) {
       qb.andWhere('correction.employee_id = :employeeId', {
         employeeId,

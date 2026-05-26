@@ -9,7 +9,6 @@ import {
 import { EmploymentTypeEnum } from 'src/common/enums/employment-type.enum';
 import { GenderEnum } from 'src/common/enums/gender.enum';
 
-
 export class GetEmployeesDto {
   @IsOptional()
   @IsNumberString()

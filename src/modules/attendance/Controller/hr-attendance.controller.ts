@@ -6,20 +6,33 @@ import {
   Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
+
 import { Roles } from '../../../common/decorators/roles.decorator';
+
 import { RoleEnum } from '../../../common/enums/role.enum';
+
 import { Permissions } from '../../auth/decorators/permissions.decorator';
+
 import { PermissionEnum } from '../../../common/enums/permission.enum';
-import { AttendanceService } from '../Service/attendance.service';
+
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+
 import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
+
+// SERVICES
+import { AttendanceQueryService } from '../Service/attendance-query.service';
+
+import { AttendanceDashboardService } from '../Service/attendance-dashboard.service';
+
 import { CorrectionService } from '../Service/correction.service';
 
 @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
 @Controller('hr/attendance')
 export class HrAttendanceController {
   constructor(
-    private readonly attendanceService: AttendanceService,
+    private readonly attendanceQueryService: AttendanceQueryService,
+
+    private readonly attendanceDashboardService: AttendanceDashboardService,
 
     private readonly correctionService: CorrectionService,
   ) {}
@@ -34,7 +47,7 @@ export class HrAttendanceController {
     @Query()
     query: any,
   ) {
-    return this.attendanceService.getFilteredAttendance(query);
+    return this.attendanceQueryService.getFilteredAttendance(query);
   }
 
   // =====================
@@ -94,9 +107,26 @@ export class HrAttendanceController {
     return this.correctionService.findAll(query);
   }
 
+  // =====================
+  // HR DASHBOARD
+  // =====================
+
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('dashboard')
   getDashboard() {
-    return this.attendanceService.getHrDashboard();
+    return this.attendanceDashboardService.getHrDashboard();
+  }
+
+  // =====================
+  // TODAY ATTENDANCE
+  // =====================
+
+  @Permissions(PermissionEnum.ATTENDANCE_READ)
+  @Get('today')
+  getTodayAttendance(
+    @Query()
+    query: any,
+  ) {
+    return this.attendanceQueryService.getTodayAttendance(query);
   }
 }

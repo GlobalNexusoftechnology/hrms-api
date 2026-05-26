@@ -16,7 +16,13 @@ import { DesignationsModule } from './modules/designations/designations.module';
 import { EmployeeDocumentsModule } from './modules/employee-documents/employee-documents.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { LeaveController } from './modules/attendance/Controller/leave-controller.controller';
-
+import { ScheduleModule } from '@nestjs/schedule';
+import { HolidayModule } from './modules/holiday/holiday.module';
+import { WeekendSettingsModule } from './modules/weekend_settings/weekend_settings.module';
+import { LeaveBalanceModule } from './modules/leave-balance/leave-balance.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
+import { SalaryStructureModule } from './modules/salary-structure/salary-structure.module';
+import { PayslipModule } from './modules/payslip/payslip.module';
 
 @Module({
   imports: [
@@ -25,43 +31,34 @@ import { LeaveController } from './modules/attendance/Controller/leave-controlle
       envFilePath: '.env',
     }),
 
+    ScheduleModule.forRoot(),
+
     TypeOrmModule.forRoot({
       type: 'postgres',
-
       host: process.env.DB_HOST,
-
       port: Number(process.env.DB_PORT),
-
       username: process.env.DB_USERNAME,
-
       password: process.env.DB_PASSWORD,
-
       database: process.env.DB_NAME,
-
       entities: ['dist/**/*.entity.js'],
-
       migrations: ['dist/database/migrations/*.js'],
-
       synchronize: false,
     }),
 
     RolesModule,
-
     PermissionsModule,
-
     AuthModule,
-
     EmployeesModule,
-
     DepartmentsModule,
-
     DesignationsModule,
-
     EmployeeDocumentsModule,
-
     AttendanceModule,
-
-    
+    HolidayModule,
+    WeekendSettingsModule,
+    LeaveBalanceModule,
+    PayrollModule,
+    SalaryStructureModule,
+    PayslipModule,
   ],
 
   providers: [
@@ -79,7 +76,5 @@ import { LeaveController } from './modules/attendance/Controller/leave-controlle
       useClass: RolesGuard,
     },
   ],
-
-  
 })
 export class AppModule {}

@@ -424,7 +424,6 @@ export class EmployeesService {
       }
     }
 
-    // PASSWORD HASH
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
     }

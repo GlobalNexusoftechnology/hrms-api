@@ -1,0 +1,264 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+
+import { InjectRepository } from '@nestjs/typeorm';
+
+import { Between, IsNull, Repository } from 'typeorm';
+
+import dayjs from 'dayjs';
+
+import { Attendance } from '../entities/attendance.entity';
+
+import { Employee } from '../../employees/entities/employee.entity';
+
+import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
+
+import { formatAttendanceResponse } from '../helpers/attendance-response.helper';
+
+import { formatIST, todayIST } from '../../../utils/time.util';
+import { buildAttendanceCalendar } from '../helpers/attendance-calendar.helper';
+
+@Injectable()
+export class AttendanceQueryService {
+  constructor(
+    @InjectRepository(Attendance)
+    private readonly attendanceRepo: Repository<Attendance>,
+
+    @InjectRepository(Employee)
+    private readonly employeeRepo: Repository<Employee>,
+  ) {}
+
+  async getMyAttendance(employeeId: string) {
+    const employee = await this.employeeRepo.findOne({
+      where: {
+        id: employeeId,
+
+        deletedAt: IsNull(),
+      },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    const data = await this.attendanceRepo.find({
+      where: {
+        employeeId,
+      },
+
+      relations: {
+        employee: {
+          department: true,
+          designation: true,
+        },
+      },
+
+      order: {
+        date: 'DESC',
+      },
+    });
+
+    return {
+      data: data.map((item) => formatAttendanceResponse(item)),
+
+      total: data.length,
+    };
+  }
+
+  async getFilteredAttendance(query: any) {
+    const {
+      date,
+      month,
+      year,
+      employeeId,
+      status,
+      page = 1,
+      limit = 10,
+    } = query;
+
+    const pageNumber = Number(page);
+
+    const limitNumber = Number(limit);
+
+    const qb = this.attendanceRepo.createQueryBuilder('attendance');
+
+    qb.leftJoinAndSelect('attendance.employee', 'employee');
+
+    qb.leftJoinAndSelect('employee.department', 'department');
+
+    qb.leftJoinAndSelect('employee.designation', 'designation');
+
+    if (employeeId) {
+      qb.andWhere('attendance.employee_id = :employeeId', {
+        employeeId,
+      });
+    }
+
+    if (status) {
+      qb.andWhere('attendance.status = :status', {
+        status,
+      });
+    }
+
+    if (date) {
+      qb.andWhere('attendance.date = :date', {
+        date,
+      });
+    }
+
+    if (month && year) {
+      qb.andWhere(
+        `
+        EXTRACT(
+          MONTH FROM attendance.date
+        ) = :month
+
+        AND
+
+        EXTRACT(
+          YEAR FROM attendance.date
+        ) = :year
+      `,
+        {
+          month: Number(month),
+
+          year: Number(year),
+        },
+      );
+    }
+
+    qb.orderBy('attendance.date', 'DESC');
+
+    qb.skip((pageNumber - 1) * limitNumber);
+
+    qb.take(limitNumber);
+
+    const [data, total] = await qb.getManyAndCount();
+
+    return {
+      data: data.map((item) => formatAttendanceResponse(item)),
+
+      meta: {
+        total,
+
+        page: pageNumber,
+
+        limit: limitNumber,
+
+        totalPages: Math.ceil(total / limitNumber),
+      },
+    };
+  }
+
+  async getAttendanceCalendar(employeeId: string, month: number, year: number) {
+    const startDate = dayjs()
+      .year(year)
+      .month(month - 1)
+      .startOf('month')
+      .format('YYYY-MM-DD');
+
+    const endDate = dayjs()
+      .year(year)
+      .month(month - 1)
+      .endOf('month')
+      .format('YYYY-MM-DD');
+
+    const records = await this.attendanceRepo.find({
+      where: {
+        employeeId,
+
+        date: Between(startDate, endDate),
+      },
+
+      order: {
+        date: 'ASC',
+      },
+    });
+
+    return buildAttendanceCalendar(records, employeeId, month, year);
+  }
+
+  async getTodayAttendance(query: any) {
+    const { departmentId, status, search } = query;
+
+    const today = todayIST();
+
+    const qb = this.attendanceRepo.createQueryBuilder('attendance');
+
+    qb.leftJoinAndSelect('attendance.employee', 'employee');
+
+    qb.leftJoinAndSelect('employee.department', 'department');
+
+    qb.leftJoinAndSelect('employee.designation', 'designation');
+
+    qb.where('attendance.date = :today', {
+      today,
+    });
+
+    if (departmentId) {
+      qb.andWhere('employee.department_id = :departmentId', {
+        departmentId,
+      });
+    }
+
+    if (status) {
+      qb.andWhere('attendance.status = :status', {
+        status,
+      });
+    }
+
+    if (search) {
+      qb.andWhere(
+        `
+        (
+          employee.first_name ILIKE :search
+          OR employee.last_name ILIKE :search
+          OR employee.employee_code ILIKE :search
+        )
+      `,
+        {
+          search: `%${search}%`,
+        },
+      );
+    }
+
+    const data = await qb.getMany();
+
+    return {
+      data: data.map((item) => ({
+        employeeId: item.employeeId,
+
+        employeeCode: item.employee?.employeeCode,
+
+        name: `${item.employee?.firstName} ${item.employee?.lastName}`,
+
+        department: item.employee?.department?.name ?? null,
+
+        designation: item.employee?.designation?.name ?? null,
+
+        profilePhoto: item.employee?.profilePhoto,
+
+        status: item.status,
+
+        checkIn: formatIST(item.checkIn),
+
+        checkOut: formatIST(item.checkOut),
+
+        workedHours: Number((item.workedMinutes / 60).toFixed(2)),
+      })),
+
+      summary: {
+        present: data.filter((a) => a.status === AttendanceStatus.PRESENT)
+          .length,
+
+        late: data.filter((a) => a.status === AttendanceStatus.LATE).length,
+
+        halfDay: data.filter((a) => a.status === AttendanceStatus.HALF_DAY)
+          .length,
+
+        leave: data.filter((a) => a.status === AttendanceStatus.LEAVE).length,
+
+        absent: data.filter((a) => a.status === AttendanceStatus.ABSENT).length,
+      },
+    };
+  }
+}
