@@ -6,24 +6,14 @@ import {
   Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
-
 import { Roles } from '../../../common/decorators/roles.decorator';
-
 import { RoleEnum } from '../../../common/enums/role.enum';
-
 import { Permissions } from '../../auth/decorators/permissions.decorator';
-
 import { PermissionEnum } from '../../../common/enums/permission.enum';
-
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-
 import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
-
-// SERVICES
 import { AttendanceQueryService } from '../Service/attendance-query.service';
-
 import { AttendanceDashboardService } from '../Service/attendance-dashboard.service';
-
 import { CorrectionService } from '../Service/correction.service';
 
 @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -37,9 +27,6 @@ export class HrAttendanceController {
     private readonly correctionService: CorrectionService,
   ) {}
 
-  // =====================
-  // ALL ATTENDANCE
-  // =====================
 
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get()
@@ -50,9 +37,6 @@ export class HrAttendanceController {
     return this.attendanceQueryService.getFilteredAttendance(query);
   }
 
-  // =====================
-  // APPROVE CORRECTION
-  // =====================
 
   @Permissions(PermissionEnum.ATTENDANCE_CORRECTION_UPDATE)
   @Patch('correction/:id/approve')
@@ -72,10 +56,6 @@ export class HrAttendanceController {
     );
   }
 
-  // =====================
-  // REJECT CORRECTION
-  // =====================
-
   @Permissions(PermissionEnum.ATTENDANCE_CORRECTION_UPDATE)
   @Patch('correction/:id/reject')
   reject(
@@ -94,10 +74,6 @@ export class HrAttendanceController {
     );
   }
 
-  // =====================
-  // CORRECTION LIST
-  // =====================
-
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('corrections')
   getCorrections(
@@ -107,9 +83,6 @@ export class HrAttendanceController {
     return this.correctionService.findAll(query);
   }
 
-  // =====================
-  // HR DASHBOARD
-  // =====================
 
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('dashboard')
@@ -117,9 +90,6 @@ export class HrAttendanceController {
     return this.attendanceDashboardService.getHrDashboard();
   }
 
-  // =====================
-  // TODAY ATTENDANCE
-  // =====================
 
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('today')

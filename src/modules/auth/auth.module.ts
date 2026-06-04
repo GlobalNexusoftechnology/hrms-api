@@ -19,6 +19,7 @@ import { EmployeesModule } from '../employees/employees.module';
 import jwtConfig from '../../config/jwt.config';
 
 import { AccessTokenStrategy } from './strategies/jwt.strategy';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -31,6 +32,8 @@ import { AccessTokenStrategy } from './strategies/jwt.strategy';
     }),
 
     EmployeesModule,
+
+    MailModule,
 
     TypeOrmModule.forFeature([RefreshToken]),
 

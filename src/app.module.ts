@@ -23,6 +23,10 @@ import { LeaveBalanceModule } from './modules/leave-balance/leave-balance.module
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { SalaryStructureModule } from './modules/salary-structure/salary-structure.module';
 import { PayslipModule } from './modules/payslip/payslip.module';
+import { MailModule } from './modules/mail/mail.module';
+import { TrainingModule } from './modules/training/training.module';
+import { InterviewModule } from './modules/interview/interview.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -59,6 +63,10 @@ import { PayslipModule } from './modules/payslip/payslip.module';
     PayrollModule,
     SalaryStructureModule,
     PayslipModule,
+    MailModule,
+    TrainingModule,
+    InterviewModule,
+    DashboardModule,
   ],
 
   providers: [

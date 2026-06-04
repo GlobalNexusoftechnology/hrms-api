@@ -29,10 +29,6 @@ import { CreateLeaveDto } from '../dto/create-leave.dto';
 export class LeaveController {
   constructor(private readonly leaveService: LeaveService) {}
 
-  // =====================
-  // REQUEST LEAVE
-  // =====================
-
   @Permissions(PermissionEnum.LEAVE_CREATE)
   @Post('request')
   requestLeave(
@@ -48,10 +44,6 @@ export class LeaveController {
       dto,
     );
   }
-
-  // =====================
-  // MY LEAVES
-  // =====================
 
   @Permissions(PermissionEnum.LEAVE_READ)
   @Get('me')
@@ -69,10 +61,6 @@ export class LeaveController {
     );
   }
 
-  // =====================
-  // CANCEL LEAVE
-  // =====================
-
   @Permissions(PermissionEnum.LEAVE_UPDATE)
   @Patch(':id/cancel')
   cancelLeave(
@@ -89,16 +77,4 @@ export class LeaveController {
     );
   }
 
-  // =====================
-  // MY LEAVE DASHBOARD
-  // =====================
-
-  // @Permissions(PermissionEnum.LEAVE_READ)
-  // @Get('dashboard')
-  // getDashboard(
-  //   @CurrentUser()
-  //   employee: any,
-  // ) {
-  //   return this.leaveService.getEmployeeDashboard(employee.id);
-  // }
 }

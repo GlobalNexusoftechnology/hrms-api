@@ -27,9 +27,6 @@ import { LeaveService } from '../Service/leave.service';
 export class HrLeaveController {
   constructor(private readonly leaveService: LeaveService) {}
 
-  // =====================
-  // ALL LEAVES
-  // =====================
 
   @Permissions(PermissionEnum.LEAVE_READ)
   @Get()
@@ -39,10 +36,6 @@ export class HrLeaveController {
   ) {
     return this.leaveService.findAll(query);
   }
-
-  // =====================
-  // APPROVE LEAVE
-  // =====================
 
   @Permissions(PermissionEnum.LEAVE_UPDATE)
   @Patch(':id/approve')
@@ -67,10 +60,6 @@ export class HrLeaveController {
     );
   }
 
-  // =====================
-  // REJECT LEAVE
-  // =====================
-
   @Permissions(PermissionEnum.LEAVE_UPDATE)
   @Patch(':id/reject')
   reject(
@@ -94,13 +83,5 @@ export class HrLeaveController {
     );
   }
 
-  // =====================
-  // LEAVE DASHBOARD
-  // =====================
-
-  // @Permissions(PermissionEnum.LEAVE_READ)
-  // @Get('dashboard')
-  // getDashboard() {
-  //   return this.leaveService.getDashboard();
-  // }
+  
 }

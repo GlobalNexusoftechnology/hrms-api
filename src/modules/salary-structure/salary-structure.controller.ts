@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { SalaryStructureService } from './salary-structure.service';
 import { Permissions } from '../auth/decorators/permissions.decorator';
-import { PermissionEnum } from 'src/common/enums/permission.enum';
+import { PermissionEnum } from '../../common/enums/permission.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
@@ -25,7 +25,7 @@ import { UpdateSalaryStructureDto } from './dto/update-salary-structure.dto';
 export class SalaryStructureController {
   constructor(private readonly salaryService: SalaryStructureService) {}
 
-  @Permissions(PermissionEnum.PAYROLL_READ)
+  @Permissions(PermissionEnum.SALARY_READ)
   @Get('salary-structure/me')
   getMySalary(
     @CurrentUser()
@@ -35,7 +35,7 @@ export class SalaryStructureController {
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
-  @Permissions(PermissionEnum.PAYROLL_CREATE)
+  @Permissions(PermissionEnum.SALARY_CREATE)
   @Post('hr/salary-structure')
   create(
     @Body()
@@ -45,7 +45,7 @@ export class SalaryStructureController {
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
-  @Permissions(PermissionEnum.PAYROLL_UPDATE)
+  @Permissions(PermissionEnum.SALARY_UPDATE)
   @Patch('hr/salary-structure/:id')
   update(
     @Param('id', ParseUUIDPipe)
@@ -58,7 +58,7 @@ export class SalaryStructureController {
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
-  @Permissions(PermissionEnum.PAYROLL_ALL_READ)
+  @Permissions(PermissionEnum.SALARY_READ)
   @Get('hr/salary-structure')
   findAll(
     @Query()
@@ -68,7 +68,7 @@ export class SalaryStructureController {
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
-  @Permissions(PermissionEnum.PAYROLL_READ)
+  @Permissions(PermissionEnum.SALARY_READ)
   @Get('hr/salary-structure/:id')
   findOne(
     @Param('id', ParseUUIDPipe)

@@ -9,8 +9,6 @@ import { Permissions } from '../../auth/decorators/permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
 import { PermissionEnum } from '../../../common/enums/permission.enum';
-
-// SERVICES
 import { AttendanceService } from '../Service/attendance.service';
 
 import { AttendanceQueryService } from '../Service/attendance-query.service';
@@ -19,10 +17,11 @@ import { AttendanceDashboardService } from '../Service/attendance-dashboard.serv
 
 import { CorrectionService } from '../Service/correction.service';
 
-// DTO
 import { CheckInDto } from '../dto/check-In.dto';
 
 import { CheckOutDto } from '../dto/check-out.dto';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { RoleEnum } from 'src/common/enums/role.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('attendance')
@@ -36,10 +35,6 @@ export class AttendanceController {
 
     private readonly correctionService: CorrectionService,
   ) {}
-
-  // =====================
-  // CHECK-IN
-  // =====================
 
   @Permissions(PermissionEnum.ATTENDANCE_CREATE)
   @Post('check-in')
@@ -56,10 +51,6 @@ export class AttendanceController {
       dto.location,
     );
   }
-
-  // =====================
-  // CHECK-OUT
-  // =====================
 
   @Permissions(PermissionEnum.ATTENDANCE_CREATE)
   @Post('check-out')
@@ -79,11 +70,7 @@ export class AttendanceController {
     );
   }
 
-  // =====================
-  // MY ATTENDANCE
-  // =====================
-
-  // @Permissions(PermissionEnum.ATTENDANCE_READ)
+  @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('me')
   getMyAttendance(
     @CurrentUser()
@@ -92,10 +79,7 @@ export class AttendanceController {
     return this.attendanceQueryService.getMyAttendance(employee.id);
   }
 
-  // =====================
-  // FILTER ATTENDANCE
-  // =====================
-
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get()
   getFilteredAttendance(
@@ -104,10 +88,6 @@ export class AttendanceController {
   ) {
     return this.attendanceQueryService.getFilteredAttendance(query);
   }
-
-  // =====================
-  // EMPLOYEE DASHBOARD
-  // =====================
 
   @Permissions(PermissionEnum.EMPLOYEE_DASHBOARD_READ)
   @Get('dashboard')
@@ -118,10 +98,7 @@ export class AttendanceController {
     return this.attendanceDashboardService.getEmployeeDashboard(employee.id);
   }
 
-  // =====================
-  // TODAY ATTENDANCE
-  // =====================
-
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('today')
   getTodayAttendance(
@@ -131,10 +108,7 @@ export class AttendanceController {
     return this.attendanceQueryService.getTodayAttendance(query);
   }
 
-  // =====================
-  // ATTENDANCE CALENDAR
-  // =====================
-
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('calendar')
   getAttendanceCalendar(

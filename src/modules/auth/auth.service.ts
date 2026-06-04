@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -14,15 +18,23 @@ import { EmployeesService } from '../employees/employees.service';
 import { LoginDto } from './dto/login.dto';
 
 import { RefreshToken } from './entities/refresh-token.entity';
+import { MailService } from '../mail/mail.service';
 
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { Employee } from '../employees/entities/employee.entity';
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
+    private readonly mailService: MailService,
 
     private employeesService: EmployeesService,
     private configService: ConfigService,
 
+    @InjectRepository(Employee)
+    private employeeRepository: Repository<Employee>,
     @InjectRepository(RefreshToken)
     private refreshTokenRepository: Repository<RefreshToken>,
   ) {}
@@ -247,6 +259,141 @@ export class AuthService {
       };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  // =====================
+  // FORGOT PASSWORD
+  // =====================
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const employee = await this.employeeRepository.findOne({
+      where: {
+        email: dto.email,
+      },
+
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        passwordVersion: true,
+      },
+    });
+
+    // EMAIL VALIDATION
+
+    if (!employee) {
+      throw new BadRequestException('Email does not exist');
+    }
+
+    const token = await this.jwtService.signAsync(
+      {
+        employeeId: employee.id,
+
+        email: employee.email,
+
+        passwordVersion: employee.passwordVersion,
+
+        type: 'RESET_PASSWORD',
+      },
+      {
+        secret: process.env.JWT_RESET_SECRET as string,
+
+        expiresIn: (process.env.JWT_RESET_EXPIRES ?? '15m') as '15m',
+      },
+    );
+
+    const resetLink = `${process.env.API_URL}/api/auth/reset-password?token=${encodeURIComponent(token)}`;
+
+    await this.mailService.sendResetPasswordEmail(
+      employee.email,
+
+      employee.firstName,
+
+      resetLink,
+    );
+
+    return {
+      success: true,
+
+      message: 'Reset password link sent successfully',
+    };
+  }
+
+  // =====================
+  // RESET PASSWORD
+  // =====================
+
+  async resetPassword(dto: ResetPasswordDto) {
+    try {
+      const payload = await this.jwtService.verifyAsync(dto.token, {
+        secret: process.env.JWT_RESET_SECRET as string,
+      });
+
+      // INVALID TOKEN TYPE
+
+      if (payload.type !== 'RESET_PASSWORD') {
+        throw new UnauthorizedException('Invalid token');
+      }
+
+      const employee = await this.employeeRepository.findOne({
+        where: {
+          id: payload.employeeId,
+        },
+
+        select: {
+          id: true,
+          password: true,
+          passwordVersion: true,
+        },
+      });
+
+      if (!employee) {
+        throw new BadRequestException('Employee not found');
+      }
+
+      // TOKEN ALREADY USED
+
+      if (payload.passwordVersion !== employee.passwordVersion) {
+        throw new UnauthorizedException('Reset token already used');
+      }
+
+      // SAME PASSWORD CHECK
+
+      const isSamePassword = await bcrypt.compare(
+        dto.password,
+        employee.password,
+      );
+
+      if (isSamePassword) {
+        throw new BadRequestException(
+          'New password cannot be same as old password',
+        );
+      }
+
+      // HASH PASSWORD
+
+      const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+      employee.password = hashedPassword;
+
+      // INVALIDATE OLD TOKENS
+
+      employee.passwordVersion += 1;
+
+      await this.employeeRepository.save(employee);
+
+      return {
+        success: true,
+
+        message: 'Password reset successfully',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new UnauthorizedException('Reset token expired or invalid');
     }
   }
 }

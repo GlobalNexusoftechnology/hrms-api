@@ -27,27 +27,18 @@ export class HolidayController {
 
   @Permissions(PermissionEnum.HOLIDAY_CREATE)
   @Post()
-  create(
-    @Body()
-    dto: CreateHolidayDto,
-  ) {
+  create(@Body() dto: CreateHolidayDto) {
     return this.holidayService.create(dto);
   }
 
   @Permissions(PermissionEnum.HOLIDAY_READ)
   @Get()
-  findAll(
-    @Query()
-    query: any,
-  ) {
+  findAll(@Query() query: any) {
     return this.holidayService.findAll(query);
   }
 
   @Get(':id')
-  findOne(
-    @Param('id')
-    id: string,
-  ) {
+  findOne(@Param('id') id: string) {
     return this.holidayService.findOne(id);
   }
 

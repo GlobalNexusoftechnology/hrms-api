@@ -1,8 +1,5 @@
 import { registerAs } from '@nestjs/config';
 import { JwtModuleOptions } from '@nestjs/jwt';
-// import { config } from 'node:process';
-// import { config } from 'process';
-// import { config } from 'dotenv';
 
 export default registerAs(
   'jwt',

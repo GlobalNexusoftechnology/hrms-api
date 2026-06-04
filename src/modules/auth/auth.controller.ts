@@ -1,12 +1,22 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+
+import type { Response } from 'express';
 
 import { AuthService } from './auth.service';
 
 import { LoginDto } from './dto/login.dto';
+
 import { Public } from './decorators/public.decorator';
+
 import { CurrentUser } from './decorators/current-user.decorator';
+
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+
 import { LogoutDto } from './dto/logout.dto';
+
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -45,5 +55,93 @@ export class AuthController {
     dto: LogoutDto,
   ) {
     return this.authService.logout(dto.refreshToken);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  forgotPassword(
+    @Body()
+    dto: ForgotPasswordDto,
+  ) {
+    return this.authService.forgotPassword(dto);
+  }
+
+
+  @Public()
+  @Post('reset-password')
+  resetPassword(
+    @Body()
+    dto: ResetPasswordDto,
+  ) {
+    return this.authService.resetPassword(dto);
+  }
+
+
+  @Public()
+  @Get('reset-password')
+  resetPasswordRedirect(
+    @Query('token')
+    token: string,
+
+    @Res()
+    res: Response,
+  ) {
+    return res.send(`
+    <html>
+      <body style="font-family: Arial; padding:40px;">
+        <h2>Reset Password</h2>
+
+        <input
+          id="password"
+          type="password"
+          placeholder="New Password"
+          style="padding:10px; width:300px;"
+        />
+
+        <br /><br />
+
+        <button onclick="resetPassword()">
+          Reset Password
+        </button>
+
+        <script>
+          async function resetPassword() {
+            const password =
+              document.getElementById(
+                'password'
+              ).value;
+
+            const response =
+              await fetch(
+                '/api/auth/reset-password',
+                {
+                  method: 'POST',
+
+                  headers: {
+                    'Content-Type':
+                      'application/json',
+                  },
+
+                  body:
+                    JSON.stringify({
+                      token:
+                        '${token}',
+
+                      password,
+                    }),
+                },
+              );
+
+            const data =
+              await response.json();
+
+            alert(
+              data.message
+            );
+          }
+        </script>
+      </body>
+    </html>
+  `);
   }
 }

@@ -1,6 +1,7 @@
 import { RoleEnum } from '../enums/role.enum';
 
 import { PermissionEnum } from '../enums/permission.enum';
+import { permission } from 'process';
 
 export const RBAC_CONFIG = {
   [RoleEnum.SUPER_ADMIN]: [...Object.values(PermissionEnum)],
@@ -47,12 +48,29 @@ export const RBAC_CONFIG = {
     PermissionEnum.HR_DASHBOARD_READ,
 
     PermissionEnum.EMPLOYEE_DASHBOARD_READ,
+
+    PermissionEnum.SALARY_CREATE,
+    PermissionEnum.SALARY_READ,
+    PermissionEnum.SALARY_UPDATE,
+    PermissionEnum.SALARY_DELETE,
+
+    PermissionEnum.TRAINING_CREATE,
+    PermissionEnum.TRAINING_READ,
+    PermissionEnum.TRAINING_UPDATE,
+    PermissionEnum.TRAINING_DELETE,
+
+    PermissionEnum.INTERVIEW_CREATE,
+    PermissionEnum.INTERVIEW_READ,
+    PermissionEnum.INTERVIEW_UPDATE,
+    PermissionEnum.INTERVIEW_DELETE,
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],
 
   [RoleEnum.EMPLOYEE]: [
     PermissionEnum.ATTENDANCE_CREATE,
+    PermissionEnum.ATTENDANCE_READ,
+    
     PermissionEnum.EMPLOYEE_READ,
 
     PermissionEnum.ATTENDANCE_CORRECTION_CREATE,
@@ -64,5 +82,10 @@ export const RBAC_CONFIG = {
     PermissionEnum.EMPLOYEE_DASHBOARD_READ,
 
     PermissionEnum.PAYROLL_READ,
+
+    PermissionEnum.SALARY_READ,
+
+    PermissionEnum.TRAINING_READ,
+    PermissionEnum.TRAINING_UPDATE,
   ],
 };

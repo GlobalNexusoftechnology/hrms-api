@@ -17,7 +17,7 @@ export enum PermissionEnum {
   DESIGNATION_UPDATE = 'designation.update',
   DESIGNATION_DELETE = 'designation.delete',
 
-  //Attendence
+  //Attendance
 
   ATTENDANCE_CREATE = 'attendance.create',
   ATTENDANCE_READ = 'attendance.read',
@@ -28,10 +28,10 @@ export enum PermissionEnum {
 
   HR_DASHBOARD_READ = 'hr_dashboard.read',
 
-  ATTENDANCE_CORRECTION_CREATE = 'attendence_correction.create',
-  ATTENDANCE_CORRECTION_READ = 'attendence_correction.read',
-  ATTENDANCE_CORRECTION_UPDATE = 'attendence_correction.update',
-  ATTENDANCE_CORRECTION_DELETE = 'attendence_correction.delete',
+  ATTENDANCE_CORRECTION_CREATE = 'attendance_correction.create',
+  ATTENDANCE_CORRECTION_READ = 'attendance_correction.read',
+  ATTENDANCE_CORRECTION_UPDATE = 'attendance_correction.update',
+  ATTENDANCE_CORRECTION_DELETE = 'attendance_correction.delete',
 
   LEAVE_CREATE = 'leave.create',
   LEAVE_READ = 'leave.read',
@@ -53,4 +53,19 @@ export enum PermissionEnum {
   PAYROLL_ALL_READ = 'payroll_all.read',
   PAYROLL_UPDATE = 'payroll.update',
   PAYROLL_DELETE = 'payroll.delete',
+
+  SALARY_CREATE = 'salary.create',
+  SALARY_READ = 'salary.read',
+  SALARY_UPDATE = 'salary.update',
+  SALARY_DELETE = 'salary.delete',
+
+  TRAINING_CREATE = 'training.create',
+  TRAINING_READ = 'training.read',
+  TRAINING_UPDATE = 'training.update',
+  TRAINING_DELETE = 'training.delete',
+
+  INTERVIEW_CREATE = 'interview.create',
+  INTERVIEW_READ = 'interview.read',
+  INTERVIEW_UPDATE = 'interview.update',
+  INTERVIEW_DELETE = 'interview.delete',
 }

@@ -10,6 +10,7 @@ import {
   Query,
   ParseUUIDPipe,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -25,14 +26,17 @@ import { extname } from 'path';
 import type { Response } from 'express';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
-@Controller('employees')
 // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('employees')
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
 
-  // @Permissions('employee.create')
-  @Public()
+  // @Public()
+  @Permissions('employee.create')
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
   create(@Body() dto: CreateEmployeeDto) {
@@ -42,7 +46,7 @@ export class EmployeesController {
   // @Public()
   // @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
-  @Permissions('employee.read')
+  @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   findAll(
     @Query()
@@ -131,7 +135,6 @@ export class EmployeesController {
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
-  @Permissions('employee.delete')
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   remove(

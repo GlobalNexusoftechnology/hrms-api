@@ -156,6 +156,13 @@ export class Employee {
   dateOfBirth!: Date | null;
 
   @Column({
+    default: 1,
+
+    name: 'password_version',
+  })
+  passwordVersion!: number;
+
+  @Column({
     default: true,
     name: 'is_active',
   })
@@ -174,5 +181,5 @@ export class Employee {
   @DeleteDateColumn({
     name: 'deleted_at',
   })
-  deletedAt!: Date;
+  deletedAt!: Date | null;
 }

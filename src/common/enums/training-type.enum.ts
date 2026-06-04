@@ -1,0 +1,9 @@
+export enum TrainingTypeEnum {
+  MANDATORY = 'MANDATORY',
+
+  OPTIONAL = 'OPTIONAL',
+
+  ONBOARDING = 'ONBOARDING',
+
+  CERTIFICATION = 'CERTIFICATION',
+}

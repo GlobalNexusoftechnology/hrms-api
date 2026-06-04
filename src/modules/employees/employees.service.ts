@@ -36,7 +36,7 @@ export class EmployeesService {
     private readonly roleRepository: Repository<Role>,
   ) {}
 
-  private async generateEmployeeCode() {
+  async generateEmployeeCode() {
     const latestEmployee = await this.employeeRepository.find({
       order: {
         createdAt: 'DESC',
