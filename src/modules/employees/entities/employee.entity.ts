@@ -163,6 +163,7 @@ export class Employee {
   passwordVersion!: number;
 
   @Column({
+    type: 'boolean',
     default: true,
     name: 'is_active',
   })
@@ -182,4 +183,11 @@ export class Employee {
     name: 'deleted_at',
   })
   deletedAt!: Date | null;
+
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'last_login_at',
+  })
+  lastLoginAt!: Date | null;
 }

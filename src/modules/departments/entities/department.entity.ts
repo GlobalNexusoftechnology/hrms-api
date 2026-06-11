@@ -6,24 +6,29 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 
 import { Employee } from '../../employees/entities/employee.entity';
 import { Designation } from '../../designations/entities/designation.entity';
 
+@Index('unique_department_name_active', ['name'], {
+  unique: true,
+  where: `"deleted_at" IS NULL`,
+})
+@Index('unique_department_code_active', ['code'], {
+  unique: true,
+  where: `"deleted_at" IS NULL`,
+})
 @Entity('departments')
 export class Department {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({
-    unique: true,
-  })
+  @Column()
   name!: string;
 
-  @Column({
-    unique: true,
-  })
+  @Column()
   code!: string;
 
   @Column({

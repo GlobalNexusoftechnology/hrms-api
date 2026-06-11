@@ -15,10 +15,6 @@ export class SalaryStructure {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  // =====================
-  // EMPLOYEE
-  // =====================
-
   @Column({
     unique: true,
 
@@ -33,10 +29,6 @@ export class SalaryStructure {
     name: 'employee_id',
   })
   employee!: Employee;
-
-  // =====================
-  // SALARY COMPONENTS
-  // =====================
 
   @Column({
     type: 'decimal',
@@ -82,10 +74,6 @@ export class SalaryStructure {
   })
   bonus!: number;
 
-  // =====================
-  // DEDUCTIONS
-  // =====================
-
   @Column({
     type: 'decimal',
 
@@ -120,10 +108,6 @@ export class SalaryStructure {
     name: 'professional_tax',
   })
   professionalTax!: number;
-
-  // =====================
-  // CALCULATED
-  // =====================
 
   @Column({
     type: 'decimal',

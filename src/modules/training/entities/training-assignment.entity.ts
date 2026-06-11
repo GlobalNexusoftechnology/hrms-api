@@ -18,10 +18,6 @@ export class TrainingAssignment {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  // =====================
-  // TRAINING
-  // =====================
-
   @Column({
     name: 'training_id',
   })

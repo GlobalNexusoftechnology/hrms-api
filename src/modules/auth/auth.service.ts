@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -40,22 +41,40 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const employee = await this.employeesService.findByIdentifier(
-      dto.identifier,
-    );
 
+    const identifier = dto.identifier.trim();
+
+    const employee = await this.employeesService.findByIdentifier(identifier);
+
+    // EMPLOYEE NOT FOUND
     if (!employee) {
-      throw new UnauthorizedException('Invalid credentials');
+      const isEmail = identifier.includes('@');
+
+      if (isEmail) {
+        throw new UnauthorizedException('Email is not valid');
+      }
+
+      throw new UnauthorizedException('Employee code is not valid');
     }
 
+
+    // INACTIVE ACCOUNT
+    if (!employee.isActive) {
+      throw new ForbiddenException(
+        'Your account has been deactivated. Please contact admin',
+      );
+    }
+    // PASSWORD VALIDATION
     const isPasswordValid = await bcrypt.compare(
       dto.password,
       employee.password,
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Password is not valid');
     }
+
+    await this.employeesService.updateLastLogin(employee.id);
 
     const payload = {
       sub: employee.id,

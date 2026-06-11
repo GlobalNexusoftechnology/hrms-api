@@ -31,6 +31,9 @@ export const RBAC_CONFIG = {
     PermissionEnum.LEAVE_CREATE,
     PermissionEnum.LEAVE_READ,
     PermissionEnum.LEAVE_UPDATE,
+    
+    PermissionEnum.LEAVE_APPROVAL,
+
 
     PermissionEnum.WEEKEND_CREATE,
     PermissionEnum.WEEKEND_READ,

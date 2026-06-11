@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import { createCanvas, loadImage } from 'canvas';
 import * as QRCode from 'qrcode';
 import * as path from 'path';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
 
 @Injectable()
 export class EmployeesService {
@@ -34,6 +35,8 @@ export class EmployeesService {
     private readonly designationRepository: Repository<Designation>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepository: Repository<RefreshToken>,
   ) {}
 
   async generateEmployeeCode() {
@@ -58,19 +61,26 @@ export class EmployeesService {
   async create(dto: CreateEmployeeDto) {
     dto.email = dto.email.trim().toLowerCase();
 
-    const exists = await this.employeeRepository.findOne({
-      where: [
-        {
-          email: dto.email,
-        },
-        {
-          mobile: dto.mobile,
-        },
-      ],
+    const existingEmail = await this.employeeRepository.findOne({
+      where: {
+        email: dto.email,
+        deletedAt: IsNull(),
+      },
     });
 
-    if (exists) {
-      throw new ConflictException('Employee already exists');
+    if (existingEmail) {
+      throw new ConflictException(`Email '${dto.email}' already exists`);
+    }
+
+    const existingMobile = await this.employeeRepository.findOne({
+      where: {
+        mobile: dto.mobile,
+        deletedAt: IsNull(),
+      },
+    });
+
+    if (existingMobile) {
+      throw new ConflictException(`Mobile '${dto.mobile}' already exists`);
     }
 
     const role = await this.roleRepository.findOne({
@@ -214,6 +224,7 @@ export class EmployeesService {
         employeeCode: true,
         password: true,
         roleId: true,
+        isActive: true,
         role: {
           id: true,
           name: true,
@@ -391,7 +402,10 @@ export class EmployeesService {
 
   async update(id: string, dto: UpdateEmployeeDto) {
     const employee = await this.employeeRepository.findOne({
-      where: { id },
+      where: {
+        id,
+        deletedAt: IsNull(),
+      },
     });
 
     if (!employee) {
@@ -400,14 +414,17 @@ export class EmployeesService {
 
     // EMAIL DUPLICATE CHECK
     if (dto.email) {
+      dto.email = dto.email.trim().toLowerCase();
+
       const existingEmail = await this.employeeRepository.findOne({
         where: {
           email: dto.email,
+          deletedAt: IsNull(),
         },
       });
 
       if (existingEmail && existingEmail.id !== id) {
-        throw new ConflictException('Email already exists');
+        throw new ConflictException(`Email '${dto.email}' already exists`);
       }
     }
 
@@ -416,14 +433,16 @@ export class EmployeesService {
       const existingMobile = await this.employeeRepository.findOne({
         where: {
           mobile: dto.mobile,
+          deletedAt: IsNull(),
         },
       });
 
       if (existingMobile && existingMobile.id !== id) {
-        throw new ConflictException('Mobile already exists');
+        throw new ConflictException(`Mobile '${dto.mobile}' already exists`);
       }
     }
 
+    // PASSWORD HASH
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
@@ -432,8 +451,22 @@ export class EmployeesService {
 
     await this.employeeRepository.save(employee);
 
-    return employee;
+    // REVOKE TOKENS AFTER SUCCESSFUL DEACTIVATION
+    if (dto.isActive === false) {
+      await this.refreshTokenRepository.update(
+        {
+          employeeId: employee.id,
+          isRevoked: false,
+        },
+        {
+          isRevoked: true,
+        },
+      );
+    }
+
+    return this.findOne(employee.id);
   }
+
 
   async uploadProfilePhoto(id: string, file: Express.Multer.File) {
     const employee = await this.findOne(id);
@@ -443,7 +476,6 @@ export class EmployeesService {
     }
 
     const extension = extname(file.originalname);
-
     const newFileName = `${employee.employeeCode}_profile_${Date.now()}${extension}`;
 
     const oldPath = file.path;
@@ -465,7 +497,10 @@ export class EmployeesService {
 
   async remove(id: string) {
     const employee = await this.employeeRepository.findOne({
-      where: { id },
+      where: {
+        id,
+        deletedAt: IsNull(),
+      },
     });
 
     if (!employee) {
@@ -585,5 +620,12 @@ export class EmployeesService {
     res.setHeader('Content-Type', 'image/png');
 
     canvas.createPNGStream().pipe(res);
+  }
+
+
+  async updateLastLogin(employeeId: string) {
+    await this.employeeRepository.update(employeeId, {
+      lastLoginAt: new Date(),
+    });
   }
 }

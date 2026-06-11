@@ -6,7 +6,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import jwtConfig from '../../../config/jwt.config';
-import { EmployeesService } from 'src/modules/employees/employees.service';
+import { EmployeesService } from '../../employees/employees.service';
 import { JwtPayload } from '../types/jwt-payload.type';
 
 @Injectable()

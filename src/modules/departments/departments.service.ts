@@ -22,24 +22,35 @@ export class DepartmentsService {
   ) {}
 
   async create(dto: CreateDepartmentDto) {
-    const exists = await this.departmentRepository.findOne({
-      where: [
-        {
-          name: dto.name,
-        },
-        {
-          code: dto.code,
-        },
-      ],
+    const existingName = await this.departmentRepository.findOne({
+      where: {
+        name: dto.name,
+        deletedAt: IsNull(),
+      },
     });
 
-    if (exists) {
-      throw new ConflictException('Department already exists');
+    if (existingName) {
+      throw new ConflictException(
+        `Department name '${dto.name}' already exists`,
+      );
+    }
+
+    const existingCode = await this.departmentRepository.findOne({
+      where: {
+        code: dto.code,
+        deletedAt: IsNull(),
+      },
+    });
+
+    if (existingCode) {
+      throw new ConflictException(
+        `Department code '${dto.code}' already exists`,
+      );
     }
 
     const department = this.departmentRepository.create(dto);
 
-    return this.departmentRepository.save(department);
+    return await this.departmentRepository.save(department);
   }
 
   async findAll(page = 1, limit = 10, search?: string) {
@@ -110,11 +121,14 @@ export class DepartmentsService {
       const exists = await this.departmentRepository.findOne({
         where: {
           name: dto.name,
+          deletedAt: IsNull(),
         },
       });
 
       if (exists && exists.id !== id) {
-        throw new ConflictException('Department name already exists');
+        throw new ConflictException(
+          `Department name '${dto.name}' already exists`,
+        );
       }
     }
 
@@ -122,11 +136,14 @@ export class DepartmentsService {
       const exists = await this.departmentRepository.findOne({
         where: {
           code: dto.code,
+          deletedAt: IsNull(),
         },
       });
 
       if (exists && exists.id !== id) {
-        throw new ConflictException('Department code already exists');
+        throw new ConflictException(
+          `Department code '${dto.code}' already exists`,
+        );
       }
     }
 

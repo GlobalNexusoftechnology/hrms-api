@@ -38,19 +38,30 @@ export class DesignationsService {
       throw new NotFoundException('Department not found');
     }
 
-    const exists = await this.designationRepository.findOne({
-      where: [
-        {
-          name: dto.name,
-        },
-        {
-          code: dto.code,
-        },
-      ],
+    const existingName = await this.designationRepository.findOne({
+      where: {
+        name: dto.name,
+        deletedAt: IsNull(),
+      },
     });
 
-    if (exists) {
-      throw new ConflictException('Designation already exists');
+    if (existingName) {
+      throw new ConflictException(
+        `Designation name '${dto.name}' already exists`,
+      );
+    }
+
+    const existingCode = await this.designationRepository.findOne({
+      where: {
+        code: dto.code,
+        deletedAt: IsNull(),
+      },
+    });
+
+    if (existingCode) {
+      throw new ConflictException(
+        `Designation code '${dto.code}' already exists`,
+      );
     }
 
     const designation = this.designationRepository.create(dto);
@@ -143,6 +154,7 @@ export class DesignationsService {
       const department = await this.departmentRepository.findOne({
         where: {
           id: dto.departmentId,
+          deletedAt: IsNull(),
         },
       });
 
@@ -155,11 +167,14 @@ export class DesignationsService {
       const exists = await this.designationRepository.findOne({
         where: {
           name: dto.name,
+          deletedAt: IsNull(),
         },
       });
 
       if (exists && exists.id !== id) {
-        throw new ConflictException('Designation name already exists');
+        throw new ConflictException(
+          `Designation name '${dto.name}' already exists`,
+        );
       }
     }
 
@@ -167,11 +182,14 @@ export class DesignationsService {
       const exists = await this.designationRepository.findOne({
         where: {
           code: dto.code,
+          deletedAt: IsNull(),
         },
       });
 
       if (exists && exists.id !== id) {
-        throw new ConflictException('Designation code already exists');
+        throw new ConflictException(
+          `Designation code '${dto.code}' already exists`,
+        );
       }
     }
 
@@ -192,15 +210,38 @@ export class DesignationsService {
 
   async restore(id: string) {
     const designation = await this.designationRepository.findOne({
-      where: {
-        id,
-      },
-
+      where: { id },
       withDeleted: true,
     });
 
     if (!designation) {
       throw new NotFoundException('Designation not found');
+    }
+
+    const existingName = await this.designationRepository.findOne({
+      where: {
+        name: designation.name,
+        deletedAt: IsNull(),
+      },
+    });
+
+    if (existingName) {
+      throw new ConflictException(
+        `Cannot restore. Designation name '${designation.name}' already exists`,
+      );
+    }
+
+    const existingCode = await this.designationRepository.findOne({
+      where: {
+        code: designation.code,
+        deletedAt: IsNull(),
+      },
+    });
+
+    if (existingCode) {
+      throw new ConflictException(
+        `Cannot restore. Designation code '${designation.code}' already exists`,
+      );
     }
 
     await this.designationRepository.restore(id);

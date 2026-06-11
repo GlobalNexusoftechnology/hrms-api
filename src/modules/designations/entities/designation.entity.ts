@@ -14,19 +14,25 @@ import { Department } from '../../departments/entities/department.entity';
 
 import { Employee } from '../../employees/entities/employee.entity';
 
+import { Index } from 'typeorm';
+
+@Index('unique_designation_name_active', ['name'], {
+  unique: true,
+  where: `"deleted_at" IS NULL`,
+})
+@Index('unique_designation_code_active', ['code'], {
+  unique: true,
+  where: `"deleted_at" IS NULL`,
+})
 @Entity('designations')
 export class Designation {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({
-    unique: true,
-  })
+  @Column()
   name!: string;
 
-  @Column({
-    unique: true,
-  })
+  @Column()
   code!: string;
 
   @Column({

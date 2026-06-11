@@ -25,6 +25,7 @@ export enum PermissionEnum {
   ATTENDANCE_DELETE = 'attendance.delete',
 
   EMPLOYEE_DASHBOARD_READ = 'dashboard.read',
+  ADMIN_DASHBOARD_READ = 'admin_dashboard.read',
 
   HR_DASHBOARD_READ = 'hr_dashboard.read',
 
@@ -37,6 +38,7 @@ export enum PermissionEnum {
   LEAVE_READ = 'leave.read',
   LEAVE_UPDATE = 'leave.update',
   LEAVE_DELETE = 'leave.delete',
+  LEAVE_APPROVAL = 'leave.approval',
 
   WEEKEND_CREATE = 'weekend.create',
   WEEKEND_READ = 'weekend.read',
