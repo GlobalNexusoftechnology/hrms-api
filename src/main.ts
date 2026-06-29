@@ -22,6 +22,13 @@ async function bootstrap() {
     }),
   );
 
+  app.enableCors({
+    origin: '*',
+    credentials: true, // If using cookies/auth
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
   //for result global
   app.useGlobalInterceptors(new TransformResponseInterceptor());
 
