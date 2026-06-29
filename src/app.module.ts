@@ -52,6 +52,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
       database: process.env.DB_NAME,
       entities: ['dist/**/*.entity.js'],
       migrations: ['dist/database/migrations/*.js'],
+      autoLoadEntities: true,
       synchronize: false,
     }),
 
