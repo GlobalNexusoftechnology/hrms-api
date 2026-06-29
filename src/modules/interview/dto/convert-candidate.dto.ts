@@ -1,8 +1,4 @@
-import {
-  IsDateString,
-  IsEnum,
-  IsUUID,
-} from 'class-validator';
+import { IsDateString, IsEnum, IsUUID } from 'class-validator';
 
 import { EmploymentTypeEnum } from '../../../common/enums/employment-type.enum';
 
@@ -19,8 +15,6 @@ export class ConvertCandidateDto {
   @IsDateString()
   joiningDate!: Date;
 
-  @IsEnum(
-    EmploymentTypeEnum,
-  )
+  @IsEnum(EmploymentTypeEnum)
   employmentType!: EmploymentTypeEnum;
 }

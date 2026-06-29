@@ -41,7 +41,6 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-
     const identifier = dto.identifier.trim();
 
     const employee = await this.employeesService.findByIdentifier(identifier);
@@ -56,7 +55,6 @@ export class AuthService {
 
       throw new UnauthorizedException('Employee code is not valid');
     }
-
 
     // INACTIVE ACCOUNT
     if (!employee.isActive) {

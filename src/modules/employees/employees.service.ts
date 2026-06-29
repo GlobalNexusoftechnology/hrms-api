@@ -467,7 +467,6 @@ export class EmployeesService {
     return this.findOne(employee.id);
   }
 
-
   async uploadProfilePhoto(id: string, file: Express.Multer.File) {
     const employee = await this.findOne(id);
 
@@ -621,7 +620,6 @@ export class EmployeesService {
 
     canvas.createPNGStream().pipe(res);
   }
-
 
   async updateLastLogin(employeeId: string) {
     await this.employeeRepository.update(employeeId, {

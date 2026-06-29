@@ -20,7 +20,6 @@ import { LeaveService } from '../Service/leave.service';
 export class HrLeaveController {
   constructor(private readonly leaveService: LeaveService) {}
 
-
   @Permissions(PermissionEnum.LEAVE_READ)
   @Get()
   findAll(
@@ -75,6 +74,4 @@ export class HrLeaveController {
       comment,
     );
   }
-
-  
 }

@@ -17,9 +17,9 @@ import { EmployeesModule } from '../employees/employees.module';
       InterviewFeedback,
       Employee,
     ]),
-    EmployeesModule
+    EmployeesModule,
   ],
-  controllers: [InterviewController,HrInterviewController,],
+  controllers: [InterviewController, HrInterviewController],
   providers: [InterviewService],
 })
 export class InterviewModule {}

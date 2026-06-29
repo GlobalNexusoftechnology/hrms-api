@@ -29,7 +29,7 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 export class HrInterviewController {
   constructor(private readonly interviewService: InterviewService) {}
 
- @Permissions(PermissionEnum.INTERVIEW_CREATE)
+  @Permissions(PermissionEnum.INTERVIEW_CREATE)
   @Post('candidates')
   createCandidate(
     @Body()
@@ -64,9 +64,7 @@ export class HrInterviewController {
   ) {
     return this.interviewService.updateCandidate(id, dto);
   }
-  
-  
-  
+
   @Permissions(PermissionEnum.INTERVIEW_UPDATE)
   @Patch('candidates/:id/status')
   updateCandidateStatus(
@@ -79,10 +77,10 @@ export class HrInterviewController {
     return this.interviewService.updateCandidateStatus(id, dto);
   }
 
-@Permissions(PermissionEnum.INTERVIEW_CREATE)
-@Post('candidates/:id/convert')
-convertToEmployee(
-  @Param('id', ParseUUIDPipe)
+  @Permissions(PermissionEnum.INTERVIEW_CREATE)
+  @Post('candidates/:id/convert')
+  convertToEmployee(
+    @Param('id', ParseUUIDPipe)
     id: string,
     @Body()
     dto: ConvertCandidateDto,
@@ -90,8 +88,6 @@ convertToEmployee(
     return this.interviewService.convertToEmployee(id, dto);
   }
 
-
-  
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
   @Post('interviews')
   scheduleInterview(
@@ -116,8 +112,7 @@ convertToEmployee(
     return this.interviewService.getInterview(id);
   }
 
-
-@Permissions(PermissionEnum.INTERVIEW_CREATE)
+  @Permissions(PermissionEnum.INTERVIEW_CREATE)
   @Post('interviews/:id/feedback')
   addFeedback(
     @Param('id', ParseUUIDPipe)

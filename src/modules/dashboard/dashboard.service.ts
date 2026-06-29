@@ -223,7 +223,9 @@ export class DashboardService {
         today: {
           ...todayAttendanceStats,
           attendanceRate: totalEmployees
-            ? Number(((todayAttendance.length / totalEmployees) * 100).toFixed(2))
+            ? Number(
+                ((todayAttendance.length / totalEmployees) * 100).toFixed(2),
+              )
             : 0,
         },
         weekly: weeklyAttendance,
@@ -310,7 +312,9 @@ export class DashboardService {
               checkIn: todayAttendance.checkIn,
               checkOut: todayAttendance.checkOut,
               workedMinutes: todayAttendance.workedMinutes,
-              workedHours: Number((todayAttendance.workedMinutes / 60).toFixed(2)),
+              workedHours: Number(
+                (todayAttendance.workedMinutes / 60).toFixed(2),
+              ),
             }
           : null,
         weekly: weeklyAttendance,
@@ -528,9 +532,7 @@ export class DashboardService {
     const expectedHours = stats.present * 8 + stats.halfDay * 4;
     const completionPercentage =
       expectedHours > 0
-        ? Number(
-            ((totalWorkedMinutes / 60 / expectedHours) * 100).toFixed(2),
-          )
+        ? Number(((totalWorkedMinutes / 60 / expectedHours) * 100).toFixed(2))
         : 0;
 
     return {

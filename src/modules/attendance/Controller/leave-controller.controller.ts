@@ -76,5 +76,4 @@ export class LeaveController {
       employee.id,
     );
   }
-
 }

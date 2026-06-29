@@ -144,9 +144,7 @@ export class TrainingService {
     const training = await this.trainingRepo.findOne({
       where: {
         id: trainingId,
-        
       },
-      
     });
 
     if (!training) {

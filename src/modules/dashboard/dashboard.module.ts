@@ -12,8 +12,6 @@ import { Department } from '../departments/entities/department.entity';
 
 import { Attendance } from '../attendance/entities/attendance.entity';
 
-
-
 import { Candidate } from '../interview/entities/candidate.entity';
 
 import { Training } from '../training/entities/training.entity';

@@ -18,13 +18,11 @@ import { PermissionEnum } from '../../common/enums/permission.enum';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 
-
 @Controller('departments')
 @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
 export class DepartmentsController {
   constructor(private readonly departmentsService: DepartmentsService) {}
 
-  
   @Permissions(PermissionEnum.DEPARTMENT_CREATE)
   @Post()
   create(

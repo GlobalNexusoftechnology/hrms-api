@@ -12,7 +12,13 @@ import { RefreshToken } from '../auth/entities/refresh-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Employee, Department, Designation, Role,RefreshToken]),
+    TypeOrmModule.forFeature([
+      Employee,
+      Department,
+      Designation,
+      Role,
+      RefreshToken,
+    ]),
   ],
 
   controllers: [EmployeesController],

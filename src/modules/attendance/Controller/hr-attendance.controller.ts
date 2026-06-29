@@ -27,7 +27,6 @@ export class HrAttendanceController {
     private readonly correctionService: CorrectionService,
   ) {}
 
-
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get()
   getAll(
@@ -36,7 +35,6 @@ export class HrAttendanceController {
   ) {
     return this.attendanceQueryService.getFilteredAttendance(query);
   }
-
 
   @Permissions(PermissionEnum.ATTENDANCE_CORRECTION_UPDATE)
   @Patch('correction/:id/approve')
@@ -83,13 +81,11 @@ export class HrAttendanceController {
     return this.correctionService.findAll(query);
   }
 
-
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('dashboard')
   getDashboard() {
     return this.attendanceDashboardService.getHrDashboard();
   }
-
 
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('today')
