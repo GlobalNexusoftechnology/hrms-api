@@ -36,7 +36,7 @@ export class AuthController {
   @Get('me')
   getProfile(
     @CurrentUser()
-    user: any,
+    user: unknown,
   ) {
     return user;
   }

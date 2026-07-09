@@ -6,6 +6,4 @@ export type JwtPayload = {
   employeeCode: string;
 
   roleId: string;
-
-  passwordVersion: number;
 };

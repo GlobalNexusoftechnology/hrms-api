@@ -5,7 +5,6 @@ import { Response } from 'express';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let service: AuthService;
 
   const mockAuthService = {
     login: jest.fn(),
@@ -27,7 +26,6 @@ describe('AuthController', () => {
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    service = module.get<AuthService>(AuthService);
   });
 
   afterEach(() => {
@@ -52,7 +50,7 @@ describe('AuthController', () => {
 
   describe('getProfile', () => {
     it('should return current user object', () => {
-      const mockUser = { id: 'emp-123', email: 'john@example.com' };
+      const mockUser = { id: 'emp-123', email: 'john@example.com' } as unknown;
       const result = controller.getProfile(mockUser);
       expect(result).toEqual(mockUser);
     });
@@ -109,12 +107,12 @@ describe('AuthController', () => {
   describe('resetPasswordRedirect', () => {
     it('should send HTML response containing token', () => {
       const mockRes = {
-        send: jest.fn().mockImplementation((html) => html),
-      } as any as Response;
+        send: jest.fn().mockImplementation((html: string) => html),
+      } as unknown as Response;
 
       controller.resetPasswordRedirect('token-123', mockRes);
       expect(mockRes.send).toHaveBeenCalled();
-      const htmlArg = (mockRes.send as jest.Mock).mock.calls[0][0];
+      const htmlArg = String((mockRes.send as jest.Mock).mock.calls[0][0]);
       expect(htmlArg).toContain('token-123');
     });
   });

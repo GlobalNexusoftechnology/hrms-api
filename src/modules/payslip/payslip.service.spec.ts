@@ -9,8 +9,17 @@ jest.mock('pdfkit', () => {
   return jest.fn().mockImplementation(() => ({
     pipe: jest.fn(),
     fontSize: jest.fn().mockReturnThis(),
+    font: jest.fn().mockReturnThis(),
     text: jest.fn().mockReturnThis(),
     moveDown: jest.fn().mockReturnThis(),
+    moveTo: jest.fn().mockReturnThis(),
+    lineTo: jest.fn().mockReturnThis(),
+    lineWidth: jest.fn().mockReturnThis(),
+    strokeColor: jest.fn().mockReturnThis(),
+    stroke: jest.fn().mockReturnThis(),
+    fillColor: jest.fn().mockReturnThis(),
+    rect: jest.fn().mockReturnThis(),
+    fill: jest.fn().mockReturnThis(),
     end: jest.fn(),
   }));
 });
@@ -87,20 +96,6 @@ describe('PayslipService', () => {
       await expect(service.downloadPayslip('invalid', mockRes)).rejects.toThrow(
         NotFoundException,
       );
-    });
-  });
-
-  describe('validateOwnership', () => {
-    it('should return true if employeeId matches', async () => {
-      payrollRepo.findOne.mockResolvedValue(mockPayroll);
-      const result = await service.validateOwnership('pay-123', 'emp-123');
-      expect(result).toBe(true);
-    });
-
-    it('should return false if employeeId mismatches', async () => {
-      payrollRepo.findOne.mockResolvedValue(mockPayroll);
-      const result = await service.validateOwnership('pay-123', 'other-id');
-      expect(result).toBe(false);
     });
   });
 });

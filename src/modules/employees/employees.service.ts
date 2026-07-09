@@ -223,6 +223,7 @@ export class EmployeesService {
         email: true,
         employeeCode: true,
         password: true,
+        passwordVersion: true,
         roleId: true,
         isActive: true,
         role: {

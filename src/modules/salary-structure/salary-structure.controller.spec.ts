@@ -68,20 +68,23 @@ describe('SalaryStructureController', () => {
         employeeId: 'emp-123',
         basicSalary: 50000,
       } as any;
-      const result = await controller.create(dto);
+      const currentUser = { id: 'admin-1' };
+      const result = await controller.create(dto, currentUser);
       expect(result).toEqual(mockSalaryResponse);
-      expect(mockSalaryStructureService.create).toHaveBeenCalledWith(dto);
+      expect(mockSalaryStructureService.create).toHaveBeenCalledWith(dto, currentUser);
     });
   });
 
   describe('update', () => {
     it('should call service.update', async () => {
       const dto: UpdateSalaryStructureDto = { basicSalary: 55000 };
-      const result = await controller.update('sal-123', dto);
+      const currentUser = { id: 'admin-1' };
+      const result = await controller.update('sal-123', dto, currentUser);
       expect(result).toEqual(mockSalaryResponse);
       expect(mockSalaryStructureService.update).toHaveBeenCalledWith(
         'sal-123',
         dto,
+        currentUser,
       );
     });
   });

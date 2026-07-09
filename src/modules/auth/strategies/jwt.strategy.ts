@@ -1,5 +1,5 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import type { ConfigService, ConfigType } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
 
 import { PassportStrategy } from '@nestjs/passport';
 
@@ -38,10 +38,6 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     if (!employee.isActive) {
       throw new UnauthorizedException('Account deactivated');
-    }
-
-    if (employee.passwordVersion !== payload.passwordVersion) {
-      throw new UnauthorizedException('Session expired due to password change');
     }
 
     return employee;
