@@ -7,10 +7,10 @@ describe('TrainingController', () => {
   let service: TrainingService;
 
   const mockTrainingService = {
-    getMyTrainings: jest.fn().mockResolvedValue([]),
-    getTrainingDetails: jest.fn().mockResolvedValue({}),
-    startTraining: jest.fn().mockResolvedValue({ status: 'in-progress' }),
-    completeTraining: jest.fn().mockResolvedValue({ status: 'completed' }),
+    getMyCourses: jest.fn().mockResolvedValue([]),
+    getCourseDetails: jest.fn().mockResolvedValue({}),
+    completeTopic: jest.fn().mockResolvedValue({ success: true }),
+    submitAssessment: jest.fn().mockResolvedValue({ success: true }),
   };
 
   beforeEach(async () => {
@@ -36,49 +36,51 @@ describe('TrainingController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('getMyTrainings', () => {
-    it('should call service.getMyTrainings', async () => {
-      const mockReq = { user: { id: 'emp-123' } } as any;
-      const result = await controller.getMyTrainings(mockReq);
+  describe('getMyCourses', () => {
+    it('should call service.getMyCourses', async () => {
+      const mockUser = { id: 'emp-123' } as any;
+      const result = await controller.getMyCourses(mockUser);
       expect(result).toEqual([]);
-      expect(mockTrainingService.getMyTrainings).toHaveBeenCalledWith(
+      expect(mockTrainingService.getMyCourses).toHaveBeenCalledWith(
         'emp-123',
       );
     });
   });
 
-  describe('getTrainingDetails', () => {
-    it('should call service.getTrainingDetails', async () => {
-      const mockReq = { user: { id: 'emp-123' } } as any;
-      const result = await controller.getTrainingDetails('train-123', mockReq);
+  describe('getCourseDetails', () => {
+    it('should call service.getCourseDetails', async () => {
+      const mockUser = { id: 'emp-123' } as any;
+      const result = await controller.getCourseDetails('course-123', mockUser);
       expect(result).toEqual({});
-      expect(mockTrainingService.getTrainingDetails).toHaveBeenCalledWith(
-        'train-123',
+      expect(mockTrainingService.getCourseDetails).toHaveBeenCalledWith(
+        'course-123',
         'emp-123',
       );
     });
   });
 
-  describe('startTraining', () => {
-    it('should call service.startTraining', async () => {
-      const mockReq = { user: { id: 'emp-123' } } as any;
-      const result = await controller.startTraining('train-123', mockReq);
-      expect(result.status).toBe('in-progress');
-      expect(mockTrainingService.startTraining).toHaveBeenCalledWith(
-        'train-123',
+  describe('completeTopic', () => {
+    it('should call service.completeTopic', async () => {
+      const mockUser = { id: 'emp-123' } as any;
+      const result = await controller.completeTopic('topic-123', mockUser);
+      expect(result).toEqual({ success: true });
+      expect(mockTrainingService.completeTopic).toHaveBeenCalledWith(
+        'topic-123',
         'emp-123',
       );
     });
   });
 
-  describe('completeTraining', () => {
-    it('should call service.completeTraining', async () => {
-      const mockReq = { user: { id: 'emp-123' } } as any;
-      const result = await controller.completeTraining('train-123', mockReq);
-      expect(result.status).toBe('completed');
-      expect(mockTrainingService.completeTraining).toHaveBeenCalledWith(
-        'train-123',
+  describe('submitAssessment', () => {
+    it('should call service.submitAssessment', async () => {
+      const mockUser = { id: 'emp-123' } as any;
+      const dto = { answers: [] };
+      const result = await controller.submitAssessment('mod-123', dto as any, mockUser);
+      expect(result).toEqual({ success: true });
+      expect(mockTrainingService.submitAssessment).toHaveBeenCalledWith(
+        'mod-123',
         'emp-123',
+        dto,
       );
     });
   });

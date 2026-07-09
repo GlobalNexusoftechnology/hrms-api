@@ -6,7 +6,10 @@ import { Department } from '../departments/entities/department.entity';
 import { Attendance } from '../attendance/entities/attendance.entity';
 import { Leave } from '../attendance/entities/leave.entity';
 import { Candidate } from '../interview/entities/candidate.entity';
-import { Training } from '../training/entities/training.entity';
+import { Course } from '../training/entities/course.entity';
+import { Payroll } from '../payroll/entities/payroll.entity';
+import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
+import { Holiday } from '../holiday/entities/holiday.entity';
 
 describe('DashboardService', () => {
   let service: DashboardService;
@@ -16,6 +19,9 @@ describe('DashboardService', () => {
   let leaveRepo: any;
   let candidateRepo: any;
   let trainingRepo: any;
+  let payrollRepo: any;
+  let leaveBalanceRepo: any;
+  let holidayRepo: any;
 
   const mockRepository = () => ({
     count: jest.fn().mockResolvedValue(0),
@@ -32,7 +38,10 @@ describe('DashboardService', () => {
         { provide: getRepositoryToken(Attendance), useFactory: mockRepository },
         { provide: getRepositoryToken(Leave), useFactory: mockRepository },
         { provide: getRepositoryToken(Candidate), useFactory: mockRepository },
-        { provide: getRepositoryToken(Training), useFactory: mockRepository },
+        { provide: getRepositoryToken(Course), useFactory: mockRepository },
+        { provide: getRepositoryToken(Payroll), useFactory: mockRepository },
+        { provide: getRepositoryToken(LeaveBalance), useFactory: mockRepository },
+        { provide: getRepositoryToken(Holiday), useFactory: mockRepository },
       ],
     }).compile();
 
@@ -42,7 +51,10 @@ describe('DashboardService', () => {
     attendanceRepo = module.get(getRepositoryToken(Attendance));
     leaveRepo = module.get(getRepositoryToken(Leave));
     candidateRepo = module.get(getRepositoryToken(Candidate));
-    trainingRepo = module.get(getRepositoryToken(Training));
+    trainingRepo = module.get(getRepositoryToken(Course));
+    payrollRepo = module.get(getRepositoryToken(Payroll));
+    leaveBalanceRepo = module.get(getRepositoryToken(LeaveBalance));
+    holidayRepo = module.get(getRepositoryToken(Holiday));
   });
 
   afterEach(() => {
@@ -61,6 +73,8 @@ describe('DashboardService', () => {
       trainingRepo.count.mockResolvedValue(2);
       leaveRepo.count.mockResolvedValue(4);
       attendanceRepo.find.mockResolvedValue([]);
+      holidayRepo.find.mockResolvedValue([]);
+      payrollRepo.find.mockResolvedValue([]);
 
       const result = await service.getSuperAdminDashboard();
 
@@ -78,6 +92,8 @@ describe('DashboardService', () => {
       candidateRepo.count.mockResolvedValue(3);
       attendanceRepo.find.mockResolvedValue([]);
       departmentRepo.find.mockResolvedValue([]);
+      holidayRepo.find.mockResolvedValue([]);
+      payrollRepo.find.mockResolvedValue([]);
 
       const result = await service.getHrDashboard();
 
@@ -104,6 +120,9 @@ describe('DashboardService', () => {
       attendanceRepo.find.mockResolvedValue([]);
       leaveRepo.find.mockResolvedValue([]);
       leaveRepo.count.mockResolvedValue(0);
+      holidayRepo.find.mockResolvedValue([]);
+      payrollRepo.findOne.mockResolvedValue(null);
+      leaveBalanceRepo.findOne.mockResolvedValue(null);
 
       const result = await service.getEmployeeDashboard('emp-123');
 

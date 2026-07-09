@@ -13,6 +13,7 @@ import { Attendance } from '../entities/attendance.entity';
 import { AttendanceValidationService } from './attendance-validation.service';
 
 import { calculateAttendanceStatus } from '../helpers/attendance-status.helper';
+import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 
 import { formatAttendanceResponse } from '../helpers/attendance-response.helper';
 
@@ -85,6 +86,14 @@ export class AttendanceService {
       attendance.isAutoCheckout = false;
 
       attendance.status = calculateAttendanceStatus(nowDate);
+
+      if (attendance.status === AttendanceStatus.LATE || attendance.status === AttendanceStatus.HALF_DAY) {
+        const presentEnd = dayjs(nowDate).startOf('day').hour(11).minute(0).second(0).millisecond(0);
+        const diff = dayjs(nowDate).diff(presentEnd, 'minute');
+        attendance.lateMinutes = diff > 0 ? diff : 0;
+      } else {
+        attendance.lateMinutes = 0;
+      }
 
       const saved = await manager.save(attendance, {
         reload: true,

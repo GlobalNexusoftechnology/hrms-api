@@ -82,6 +82,12 @@ export class Attendance {
   overtimeMinutes!: number;
 
   @Column({
+    default: 0,
+    name: 'late_minutes',
+  })
+  lateMinutes!: number;
+
+  @Column({
     type: 'enum',
 
     enum: AttendanceStatus,

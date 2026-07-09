@@ -4,7 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToOne,
+  ManyToOne,
   JoinColumn,
 } from 'typeorm';
 
@@ -16,13 +16,11 @@ export class SalaryStructure {
   id!: string;
 
   @Column({
-    unique: true,
-
     name: 'employee_id',
   })
   employeeId!: string;
 
-  @OneToOne(() => Employee, {
+  @ManyToOne(() => Employee, (employee) => employee.salaryStructures, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({

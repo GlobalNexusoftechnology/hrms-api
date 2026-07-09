@@ -8,6 +8,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
+  @Get('me')
+  async getMyDashboard(
+    @CurrentUser()
+    user: any,
+  ) {
+    return this.dashboardService.getEmployeeDashboard(user.id);
+  }
+
   @Get()
   async getDashboard(
     @CurrentUser()

@@ -1,77 +1,35 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Patch,
-  ParseUUIDPipe,
-  Req,
-} from '@nestjs/common';
-
-import { Request } from 'express';
-
-import { Permissions } from '../auth/decorators/permissions.decorator';
-
-import { PermissionEnum } from '../../common/enums/permission.enum';
-
+import { Controller, Get, Post, Patch, Body, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { TrainingService } from './training.service';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { RoleEnum } from 'src/common/enums/role.enum';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { SubmitAssessmentDto } from './dto/submit-assessment.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('training')
 export class TrainingController {
   constructor(private readonly trainingService: TrainingService) {}
 
-  @Permissions(PermissionEnum.TRAINING_READ)
   @Get('me')
-  getMyTrainings(
-    @Req()
-    req: Request & {
-      user: any;
-    },
-  ) {
-    return this.trainingService.getMyTrainings(req.user.id);
+  getMyCourses(@CurrentUser() user: any) {
+    return this.trainingService.getMyCourses(user.id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
-  @Permissions(PermissionEnum.TRAINING_READ)
-  @Get(':id')
-  getTrainingDetails(
-    @Param('id', ParseUUIDPipe)
-    id: string,
-
-    @Req()
-    req: Request & {
-      user: any;
-    },
-  ) {
-    return this.trainingService.getTrainingDetails(id, req.user.id);
+  @Get('course/:id')
+  getCourseDetails(@Param('id', ParseUUIDPipe) courseId: string, @CurrentUser() user: any) {
+    return this.trainingService.getCourseDetails(courseId, user.id);
   }
 
-  @Permissions(PermissionEnum.TRAINING_UPDATE)
-  @Patch(':id/start')
-  startTraining(
-    @Param('id', ParseUUIDPipe)
-    id: string,
-
-    @Req()
-    req: Request & {
-      user: any;
-    },
-  ) {
-    return this.trainingService.startTraining(id, req.user.id);
+  @Patch('topic/:id/complete')
+  completeTopic(@Param('id', ParseUUIDPipe) topicId: string, @CurrentUser() user: any) {
+    return this.trainingService.completeTopic(topicId, user.id);
   }
 
-  @Permissions(PermissionEnum.TRAINING_UPDATE)
-  @Patch(':id/complete')
-  completeTraining(
-    @Param('id', ParseUUIDPipe)
-    id: string,
-
-    @Req()
-    req: Request & {
-      user: any;
-    },
+  @Post('module/:id/assessment/submit')
+  submitAssessment(
+    @Param('id', ParseUUIDPipe) moduleId: string,
+    @Body() dto: SubmitAssessmentDto,
+    @CurrentUser() user: any,
   ) {
-    return this.trainingService.completeTraining(id, req.user.id);
+    return this.trainingService.submitAssessment(moduleId, user.id, dto);
   }
 }

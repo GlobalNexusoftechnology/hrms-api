@@ -1,36 +1,31 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TrainingService } from './training.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Training } from './entities/training.entity';
-import { TrainingMaterial } from './entities/training-material.entity';
-import { TrainingAssignment } from './entities/training-assignment.entity';
+import { Course } from './entities/course.entity';
+import { CourseModule } from './entities/course-module.entity';
+import { CourseTopic } from './entities/course-topic.entity';
+import { CourseMaterial } from './entities/course-material.entity';
+import { Assessment } from './entities/assessment.entity';
+import { AssessmentQuestion } from './entities/assessment-question.entity';
+import { AssessmentOption } from './entities/assessment-option.entity';
+import { CourseAssignment } from './entities/course-assignment.entity';
+import { TopicProgress } from './entities/topic-progress.entity';
+import { ModuleProgress } from './entities/module-progress.entity';
+import { AssessmentAttempt } from './entities/assessment-attempt.entity';
 import { Employee } from '../employees/entities/employee.entity';
 import { Department } from '../departments/entities/department.entity';
 import { NotFoundException } from '@nestjs/common';
-import { TrainingStatusEnum } from '../../common/enums/training-status.enum';
-
-import { TrainingTypeEnum } from '../../common/enums/training-type.enum';
 
 describe('TrainingService', () => {
   let service: TrainingService;
-  let trainingRepo: any;
+  let courseRepo: any;
   let departmentRepo: any;
-  let assignmentRepo: any;
-  let employeeRepo: any;
 
-  const mockTraining = {
-    id: 'train-123',
+  const mockCourse = {
+    id: 'course-123',
     title: 'NestJS Backend Training',
     description: 'Learn NestJS basics',
     departmentId: 'dept-123',
-  };
-
-  const mockAssignment = {
-    id: 'assign-123',
-    trainingId: 'train-123',
-    employeeId: 'emp-123',
-    status: TrainingStatusEnum.PENDING,
-    progressPercentage: 0,
   };
 
   const mockRepository = () => ({
@@ -44,93 +39,52 @@ describe('TrainingService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TrainingService,
-        { provide: getRepositoryToken(Training), useFactory: mockRepository },
-        {
-          provide: getRepositoryToken(TrainingMaterial),
-          useFactory: mockRepository,
-        },
-        {
-          provide: getRepositoryToken(TrainingAssignment),
-          useFactory: mockRepository,
-        },
+        { provide: getRepositoryToken(Course), useFactory: mockRepository },
+        { provide: getRepositoryToken(CourseModule), useFactory: mockRepository },
+        { provide: getRepositoryToken(CourseTopic), useFactory: mockRepository },
+        { provide: getRepositoryToken(CourseMaterial), useFactory: mockRepository },
+        { provide: getRepositoryToken(Assessment), useFactory: mockRepository },
+        { provide: getRepositoryToken(AssessmentQuestion), useFactory: mockRepository },
+        { provide: getRepositoryToken(AssessmentOption), useFactory: mockRepository },
+        { provide: getRepositoryToken(CourseAssignment), useFactory: mockRepository },
+        { provide: getRepositoryToken(TopicProgress), useFactory: mockRepository },
+        { provide: getRepositoryToken(ModuleProgress), useFactory: mockRepository },
+        { provide: getRepositoryToken(AssessmentAttempt), useFactory: mockRepository },
         { provide: getRepositoryToken(Employee), useFactory: mockRepository },
         { provide: getRepositoryToken(Department), useFactory: mockRepository },
       ],
     }).compile();
 
     service = module.get<TrainingService>(TrainingService);
-    trainingRepo = module.get(getRepositoryToken(Training));
+    courseRepo = module.get(getRepositoryToken(Course));
     departmentRepo = module.get(getRepositoryToken(Department));
-    assignmentRepo = module.get(getRepositoryToken(TrainingAssignment));
-    employeeRepo = module.get(getRepositoryToken(Employee));
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
+  describe('createCourse', () => {
     const createDto = {
       title: 'NestJS',
       description: 'Learn Nest',
       departmentId: 'dept-123',
-      type: TrainingTypeEnum.MANDATORY,
-    };
+    } as any;
 
-    it('should successfully create training if department exists', async () => {
+    it('should successfully create course if department exists', async () => {
       departmentRepo.findOne.mockResolvedValue({ id: 'dept-123' });
-      trainingRepo.create.mockReturnValue(mockTraining);
-      trainingRepo.save.mockResolvedValue(mockTraining);
-      trainingRepo.findOne.mockResolvedValue(mockTraining); // inside findOne
+      courseRepo.create.mockReturnValue(mockCourse);
+      courseRepo.save.mockResolvedValue(mockCourse);
 
-      const result = await service.create(createDto, 'hr-123');
-      expect(result).toEqual(mockTraining);
+      const result = await service.createCourse(createDto, 'hr-123');
+      expect(result).toEqual(mockCourse);
     });
 
     it('should throw NotFoundException if department not found', async () => {
       departmentRepo.findOne.mockResolvedValue(null);
-      await expect(service.create(createDto, 'hr-123')).rejects.toThrow(
+      await expect(service.createCourse(createDto, 'hr-123')).rejects.toThrow(
         NotFoundException,
       );
-    });
-  });
-
-  describe('startTraining', () => {
-    it('should set status to IN_PROGRESS and progress to 50%', async () => {
-      const pendingAssign = {
-        ...mockAssignment,
-        status: TrainingStatusEnum.PENDING,
-      };
-      assignmentRepo.findOne.mockResolvedValue(pendingAssign);
-      assignmentRepo.save.mockResolvedValue(pendingAssign);
-
-      const result = await service.startTraining('train-123', 'emp-123');
-      expect(result.status).toBe(TrainingStatusEnum.IN_PROGRESS);
-      expect(result.progressPercentage).toBe(50);
-      expect(assignmentRepo.save).toHaveBeenCalled();
-    });
-
-    it('should throw NotFoundException if assignment not found', async () => {
-      assignmentRepo.findOne.mockResolvedValue(null);
-      await expect(
-        service.startTraining('train-123', 'emp-123'),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('completeTraining', () => {
-    it('should set status to COMPLETED and progress to 100%', async () => {
-      const activeAssign = {
-        ...mockAssignment,
-        status: TrainingStatusEnum.IN_PROGRESS,
-      };
-      assignmentRepo.findOne.mockResolvedValue(activeAssign);
-      assignmentRepo.save.mockResolvedValue(activeAssign);
-
-      const result = await service.completeTraining('train-123', 'emp-123');
-      expect(result.status).toBe(TrainingStatusEnum.COMPLETED);
-      expect(result.progressPercentage).toBe(100);
-      expect(assignmentRepo.save).toHaveBeenCalled();
     });
   });
 });

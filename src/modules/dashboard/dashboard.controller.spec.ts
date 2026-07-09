@@ -76,4 +76,18 @@ describe('DashboardController', () => {
       );
     });
   });
+
+  describe('getMyDashboard', () => {
+    it('should call getEmployeeDashboard with user.id', async () => {
+      const user = { id: 'hr-123' };
+      mockDashboardService.getEmployeeDashboard.mockResolvedValue({
+        stats: 'personal',
+      });
+      const result = await controller.getMyDashboard(user);
+      expect(result).toEqual({ stats: 'personal' });
+      expect(mockDashboardService.getEmployeeDashboard).toHaveBeenCalledWith(
+        'hr-123',
+      );
+    });
+  });
 });

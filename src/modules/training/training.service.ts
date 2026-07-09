@@ -1,291 +1,528 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, In } from 'typeorm';
 
-import { In, Repository } from 'typeorm';
-import { Training } from './entities/training.entity';
-import { TrainingMaterial } from './entities/training-material.entity';
-import { TrainingAssignment } from './entities/training-assignment.entity';
+import { Course } from './entities/course.entity';
+import { CourseModule } from './entities/course-module.entity';
+import { CourseTopic } from './entities/course-topic.entity';
+import { CourseMaterial } from './entities/course-material.entity';
+import { Assessment } from './entities/assessment.entity';
+import { AssessmentQuestion } from './entities/assessment-question.entity';
+import { AssessmentOption } from './entities/assessment-option.entity';
+import { CourseAssignment } from './entities/course-assignment.entity';
+import { TopicProgress } from './entities/topic-progress.entity';
+import { ModuleProgress } from './entities/module-progress.entity';
+import { AssessmentAttempt } from './entities/assessment-attempt.entity';
 import { Employee } from '../employees/entities/employee.entity';
 import { Department } from '../departments/entities/department.entity';
-import { CreateTrainingDto } from './dto/create-training.dto';
-import { UpdateTrainingDto } from './dto/update-training.dto';
-import { CreateTrainingMaterialDto } from './dto/create-training-material.dto';
-import { TrainingStatusEnum } from '../../common/enums/training-status.enum';
+
+import { CreateCourseDto } from './dto/create-course.dto';
+import { CreateCourseModuleDto } from './dto/create-module.dto';
+import { CreateCourseTopicDto } from './dto/create-topic.dto';
+import { CreateCourseMaterialDto } from './dto/create-material.dto';
+import { CreateAssessmentDto } from './dto/create-assessment.dto';
+import { AssignCourseDto } from './dto/assign-course.dto';
+import { SubmitAssessmentDto } from './dto/submit-assessment.dto';
+import { UpdateCourseDto, UpdateCourseModuleDto, UpdateCourseTopicDto, UpdateCourseMaterialDto } from './dto/update-training.dto';
 
 @Injectable()
 export class TrainingService {
   constructor(
-    @InjectRepository(Training)
-    private readonly trainingRepo: Repository<Training>,
-
-    @InjectRepository(TrainingMaterial)
-    private readonly materialRepo: Repository<TrainingMaterial>,
-
-    @InjectRepository(TrainingAssignment)
-    private readonly assignmentRepo: Repository<TrainingAssignment>,
-
-    @InjectRepository(Employee)
-    private readonly employeeRepo: Repository<Employee>,
-
-    @InjectRepository(Department)
-    private readonly departmentRepo: Repository<Department>,
+    @InjectRepository(Course) private courseRepo: Repository<Course>,
+    @InjectRepository(CourseModule) private moduleRepo: Repository<CourseModule>,
+    @InjectRepository(CourseTopic) private topicRepo: Repository<CourseTopic>,
+    @InjectRepository(CourseMaterial) private materialRepo: Repository<CourseMaterial>,
+    @InjectRepository(Assessment) private assessmentRepo: Repository<Assessment>,
+    @InjectRepository(AssessmentQuestion) private questionRepo: Repository<AssessmentQuestion>,
+    @InjectRepository(AssessmentOption) private optionRepo: Repository<AssessmentOption>,
+    @InjectRepository(CourseAssignment) private assignmentRepo: Repository<CourseAssignment>,
+    @InjectRepository(TopicProgress) private topicProgressRepo: Repository<TopicProgress>,
+    @InjectRepository(ModuleProgress) private moduleProgressRepo: Repository<ModuleProgress>,
+    @InjectRepository(AssessmentAttempt) private attemptRepo: Repository<AssessmentAttempt>,
+    @InjectRepository(Employee) private employeeRepo: Repository<Employee>,
+    @InjectRepository(Department) private departmentRepo: Repository<Department>,
   ) {}
 
-  private readonly relations = {
-    department: true,
-
-    creator: true,
-
-    materials: true,
-
-    assignments: {
-      employee: true,
-    },
-  };
-
   // =====================
-  // CREATE TRAINING
+  // HR / ADMIN ENDPOINTS
   // =====================
 
-  async create(dto: CreateTrainingDto, createdBy: string) {
+  async createCourse(dto: CreateCourseDto, createdBy: string) {
     if (dto.departmentId) {
-      const department = await this.departmentRepo.findOne({
-        where: {
-          id: dto.departmentId,
-        },
-      });
-
-      if (!department) {
-        throw new NotFoundException('Department not found');
-      }
+      const department = await this.departmentRepo.findOne({ where: { id: dto.departmentId } });
+      if (!department) throw new NotFoundException('Department not found');
     }
-
-    const training = this.trainingRepo.create({
-      ...dto,
-
-      createdBy,
-    });
-
-    const saved = await this.trainingRepo.save(training);
-
-    return this.findOne(saved.id);
+    const course = this.courseRepo.create({ ...dto, createdBy });
+    return this.courseRepo.save(course);
   }
 
-  async update(id: string, dto: UpdateTrainingDto) {
-    const training = await this.trainingRepo.findOne({
-      where: {
-        id,
-      },
-    });
+  async addModule(courseId: string, dto: CreateCourseModuleDto) {
+    const course = await this.courseRepo.findOne({ where: { id: courseId } });
+    if (!course) throw new NotFoundException('Course not found');
 
-    if (!training) {
-      throw new NotFoundException('Training not found');
-    }
+    const duplicateTitle = await this.moduleRepo.findOne({ where: { courseId, title: dto.title } });
+    if (duplicateTitle) throw new BadRequestException('A module with this title already exists in the course');
 
-    Object.assign(training, dto);
+    const duplicateOrder = await this.moduleRepo.findOne({ where: { courseId, sortOrder: dto.sortOrder } });
+    if (duplicateOrder) throw new BadRequestException('A module with this sort order already exists in the course');
 
-    await this.trainingRepo.save(training);
-
-    return this.findOne(id);
+    const module = this.moduleRepo.create({ ...dto, courseId });
+    return this.moduleRepo.save(module);
   }
 
-  async findAll() {
-    return this.trainingRepo.find({
-      relations: this.relations,
+  async addTopic(moduleId: string, dto: CreateCourseTopicDto) {
+    const module = await this.moduleRepo.findOne({ where: { id: moduleId } });
+    if (!module) throw new NotFoundException('Module not found');
 
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+    const duplicateTitle = await this.topicRepo.findOne({ where: { moduleId, title: dto.title } });
+    if (duplicateTitle) throw new BadRequestException('A topic with this title already exists in the module');
+
+    const duplicateOrder = await this.topicRepo.findOne({ where: { moduleId, sortOrder: dto.sortOrder } });
+    if (duplicateOrder) throw new BadRequestException('A topic with this sort order already exists in the module');
+
+    const topic = this.topicRepo.create({ ...dto, moduleId });
+    return this.topicRepo.save(topic);
   }
 
-  async findOne(id: string) {
-    const training = await this.trainingRepo.findOne({
-      where: {
-        id,
-      },
+  async addMaterial(topicId: string, dto: CreateCourseMaterialDto) {
+    const topic = await this.topicRepo.findOne({ where: { id: topicId } });
+    if (!topic) throw new NotFoundException('Topic not found');
 
-      relations: this.relations,
-    });
+    const duplicateTitle = await this.materialRepo.findOne({ where: { topicId, title: dto.title } });
+    if (duplicateTitle) throw new BadRequestException('A material with this title already exists in the topic');
 
-    if (!training) {
-      throw new NotFoundException('Training not found');
-    }
+    const duplicateOrder = await this.materialRepo.findOne({ where: { topicId, sortOrder: dto.sortOrder } });
+    if (duplicateOrder) throw new BadRequestException('A material with this sort order already exists in the topic');
 
-    return training;
-  }
-
-  async addMaterial(trainingId: string, dto: CreateTrainingMaterialDto) {
-    const training = await this.trainingRepo.findOne({
-      where: {
-        id: trainingId,
-      },
-    });
-
-    if (!training) {
-      throw new NotFoundException('Training not found');
-    }
-
-    const material = this.materialRepo.create({
-      ...dto,
-
-      trainingId,
-    });
-
+    const material = this.materialRepo.create({ ...dto, topicId });
     return this.materialRepo.save(material);
   }
 
-  async assignTraining(trainingId: string, employeeIds: string[]) {
-    const training = await this.trainingRepo.findOne({
-      where: {
-        id: trainingId,
-      },
+  async createAssessment(moduleId: string, dto: CreateAssessmentDto) {
+    const module = await this.moduleRepo.findOne({ where: { id: moduleId } });
+    if (!module) throw new NotFoundException('Module not found');
+
+    const existing = await this.assessmentRepo.findOne({ where: { moduleId } });
+    if (existing) throw new BadRequestException('Assessment already exists for this module');
+
+    const assessment = await this.assessmentRepo.save({
+      moduleId,
+      title: dto.title,
+      description: dto.description,
+      passingPercentage: dto.passingPercentage ?? 40,
     });
 
-    if (!training) {
-      throw new NotFoundException('Training not found');
+    for (const q of dto.questions) {
+      const question = await this.questionRepo.save({
+        assessmentId: assessment.id,
+        questionText: q.questionText,
+        sortOrder: q.sortOrder,
+      });
+
+      const optionsToSave = q.options.map(opt => ({
+        questionId: question.id,
+        optionText: opt.optionText,
+        isCorrect: opt.isCorrect,
+        sortOrder: opt.sortOrder,
+      }));
+      await this.optionRepo.save(optionsToSave);
     }
 
-    const employees = await this.employeeRepo.find({
-      where: {
-        id: In(employeeIds),
-      },
-    });
+    return this.assessmentRepo.findOne({ where: { id: assessment.id }, relations: { questions: { options: true } } });
+  }
+
+  async assignCourse(courseId: string, dto: AssignCourseDto) {
+    const course = await this.courseRepo.findOne({ where: { id: courseId }, relations: { modules: true } });
+    if (!course) throw new NotFoundException('Course not found');
+
+    let employees: Employee[] = [];
+    
+    if (dto.employeeIds && dto.employeeIds.length > 0) {
+      const emps = await this.employeeRepo.find({ where: { id: In(dto.employeeIds) } });
+      employees.push(...emps);
+    }
+    
+    if (dto.departmentId) {
+      const deptEmps = await this.employeeRepo.find({ where: { departmentId: dto.departmentId } });
+      employees.push(...deptEmps);
+    }
 
     if (!employees.length) {
-      throw new BadRequestException('No employees found');
+      throw new BadRequestException('Must provide valid employeeIds or departmentId (or both)');
     }
 
-    const existing = await this.assignmentRepo.find({
-      where: {
-        trainingId,
+    // Deduplicate employees in case they are in the department AND explicitly listed in employeeIds
+    const uniqueMap = new Map<string, Employee>();
+    for (const e of employees) {
+      uniqueMap.set(e.id, e);
+    }
+    employees = Array.from(uniqueMap.values());
 
-        employeeId: In(employeeIds),
-      },
-    });
+    const employeeIdsToAssign = employees.map(e => e.id);
+    const existing = await this.assignmentRepo.find({ where: { courseId, employeeId: In(employeeIdsToAssign) } });
+    const existingIds = new Set(existing.map(item => item.employeeId));
 
-    const existingIds = new Set(existing.map((item) => item.employeeId));
+    const newAssignments = employees
+      .filter(emp => !existingIds.has(emp.id))
+      .map(emp => this.assignmentRepo.create({ 
+        courseId, 
+        employeeId: emp.id,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : null
+      }));
+    
+    await this.assignmentRepo.save(newAssignments);
 
-    const assignments = employees
-      .filter((employee) => !existingIds.has(employee.id))
-      .map((employee) =>
-        this.assignmentRepo.create({
-          trainingId,
+    // Give them access to the first module by default
+    const firstModule = course.modules.sort((a, b) => a.sortOrder - b.sortOrder)[0];
+    if (firstModule) {
+      for (const assignment of newAssignments) {
+        await this.moduleProgressRepo.save({
+          employeeId: assignment.employeeId,
+          moduleId: firstModule.id,
+          isUnlocked: true,
+        });
+      }
+    }
 
-          employeeId: employee.id,
-
-          status: TrainingStatusEnum.PENDING,
-        }),
-      );
-
-    await this.assignmentRepo.save(assignments);
-
-    return {
-      success: true,
-
-      assignedCount: assignments.length,
-    };
+    return { success: true, assignedCount: newAssignments.length };
   }
 
-  async getMyTrainings(employeeId: string) {
+  async unassignCourse(courseId: string, employeeId: string) {
+    const assignment = await this.assignmentRepo.findOne({ where: { courseId, employeeId } });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    await this.assignmentRepo.remove(assignment);
+    return { success: true };
+  }
+
+  // GET endpoints for HR
+  async getAllCourses() {
+    return this.courseRepo.find({
+      relations: { department: true, creator: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getCourseById(id: string) {
+    const course = await this.courseRepo.findOne({
+      where: { id },
+      relations: {
+        department: true,
+        creator: true,
+        modules: {
+          topics: {
+            materials: true,
+          },
+          assessment: {
+            questions: {
+              options: true,
+            },
+          },
+        },
+      },
+    });
+    if (!course) throw new NotFoundException('Course not found');
+    return course;
+  }
+
+  async getModuleById(id: string) {
+    const module = await this.moduleRepo.findOne({
+      where: { id },
+      relations: {
+        topics: {
+          materials: true,
+        },
+        assessment: {
+          questions: {
+            options: true,
+          },
+        },
+      },
+    });
+    if (!module) throw new NotFoundException('Module not found');
+    return module;
+  }
+
+  async getTopicById(id: string) {
+    const topic = await this.topicRepo.findOne({
+      where: { id },
+      relations: {
+        materials: true,
+      },
+    });
+    if (!topic) throw new NotFoundException('Topic not found');
+    return topic;
+  }
+
+  async getCourseProgress(courseId: string) {
     return this.assignmentRepo.find({
-      where: {
-        employeeId,
-      },
+      where: { courseId },
+      relations: { employee: true },
+      order: { progressPercentage: 'DESC' }
+    });
+  }
 
+  async updateCourse(id: string, dto: UpdateCourseDto) {
+    const course = await this.courseRepo.findOne({ where: { id } });
+    if (!course) throw new NotFoundException('Course not found');
+    Object.assign(course, dto);
+    return this.courseRepo.save(course);
+  }
+
+  async deleteCourse(id: string) {
+    const course = await this.courseRepo.findOne({ where: { id } });
+    if (!course) throw new NotFoundException('Course not found');
+    await this.courseRepo.remove(course);
+    return { success: true };
+  }
+
+  async updateModule(id: string, dto: UpdateCourseModuleDto) {
+    const module = await this.moduleRepo.findOne({ where: { id } });
+    if (!module) throw new NotFoundException('Module not found');
+    Object.assign(module, dto);
+    return this.moduleRepo.save(module);
+  }
+
+  async deleteModule(id: string) {
+    const module = await this.moduleRepo.findOne({ where: { id } });
+    if (!module) throw new NotFoundException('Module not found');
+    await this.moduleRepo.remove(module);
+    return { success: true };
+  }
+
+  async updateTopic(id: string, dto: UpdateCourseTopicDto) {
+    const topic = await this.topicRepo.findOne({ where: { id } });
+    if (!topic) throw new NotFoundException('Topic not found');
+    Object.assign(topic, dto);
+    return this.topicRepo.save(topic);
+  }
+
+  async deleteTopic(id: string) {
+    const topic = await this.topicRepo.findOne({ where: { id } });
+    if (!topic) throw new NotFoundException('Topic not found');
+    await this.topicRepo.remove(topic);
+    return { success: true };
+  }
+
+  async updateMaterial(id: string, dto: UpdateCourseMaterialDto) {
+    const material = await this.materialRepo.findOne({ where: { id } });
+    if (!material) throw new NotFoundException('Material not found');
+    Object.assign(material, dto);
+    return this.materialRepo.save(material);
+  }
+
+  async deleteMaterial(id: string) {
+    const material = await this.materialRepo.findOne({ where: { id } });
+    if (!material) throw new NotFoundException('Material not found');
+    await this.materialRepo.remove(material);
+    return { success: true };
+  }
+
+  // =====================
+  // EMPLOYEE ENDPOINTS
+  // =====================
+
+  async getMyCourses(employeeId: string) {
+    const assignments = await this.assignmentRepo.find({
+      where: { employeeId },
+      relations: { 
+        course: {
+          modules: {
+            topics: true
+          }
+        } 
+      },
+      order: { assignedAt: 'DESC' },
+    });
+
+    const response: any[] = [];
+    for (const assignment of assignments) {
+      const course = assignment.course;
+      const totalModules = course.modules.length;
+      let totalTopics = 0;
+      course.modules.forEach(m => totalTopics += m.topics.length);
+
+      const moduleIds = course.modules.map(m => m.id);
+      const completedModules = moduleIds.length > 0 
+        ? await this.moduleProgressRepo.count({ where: { employeeId, moduleId: In(moduleIds), isCompleted: true } })
+        : 0;
+
+      const topicIds = course.modules.flatMap(m => m.topics.map(t => t.id));
+      const completedTopics = topicIds.length > 0 
+        ? await this.topicProgressRepo.count({ where: { employeeId, topicId: In(topicIds), isCompleted: true } })
+        : 0;
+
+      response.push({
+        assignmentId: assignment.id,
+        assignedAt: assignment.assignedAt,
+        isCompleted: assignment.isCompleted,
+        courseId: course.id,
+        courseTitle: course.title,
+        courseDescription: course.description,
+        dueDate: assignment.dueDate,
+        analytics: {
+          totalModules,
+          completedModules,
+          totalTopics,
+          completedTopics,
+        }
+      });
+    }
+
+    return response;
+  }
+
+  async getCourseDetails(courseId: string, employeeId: string) {
+    const assignment = await this.assignmentRepo.findOne({ where: { courseId, employeeId } });
+    if (!assignment) throw new NotFoundException('Course not assigned to you');
+
+    const course = await this.courseRepo.findOne({
+      where: { id: courseId },
       relations: {
-        training: {
-          materials: true,
-        },
-      },
-
-      order: {
-        assignedAt: 'DESC',
-      },
+        modules: {
+          topics: {
+            materials: true
+          },
+          assessment: true
+        }
+      }
     });
+
+    if (!course) throw new NotFoundException('Course not found');
+
+    // Only return modules they have unlocked
+    const unlockedModules = await this.moduleProgressRepo.find({ where: { employeeId, isUnlocked: true } });
+    const unlockedModuleIds = new Set(unlockedModules.map(m => m.moduleId));
+
+    course.modules = course.modules.filter(m => unlockedModuleIds.has(m.id));
+
+    return { assignment, course };
   }
 
-  async getTrainingDetails(
-    trainingId: string,
+  async completeTopic(topicId: string, employeeId: string) {
+    const topic = await this.topicRepo.findOne({ where: { id: topicId }, relations: { module: true } });
+    if (!topic) throw new NotFoundException('Topic not found');
 
-    employeeId: string,
-  ) {
-    const assignment = await this.assignmentRepo.findOne({
-      where: {
-        trainingId,
-        employeeId,
-      },
+    const moduleAccess = await this.moduleProgressRepo.findOne({ where: { employeeId, moduleId: topic.moduleId, isUnlocked: true } });
+    if (!moduleAccess) throw new BadRequestException('Module is locked');
 
-      relations: {
-        training: {
-          materials: true,
-        },
-      },
-    });
+    let progress = await this.topicProgressRepo.findOne({ where: { topicId, employeeId } });
+    if (!progress) {
+      progress = this.topicProgressRepo.create({ topicId, employeeId, isCompleted: true, completedAt: new Date() });
+    } else {
+      progress.isCompleted = true;
+      progress.completedAt = new Date();
+    }
+    
+    await this.topicProgressRepo.save(progress);
 
-    if (!assignment) {
-      throw new NotFoundException('Training not assigned');
+    // Check if all topics in module are complete
+    const allTopics = await this.topicRepo.find({ where: { moduleId: topic.moduleId } });
+    const allTopicProgress = await this.topicProgressRepo.find({ where: { employeeId, topicId: In(allTopics.map(t => t.id)) } });
+    
+    const completedTopicIds = new Set(allTopicProgress.filter(p => p.isCompleted).map(p => p.topicId));
+    const allComplete = allTopics.every(t => completedTopicIds.has(t.id));
+
+    if (allComplete) {
+      moduleAccess.isCompleted = true;
+      moduleAccess.completedAt = new Date();
+      await this.moduleProgressRepo.save(moduleAccess);
     }
 
-    return assignment;
+    await this.recalculateCourseProgress(topic.module.courseId, employeeId);
+
+    return progress;
   }
 
-  async startTraining(
-    trainingId: string,
+  async submitAssessment(moduleId: string, employeeId: string, dto: SubmitAssessmentDto) {
+    // 1. Verify that the employee has completed all topics in this module first
+    const moduleAccess = await this.moduleProgressRepo.findOne({ where: { employeeId, moduleId } });
+    if (!moduleAccess || !moduleAccess.isCompleted) {
+      throw new BadRequestException('You must complete all topics in this module before taking the assessment');
+    }
 
-    employeeId: string,
-  ) {
-    const assignment = await this.assignmentRepo.findOne({
-      where: {
-        trainingId,
-        employeeId,
-      },
+    const assessment = await this.assessmentRepo.findOne({
+      where: { moduleId },
+      relations: { questions: { options: true } }
+    });
+    if (!assessment) throw new NotFoundException('Assessment not found');
+
+    const totalQuestions = assessment.questions.length;
+    let correctCount = 0;
+
+    for (const question of assessment.questions) {
+      const correctOptions = question.options.filter(o => o.isCorrect).map(o => o.id);
+      // Assuming single choice for simplicity, or we can check if they selected all correct ones
+      const userSelected = dto.selectedOptionIds.filter(id => question.options.some(o => o.id === id));
+      
+      if (userSelected.length === correctOptions.length && userSelected.every(id => correctOptions.includes(id))) {
+        correctCount++;
+      }
+    }
+
+    const score = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
+    const passed = score >= assessment.passingPercentage;
+
+    const attempt = await this.attemptRepo.save({
+      employeeId,
+      assessmentId: assessment.id,
+      scorePercentage: score,
+      passed
     });
 
-    if (!assignment) {
-      throw new NotFoundException('Training not assigned');
+    const courseModule = await this.moduleRepo.findOne({ where: { id: moduleId } });
+    if (passed) {
+      // Unlock next module
+      if (courseModule) {
+        const nextModule = await this.moduleRepo.findOne({
+          where: { courseId: courseModule.courseId, sortOrder: courseModule.sortOrder + 1 }
+        });
+        if (nextModule) {
+          const access = await this.moduleProgressRepo.findOne({ where: { employeeId, moduleId: nextModule.id } });
+          if (!access) {
+            await this.moduleProgressRepo.save({ employeeId, moduleId: nextModule.id, isUnlocked: true });
+          }
+        } else {
+          // If no next module, course is complete
+          const assignment = await this.assignmentRepo.findOne({ where: { employeeId, courseId: courseModule.courseId } });
+          if (assignment) {
+            assignment.isCompleted = true;
+            assignment.completedAt = new Date();
+            await this.assignmentRepo.save(assignment);
+          }
+        }
+      }
     }
 
-    if (assignment.status === TrainingStatusEnum.PENDING) {
-      assignment.status = TrainingStatusEnum.IN_PROGRESS;
-
-      assignment.progressPercentage = 50;
-
-      await this.assignmentRepo.save(assignment);
+    if (courseModule) {
+      await this.recalculateCourseProgress(courseModule.courseId, employeeId);
     }
 
-    return assignment;
+    return { score, passed, attempt };
   }
 
-  async completeTraining(
-    trainingId: string,
-
-    employeeId: string,
-  ) {
-    const assignment = await this.assignmentRepo.findOne({
-      where: {
-        trainingId,
-        employeeId,
-      },
+  private async recalculateCourseProgress(courseId: string, employeeId: string) {
+    const course = await this.courseRepo.findOne({ 
+      where: { id: courseId }, 
+      relations: { modules: { topics: true } } 
     });
+    if (!course) return;
 
-    if (!assignment) {
-      throw new NotFoundException('Training not assigned');
+    const assignment = await this.assignmentRepo.findOne({ where: { courseId, employeeId } });
+    if (!assignment) return;
+
+    let totalTopics = 0;
+    course.modules.forEach(m => totalTopics += m.topics.length);
+
+    if (totalTopics === 0) {
+      assignment.progressPercentage = 100;
+    } else {
+      const topicIds = course.modules.flatMap(m => m.topics.map(t => t.id));
+      const completedTopics = await this.topicProgressRepo.count({ 
+        where: { employeeId, topicId: In(topicIds), isCompleted: true } 
+      });
+      assignment.progressPercentage = Math.round((completedTopics / totalTopics) * 100);
     }
-
-    assignment.status = TrainingStatusEnum.COMPLETED;
-
-    assignment.progressPercentage = 100;
-
-    assignment.completedAt = new Date();
-
+    
     await this.assignmentRepo.save(assignment);
-
-    return assignment;
   }
 }

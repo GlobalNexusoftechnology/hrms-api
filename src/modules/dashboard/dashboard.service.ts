@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository, Between, IsNull } from 'typeorm';
+import { Repository, Between, IsNull, MoreThanOrEqual } from 'typeorm';
 
 import dayjs from 'dayjs';
 
@@ -16,7 +16,11 @@ import { Leave } from '../attendance/entities/leave.entity';
 
 import { Candidate } from '../interview/entities/candidate.entity';
 
-import { Training } from '../training/entities/training.entity';
+import { Course } from '../training/entities/course.entity';
+
+import { Payroll } from '../payroll/entities/payroll.entity';
+import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
+import { Holiday } from '../holiday/entities/holiday.entity';
 
 import { CandidateStatusEnum } from '../../common/enums/candidate-status.enum';
 
@@ -44,8 +48,17 @@ export class DashboardService {
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
 
-    @InjectRepository(Training)
-    private readonly trainingRepo: Repository<Training>,
+    @InjectRepository(Course)
+    private readonly trainingRepo: Repository<Course>,
+
+    @InjectRepository(Payroll)
+    private readonly payrollRepo: Repository<Payroll>,
+
+    @InjectRepository(LeaveBalance)
+    private readonly leaveBalanceRepo: Repository<LeaveBalance>,
+
+    @InjectRepository(Holiday)
+    private readonly holidayRepo: Repository<Holiday>,
   ) {}
 
   async getSuperAdminDashboard() {
@@ -62,6 +75,8 @@ export class DashboardService {
       allLeaves,
       pendingLeaves,
       approvedLeaves,
+      upcomingHolidays,
+      currentMonthPayrolls,
     ] = await Promise.all([
       this.employeeRepo.count(),
 
@@ -110,7 +125,19 @@ export class DashboardService {
           status: LeaveStatusEnum.APPROVED,
         },
       }),
+
+      this.holidayRepo.find({
+        where: { date: MoreThanOrEqual(todayIST()) },
+        order: { date: 'ASC' },
+        take: 5,
+      }),
+
+      this.payrollRepo.find({
+        where: { month: dayjs().month() + 1, year: dayjs().year() },
+      }),
     ]);
+
+    const totalPayrollCost = currentMonthPayrolls.reduce((sum, p) => sum + Number(p.netSalary), 0);
 
     const todayAttendanceStats = this.calculateAttendanceStats(todayAttendance);
 
@@ -146,6 +173,14 @@ export class DashboardService {
           },
         }),
       },
+
+      holidays: {
+        upcoming: upcomingHolidays,
+      },
+
+      payroll: {
+        totalCurrentMonth: totalPayrollCost,
+      },
     };
   }
 
@@ -161,6 +196,8 @@ export class DashboardService {
       monthlyAttendance,
       departmentWiseAttendance,
       leaveStats,
+      upcomingHolidays,
+      currentMonthPayrolls,
     ] = await Promise.all([
       this.employeeRepo.count(),
 
@@ -206,7 +243,19 @@ export class DashboardService {
       this.getDepartmentWiseAttendance(),
 
       this.getLeaveStats(),
+
+      this.holidayRepo.find({
+        where: { date: MoreThanOrEqual(todayIST()) },
+        order: { date: 'ASC' },
+        take: 5,
+      }),
+
+      this.payrollRepo.find({
+        where: { month: dayjs().month() + 1, year: dayjs().year() },
+      }),
     ]);
+
+    const totalPayrollCost = currentMonthPayrolls.reduce((sum, p) => sum + Number(p.netSalary), 0);
 
     const todayAttendanceStats = this.calculateAttendanceStats(todayAttendance);
 
@@ -234,6 +283,14 @@ export class DashboardService {
       },
 
       leaves: leaveStats,
+
+      holidays: {
+        upcoming: upcomingHolidays,
+      },
+
+      payroll: {
+        totalCurrentMonth: totalPayrollCost,
+      },
     };
   }
 
@@ -260,6 +317,8 @@ export class DashboardService {
       pendingLeaves,
       approvedLeaves,
       rejectedLeaves,
+      upcomingHolidays,
+      latestPayroll,
     ] = await Promise.all([
       this.attendanceRepo.findOne({
         where: {
@@ -294,6 +353,17 @@ export class DashboardService {
           status: LeaveStatusEnum.REJECTED,
         },
       }),
+
+      this.holidayRepo.find({
+        where: { date: MoreThanOrEqual(todayIST()) },
+        order: { date: 'ASC' },
+        take: 5,
+      }),
+
+      this.payrollRepo.findOne({
+        where: { employeeId },
+        order: { year: 'DESC', month: 'DESC' },
+      }),
     ]);
 
     return {
@@ -326,6 +396,14 @@ export class DashboardService {
         pending: pendingLeaves,
         approved: approvedLeaves,
         rejected: rejectedLeaves,
+      },
+
+      holidays: {
+        upcoming: upcomingHolidays,
+      },
+
+      payroll: {
+        latest: latestPayroll,
       },
     };
   }
@@ -545,8 +623,13 @@ export class DashboardService {
   }
 
   private async getLeaveBalance(employeeId: string) {
-    // This assumes you have a leave balance table/entity
-    // If not, you may need to calculate based on approved leaves
+    const currentMonth = dayjs().month() + 1;
+    const currentYear = dayjs().year();
+
+    const balanceRecord = await this.leaveBalanceRepo.findOne({
+      where: { employeeId, month: currentMonth, year: currentYear },
+    });
+
     const approvedLeaves = await this.leaveRepo.find({
       where: {
         employeeId,
@@ -562,6 +645,7 @@ export class DashboardService {
     return {
       totalApprovedDays: totalLeaveDays,
       leavesTaken: approvedLeaves.length,
+      currentBalance: balanceRecord || null,
     };
   }
 }

@@ -151,6 +151,9 @@ export class Payroll {
   })
   leaveDeduction!: number;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, name: 'late_deduction' })
+  lateDeduction!: number;
+
   @Column({
     type: 'decimal',
     precision: 12,
@@ -161,6 +164,18 @@ export class Payroll {
     name: 'overtime_amount',
   })
   overtimeAmount!: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, name: 'bonus_amount' })
+  bonusAmount!: number;
+
+  @Column({ type: 'text', nullable: true, name: 'bonus_reason' })
+  bonusReason!: string | null;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, name: 'deduction_amount' })
+  deductionAmount!: number;
+
+  @Column({ type: 'text', nullable: true, name: 'deduction_reason' })
+  deductionReason!: string | null;
 
   @Column({
     type: 'decimal',

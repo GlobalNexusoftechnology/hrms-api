@@ -1,7 +1,6 @@
 import { RoleEnum } from '../enums/role.enum';
-
 import { PermissionEnum } from '../enums/permission.enum';
-import { permission } from 'process';
+
 
 export const RBAC_CONFIG = {
   [RoleEnum.SUPER_ADMIN]: [...Object.values(PermissionEnum)],

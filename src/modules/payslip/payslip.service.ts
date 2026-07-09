@@ -109,12 +109,18 @@ export class PayslipService {
     doc.text(`Net Salary: ${formatCurrency(payroll.netSalary)}`);
 
     doc.text(`Absent Deduction: ${formatCurrency(payroll.absentDeduction)}`);
-
     doc.text(`Half Day Deduction: ${formatCurrency(payroll.halfDayDeduction)}`);
-
     doc.text(`Leave Deduction: ${formatCurrency(payroll.leaveDeduction)}`);
-
+    doc.text(`Late Deduction: ${formatCurrency(payroll.lateDeduction)}`);
     doc.text(`Overtime Amount: ${formatCurrency(payroll.overtimeAmount)}`);
+
+    if (Number(payroll.bonusAmount) > 0) {
+      doc.text(`Bonus: ${formatCurrency(payroll.bonusAmount)} ${payroll.bonusReason ? `(Reason: ${payroll.bonusReason})` : ''}`);
+    }
+
+    if (Number(payroll.deductionAmount) > 0) {
+      doc.text(`Other Deduction: ${formatCurrency(payroll.deductionAmount)} ${payroll.deductionReason ? `(Reason: ${payroll.deductionReason})` : ''}`);
+    }
 
     doc.moveDown();
 

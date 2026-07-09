@@ -14,8 +14,11 @@ import { Attendance } from '../attendance/entities/attendance.entity';
 
 import { Candidate } from '../interview/entities/candidate.entity';
 
-import { Training } from '../training/entities/training.entity';
+import { Course } from '../training/entities/course.entity';
 import { Leave } from '../attendance/entities/leave.entity';
+import { Payroll } from '../payroll/entities/payroll.entity';
+import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
+import { Holiday } from '../holiday/entities/holiday.entity';
 
 @Module({
   imports: [
@@ -25,7 +28,10 @@ import { Leave } from '../attendance/entities/leave.entity';
       Attendance,
       Leave,
       Candidate,
-      Training,
+      Course,
+      Payroll,
+      LeaveBalance,
+      Holiday,
     ]),
   ],
 

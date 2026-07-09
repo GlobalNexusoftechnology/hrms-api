@@ -98,11 +98,11 @@ export class Employee {
   })
   department!: Department;
 
-  @OneToOne(
+  @OneToMany(
     () => SalaryStructure,
     (salaryStructure) => salaryStructure.employee,
   )
-  salaryStructure!: SalaryStructure;
+  salaryStructures!: SalaryStructure[];
 
   @Column({
     name: 'designation_id',

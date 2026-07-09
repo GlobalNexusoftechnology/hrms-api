@@ -7,12 +7,12 @@ describe('HrTrainingController', () => {
   let service: TrainingService;
 
   const mockTrainingService = {
-    create: jest.fn().mockResolvedValue({ id: 'train-123' }),
-    update: jest.fn().mockResolvedValue({ id: 'train-123' }),
-    findAll: jest.fn().mockResolvedValue([]),
-    findOne: jest.fn().mockResolvedValue({ id: 'train-123' }),
+    createCourse: jest.fn().mockResolvedValue({ id: 'course-123' }),
+    updateCourse: jest.fn().mockResolvedValue({ id: 'course-123' }),
+    getAllCourses: jest.fn().mockResolvedValue([]),
+    getCourseById: jest.fn().mockResolvedValue({ id: 'course-123' }),
     addMaterial: jest.fn().mockResolvedValue({ id: 'mat-123' }),
-    assignTraining: jest.fn().mockResolvedValue({ success: true }),
+    assignCourse: jest.fn().mockResolvedValue({ success: true }),
   };
 
   beforeEach(async () => {
@@ -38,61 +38,61 @@ describe('HrTrainingController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should call service.create', async () => {
+  describe('createCourse', () => {
+    it('should call service.createCourse', async () => {
       const dto = { title: 'JS' };
-      const req = { user: { id: 'hr-123' } } as any;
-      const result = await controller.create(dto as any, req);
-      expect(result).toEqual({ id: 'train-123' });
-      expect(mockTrainingService.create).toHaveBeenCalledWith(dto, 'hr-123');
+      const mockUser = { id: 'hr-123' } as any;
+      const result = await controller.createCourse(dto as any, mockUser);
+      expect(result).toEqual({ id: 'course-123' });
+      expect(mockTrainingService.createCourse).toHaveBeenCalledWith(dto, 'hr-123');
     });
   });
 
-  describe('update', () => {
-    it('should call service.update', async () => {
+  describe('updateCourse', () => {
+    it('should call service.updateCourse', async () => {
       const dto = { title: 'JS Updated' };
-      const result = await controller.update('train-123', dto);
-      expect(result).toEqual({ id: 'train-123' });
-      expect(mockTrainingService.update).toHaveBeenCalledWith('train-123', dto);
+      const result = await controller.updateCourse('course-123', dto);
+      expect(result).toEqual({ id: 'course-123' });
+      expect(mockTrainingService.updateCourse).toHaveBeenCalledWith('course-123', dto);
     });
   });
 
-  describe('findAll', () => {
-    it('should call service.findAll', async () => {
-      const result = await controller.findAll();
+  describe('getAllCourses', () => {
+    it('should call service.getAllCourses', async () => {
+      const result = await controller.getAllCourses();
       expect(result).toEqual([]);
-      expect(mockTrainingService.findAll).toHaveBeenCalled();
+      expect(mockTrainingService.getAllCourses).toHaveBeenCalled();
     });
   });
 
-  describe('findOne', () => {
-    it('should call service.findOne', async () => {
-      const result = await controller.findOne('train-123');
-      expect(result).toEqual({ id: 'train-123' });
-      expect(mockTrainingService.findOne).toHaveBeenCalledWith('train-123');
+  describe('getCourseById', () => {
+    it('should call service.getCourseById', async () => {
+      const result = await controller.getCourseById('course-123');
+      expect(result).toEqual({ id: 'course-123' });
+      expect(mockTrainingService.getCourseById).toHaveBeenCalledWith('course-123');
     });
   });
 
   describe('addMaterial', () => {
     it('should call service.addMaterial', async () => {
       const dto = { title: 'material doc' };
-      const result = await controller.addMaterial('train-123', dto as any);
+      const result = await controller.addMaterial('topic-123', dto as any);
       expect(result).toEqual({ id: 'mat-123' });
       expect(mockTrainingService.addMaterial).toHaveBeenCalledWith(
-        'train-123',
+        'topic-123',
         dto,
       );
     });
   });
 
-  describe('assignTraining', () => {
-    it('should call service.assignTraining', async () => {
+  describe('assignCourse', () => {
+    it('should call service.assignCourse', async () => {
       const dto = { employeeIds: ['emp-123'] };
-      const result = await controller.assignTraining('train-123', dto);
+      const result = await controller.assignCourse('course-123', dto as any);
       expect(result).toEqual({ success: true });
-      expect(mockTrainingService.assignTraining).toHaveBeenCalledWith(
-        'train-123',
-        ['emp-123'],
+      expect(mockTrainingService.assignCourse).toHaveBeenCalledWith(
+        'course-123',
+        dto,
       );
     });
   });

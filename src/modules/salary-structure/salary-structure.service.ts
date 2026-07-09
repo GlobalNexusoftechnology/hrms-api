@@ -235,23 +235,37 @@ export class SalaryStructureService {
       throw new NotFoundException('Salary structure not found');
     }
 
-    Object.assign(salary, dto);
-
-    const grossSalary =
-      Number(salary.basicSalary) +
-      Number(salary.hra) +
-      Number(salary.allowance) +
-      Number(salary.bonus);
-
-    const totalDeduction =
-      Number(salary.pf) + Number(salary.esic) + Number(salary.professionalTax);
-
-    salary.grossSalary = grossSalary;
-
-    salary.netSalary = grossSalary - totalDeduction;
-
+    salary.isActive = false;
     await this.salaryRepo.save(salary);
 
-    return this.findOne(salary.id);
+    const merged = { ...salary, ...dto };
+
+    const grossSalary =
+      Number(merged.basicSalary) +
+      Number(merged.hra) +
+      Number(merged.allowance) +
+      Number(merged.bonus);
+
+    const totalDeduction =
+      Number(merged.pf) + Number(merged.esic) + Number(merged.professionalTax);
+
+    const newSalary = this.salaryRepo.create({
+      employeeId: salary.employeeId,
+      basicSalary: merged.basicSalary,
+      hra: merged.hra,
+      allowance: merged.allowance,
+      bonus: merged.bonus,
+      pf: merged.pf,
+      esic: merged.esic,
+      professionalTax: merged.professionalTax,
+      grossSalary: grossSalary,
+      netSalary: grossSalary - totalDeduction,
+      effectiveFrom: dto.effectiveFrom || new Date().toISOString().split('T')[0],
+      isActive: true,
+    });
+
+    const created = await this.salaryRepo.save(newSalary);
+
+    return this.findOne(created.id);
   }
 }

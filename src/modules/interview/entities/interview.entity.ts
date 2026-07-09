@@ -15,6 +15,7 @@ import { Employee } from '../../employees/entities/employee.entity';
 
 import { InterviewStatusEnum } from '../../../common/enums/interview-status.enum';
 import { InterviewFeedback } from './interview-feedback.entity';
+import { InterviewRoundEnum } from '../../../common/enums/interview-round.enum';
 
 @Entity('interviews')
 export class Interview {
@@ -46,9 +47,11 @@ export class Interview {
   interviewer!: Employee;
 
   @Column({
+    type: 'enum',
+    enum: InterviewRoundEnum,
     name: 'round_name',
   })
-  roundName!: string;
+  roundName!: InterviewRoundEnum;
 
   @OneToMany(() => InterviewFeedback, (feedback) => feedback.interview)
   feedbacks!: InterviewFeedback[];

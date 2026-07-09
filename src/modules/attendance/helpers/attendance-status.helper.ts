@@ -5,11 +5,11 @@ import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 export function calculateAttendanceStatus(checkIn: Date): AttendanceStatus {
   const time = dayjs(checkIn);
 
-  // 10:30 AM
+  // 11:00 AM
   const presentEnd = time
     .startOf('day')
-    .hour(10)
-    .minute(30)
+    .hour(11)
+    .minute(0)
     .second(0)
     .millisecond(0);
 
@@ -21,12 +21,12 @@ export function calculateAttendanceStatus(checkIn: Date): AttendanceStatus {
     .second(0)
     .millisecond(0);
 
-  // <= 10:30 AM
+  // <= 11:00 AM
   if (time.isBefore(presentEnd) || time.isSame(presentEnd)) {
     return AttendanceStatus.PRESENT;
   }
 
-  // 10:31 → 12:30
+  // 11:01 → 12:30
   if (time.isBefore(lateEnd) || time.isSame(lateEnd)) {
     return AttendanceStatus.LATE;
   }

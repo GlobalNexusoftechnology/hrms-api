@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Candidate } from './entities/candidate.entity';
 import { Interview } from './entities/interview.entity';
 import { InterviewFeedback } from './entities/interview-feedback.entity';
@@ -22,6 +22,7 @@ import { UpdateCandidateStatusDto } from './dto/update-candidate-status.dto';
 import { ConvertCandidateDto } from './dto/convert-candidate.dto';
 import { EmployeesService } from '../employees/employees.service';
 import { InterviewStatusEnum } from 'src/common/enums/interview-status.enum';
+import { InterviewRoundEnum } from '../../common/enums/interview-round.enum';
 import { Role } from '../roles/entities/role.entity';
 import { Department } from '../departments/entities/department.entity';
 import { Designation } from '../designations/entities/designation.entity';
@@ -182,7 +183,21 @@ export class InterviewService {
       );
     }
 
-    const roundName = dto.roundName.trim();
+    const roundName = dto.roundName;
+
+    if (roundName === InterviewRoundEnum.ASSESSMENT) {
+      if (candidate.status !== CandidateStatusEnum.APPLIED && candidate.status !== CandidateStatusEnum.SCREENING) {
+        throw new BadRequestException('Candidate must be in APPLIED or SCREENING state to schedule an Assessment.');
+      }
+    } else if (roundName === InterviewRoundEnum.TECHNICAL) {
+      if (candidate.status !== CandidateStatusEnum.ASSESSMENT_CLEARED) {
+        throw new BadRequestException('Candidate must clear Assessment before scheduling Technical round.');
+      }
+    } else if (roundName === InterviewRoundEnum.HR) {
+      if (candidate.status !== CandidateStatusEnum.TECHNICAL_CLEARED) {
+        throw new BadRequestException('Candidate must clear Technical round before scheduling HR round.');
+      }
+    }
 
     const existingInterview = await this.interviewRepo.findOne({
       where: {
@@ -200,11 +215,15 @@ export class InterviewService {
       );
     }
 
+    const scheduledDate = new Date(dto.scheduledAt);
+    const windowStart = new Date(scheduledDate.getTime() - 59 * 60000);
+    const windowEnd = new Date(scheduledDate.getTime() + 59 * 60000);
+
     const interviewerBusy = await this.interviewRepo.findOne({
       where: {
         interviewerId: dto.interviewerId,
 
-        scheduledAt: dto.scheduledAt,
+        scheduledAt: Between(windowStart, windowEnd),
 
         status: InterviewStatusEnum.SCHEDULED,
       },
@@ -224,11 +243,15 @@ export class InterviewService {
 
     const savedInterview = await this.interviewRepo.save(interview);
 
-    if (candidate.status === CandidateStatusEnum.APPLIED) {
-      candidate.status = CandidateStatusEnum.INTERVIEW_SCHEDULED;
-
-      await this.candidateRepo.save(candidate);
+    if (roundName === InterviewRoundEnum.ASSESSMENT) {
+      candidate.status = CandidateStatusEnum.ASSESSMENT_SCHEDULED;
+    } else if (roundName === InterviewRoundEnum.TECHNICAL) {
+      candidate.status = CandidateStatusEnum.TECHNICAL_SCHEDULED;
+    } else if (roundName === InterviewRoundEnum.HR) {
+      candidate.status = CandidateStatusEnum.HR_SCHEDULED;
     }
+
+    await this.candidateRepo.save(candidate);
 
     return savedInterview;
   }
@@ -329,18 +352,16 @@ export class InterviewService {
 
     await this.feedbackRepo.save(feedback);
 
-    switch (dto.recommendation) {
-      case InterviewRecommendationEnum.SELECT:
+    if (dto.recommendation === InterviewRecommendationEnum.SELECT) {
+      if (interview.roundName === InterviewRoundEnum.ASSESSMENT) {
+        interview.candidate.status = CandidateStatusEnum.ASSESSMENT_CLEARED;
+      } else if (interview.roundName === InterviewRoundEnum.TECHNICAL) {
+        interview.candidate.status = CandidateStatusEnum.TECHNICAL_CLEARED;
+      } else if (interview.roundName === InterviewRoundEnum.HR) {
         interview.candidate.status = CandidateStatusEnum.SELECTED;
-        break;
-
-      case InterviewRecommendationEnum.REJECT:
-        interview.candidate.status = CandidateStatusEnum.REJECTED;
-        break;
-
-      case InterviewRecommendationEnum.HOLD:
-        interview.candidate.status = CandidateStatusEnum.INTERVIEWED;
-        break;
+      }
+    } else if (dto.recommendation === InterviewRecommendationEnum.REJECT) {
+      interview.candidate.status = CandidateStatusEnum.REJECTED;
     }
 
     await this.candidateRepo.save(interview.candidate);
@@ -376,7 +397,22 @@ export class InterviewService {
       throw new BadRequestException('Cannot change status of hired candidate');
     }
 
-    candidate.status = dto.status;
+    const currentStatus = candidate.status;
+    const newStatus = dto.status;
+
+    if (newStatus === CandidateStatusEnum.ASSESSMENT_CLEARED && currentStatus !== CandidateStatusEnum.ASSESSMENT_SCHEDULED) {
+      throw new BadRequestException('Candidate must be in ASSESSMENT_SCHEDULED state before being marked as ASSESSMENT_CLEARED');
+    }
+
+    if (newStatus === CandidateStatusEnum.TECHNICAL_CLEARED && currentStatus !== CandidateStatusEnum.TECHNICAL_SCHEDULED) {
+      throw new BadRequestException('Candidate must be in TECHNICAL_SCHEDULED state before being marked as TECHNICAL_CLEARED');
+    }
+
+    if (newStatus === CandidateStatusEnum.SELECTED && currentStatus !== CandidateStatusEnum.HR_SCHEDULED) {
+      throw new BadRequestException('Candidate must be in HR_SCHEDULED state before being marked as SELECTED');
+    }
+
+    candidate.status = newStatus;
 
     return this.candidateRepo.save(candidate);
   }
@@ -476,11 +512,12 @@ export class InterviewService {
       isActive: true,
     });
 
-    const savedEmployee = await this.employeeRepo.save(employee);
-
-    candidate.status = CandidateStatusEnum.HIRED;
-
-    await this.candidateRepo.save(candidate);
+    const savedEmployee = await this.employeeRepo.manager.transaction(async (manager) => {
+      const saved = await manager.save(employee);
+      candidate.status = CandidateStatusEnum.HIRED;
+      await manager.save(candidate);
+      return saved;
+    });
 
     return {
       success: true,
