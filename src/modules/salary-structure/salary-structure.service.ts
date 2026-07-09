@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,6 +12,7 @@ import { SalaryStructure } from './entities/salary-structure.entity';
 import { Employee } from '../employees/entities/employee.entity';
 import { CreateSalaryStructureDto } from './dto/create-salary-structure.dto';
 import { UpdateSalaryStructureDto } from './dto/update-salary-structure.dto';
+import { RoleEnum } from '../../common/enums/role.enum';
 
 @Injectable()
 export class SalaryStructureService {
@@ -62,18 +64,41 @@ export class SalaryStructureService {
     };
   }
 
-  async create(dto: CreateSalaryStructureDto) {
+  private validateRoleAccess(currentUser: any, targetEmployee: Employee) {
+    if (currentUser.role.name === RoleEnum.HR) {
+      if (
+        targetEmployee.role.name === RoleEnum.SUPER_ADMIN ||
+        targetEmployee.role.name === RoleEnum.HR
+      ) {
+        throw new ForbiddenException(
+          'HR cannot manage salary structures for Admin or other HRs',
+        );
+      }
+      if (targetEmployee.id === currentUser.id) {
+        throw new ForbiddenException(
+          'HR cannot manage their own salary structure',
+        );
+      }
+    }
+  }
+
+  async create(dto: CreateSalaryStructureDto, currentUser: any) {
     const employee = await this.employeeRepo.findOne({
       where: {
         id: dto.employeeId,
 
         deletedAt: IsNull(),
       },
+      relations: {
+        role: true,
+      },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
     }
+
+    this.validateRoleAccess(currentUser, employee);
 
     const existing = await this.salaryRepo.findOne({
       where: {
@@ -180,28 +205,24 @@ export class SalaryStructureService {
       limit = 10,
     } = query;
 
+    const parsedPage = Math.max(1, isNaN(Number(page)) ? 1 : Number(page));
+    const parsedLimit = Math.max(1, isNaN(Number(limit)) ? 10 : Number(limit));
+
     const qb = this.salaryRepo.createQueryBuilder('salary');
 
     qb.leftJoinAndSelect('salary.employee', 'employee');
 
-    qb.where('salary.is_active = true');
+    qb.where('salary.isActive = :isActive', { isActive: true });
 
     if (employeeId) {
-      qb.andWhere(
-        `
-      salary.employee_id = :employeeId
-      `,
-        {
-          employeeId,
-        },
-      );
+      qb.andWhere('salary.employeeId = :employeeId', { employeeId });
     }
 
-    qb.orderBy('salary.created_at', 'DESC');
+    qb.orderBy('salary.createdAt', 'DESC');
 
-    qb.skip((Number(page) - 1) * Number(limit));
+    qb.skip((parsedPage - 1) * parsedLimit);
 
-    qb.take(Number(limit));
+    qb.take(parsedLimit);
 
     const [data, total] = await qb.getManyAndCount();
 
@@ -211,11 +232,11 @@ export class SalaryStructureService {
       meta: {
         total,
 
-        page: Number(page),
+        page: parsedPage,
 
-        limit: Number(limit),
+        limit: parsedLimit,
 
-        totalPages: Math.ceil(total / Number(limit)),
+        totalPages: Math.ceil(total / parsedLimit),
       },
     };
   }
@@ -224,10 +245,17 @@ export class SalaryStructureService {
     id: string,
 
     dto: UpdateSalaryStructureDto,
+
+    currentUser: any,
   ) {
     const salary = await this.salaryRepo.findOne({
       where: {
         id,
+      },
+      relations: {
+        employee: {
+          role: true,
+        },
       },
     });
 
@@ -235,37 +263,42 @@ export class SalaryStructureService {
       throw new NotFoundException('Salary structure not found');
     }
 
-    salary.isActive = false;
-    await this.salaryRepo.save(salary);
+    this.validateRoleAccess(currentUser, salary.employee);
 
-    const merged = { ...salary, ...dto };
+    const newSalaryId = await this.salaryRepo.manager.transaction(async (manager) => {
+      salary.isActive = false;
+      await manager.save(salary);
 
-    const grossSalary =
-      Number(merged.basicSalary) +
-      Number(merged.hra) +
-      Number(merged.allowance) +
-      Number(merged.bonus);
+      const merged = { ...salary, ...dto };
 
-    const totalDeduction =
-      Number(merged.pf) + Number(merged.esic) + Number(merged.professionalTax);
+      const grossSalary =
+        Number(merged.basicSalary) +
+        Number(merged.hra) +
+        Number(merged.allowance) +
+        Number(merged.bonus);
 
-    const newSalary = this.salaryRepo.create({
-      employeeId: salary.employeeId,
-      basicSalary: merged.basicSalary,
-      hra: merged.hra,
-      allowance: merged.allowance,
-      bonus: merged.bonus,
-      pf: merged.pf,
-      esic: merged.esic,
-      professionalTax: merged.professionalTax,
-      grossSalary: grossSalary,
-      netSalary: grossSalary - totalDeduction,
-      effectiveFrom: dto.effectiveFrom || new Date().toISOString().split('T')[0],
-      isActive: true,
+      const totalDeduction =
+        Number(merged.pf) + Number(merged.esic) + Number(merged.professionalTax);
+
+      const newSalary = manager.create(SalaryStructure, {
+        employeeId: salary.employeeId,
+        basicSalary: merged.basicSalary,
+        hra: merged.hra,
+        allowance: merged.allowance,
+        bonus: merged.bonus,
+        pf: merged.pf,
+        esic: merged.esic,
+        professionalTax: merged.professionalTax,
+        grossSalary: grossSalary,
+        netSalary: grossSalary - totalDeduction,
+        effectiveFrom: dto.effectiveFrom || merged.effectiveFrom,
+        isActive: true,
+      });
+
+      const created = await manager.save(newSalary);
+      return created.id;
     });
 
-    const created = await this.salaryRepo.save(newSalary);
-
-    return this.findOne(created.id);
+    return this.findOne(newSalaryId);
   }
 }

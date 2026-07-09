@@ -80,6 +80,19 @@ export class PayrollController {
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  @Permissions(PermissionEnum.PAYROLL_UPDATE)
+  @Post('hr/payroll/pay-all')
+  payAll(
+    @Body()
+    body: {
+      month: number;
+      year: number;
+    },
+  ) {
+    return this.payrollService.payAll(body.month, body.year);
+  }
+
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.PAYROLL_CREATE)
   @Post('hr/payroll/generate-all')
   generateAll(

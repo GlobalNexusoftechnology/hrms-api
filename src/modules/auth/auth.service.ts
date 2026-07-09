@@ -79,6 +79,7 @@ export class AuthService {
       employeeId: employee.id,
       employeeCode: employee.employeeCode,
       roleId: employee.roleId,
+      passwordVersion: employee.passwordVersion,
     };
 
     // Access token
@@ -180,11 +181,16 @@ export class AuthService {
         throw new UnauthorizedException('Employee not found');
       }
 
+      if (!employee.isActive) {
+        throw new ForbiddenException('Your account has been deactivated');
+      }
+
       const newPayload = {
         sub: employee.id,
         employeeId: employee.id,
         employeeCode: employee.employeeCode,
         roleId: employee.roleId,
+        passwordVersion: employee.passwordVersion,
       };
 
       // Generate access token
@@ -219,7 +225,7 @@ export class AuthService {
 
       return {
         accessToken,
-        // refreshToken: newRefreshToken,
+        refreshToken: newRefreshToken,
       };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
@@ -394,11 +400,15 @@ export class AuthService {
 
       employee.password = hashedPassword;
 
-      // INVALIDATE OLD TOKENS
-
       employee.passwordVersion += 1;
 
       await this.employeeRepository.save(employee);
+
+      // INVALIDATE OLD TOKENS
+      await this.refreshTokenRepository.update(
+        { employeeId: employee.id, isRevoked: false },
+        { isRevoked: true },
+      );
 
       return {
         success: true,

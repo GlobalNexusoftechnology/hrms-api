@@ -68,6 +68,24 @@ export class Payroll {
   })
   netSalary!: number;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_basic_salary', default: 0 })
+  baseBasicSalary!: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_hra', default: 0 })
+  baseHra!: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_allowance', default: 0 })
+  baseAllowance!: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_pf', default: 0 })
+  basePf!: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_esic', default: 0 })
+  baseEsic!: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_professional_tax', default: 0 })
+  baseProfessionalTax!: number;
+
   // =====================
   // ATTENDANCE
   // =====================

@@ -54,15 +54,6 @@ export class PayslipController {
     @Res()
     res: Response,
   ) {
-    const isOwner = await this.payslipService.validateOwnership(
-      id,
-      employee.id,
-    );
-
-    if (!isOwner) {
-      throw new ForbiddenException('You can only access your own payslip');
-    }
-
-    return this.payslipService.downloadPayslip(id, res);
+    return this.payslipService.downloadPayslip(id, res, employee.id);
   }
 }

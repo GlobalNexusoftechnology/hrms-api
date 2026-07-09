@@ -36,6 +36,14 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Unauthorized');
     }
 
+    if (!employee.isActive) {
+      throw new UnauthorizedException('Account deactivated');
+    }
+
+    if (employee.passwordVersion !== payload.passwordVersion) {
+      throw new UnauthorizedException('Session expired due to password change');
+    }
+
     return employee;
   }
 }

@@ -47,11 +47,16 @@ export class PayrollService {
   // GENERATE PAYROLL
   // =====================
 
+  private roundCurrency(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
   async generatePayroll(
     employeeId: string, 
     month: number, 
     year: number,
-    options?: { bonusAmount?: number; bonusReason?: string; deductionAmount?: number; deductionReason?: string }
+    options?: { bonusAmount?: number; bonusReason?: string; deductionAmount?: number; deductionReason?: string },
+    precalculatedWeekends?: WeekendSetting[]
   ) {
     const existing = await this.payrollRepo.findOne({
       where: {
@@ -82,7 +87,8 @@ export class PayrollService {
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     // WORKING DAYS CALCULATION
-    const workingDays = await this.calculateWorkingDays(year, month);
+    const weekends = precalculatedWeekends ?? await this.weekendRepo.find({ where: { isOff: true } });
+    const workingDays = this.calculateWorkingDays(year, month, weekends, employee.joiningDate);
     // Fallback just in case working days evaluates to 0
     const effectiveWorkingDays = workingDays > 0 ? workingDays : lastDay;
 
@@ -110,6 +116,10 @@ export class PayrollService {
     const absentDays = attendances.filter(
       (item) => item.status === AttendanceStatus.ABSENT,
     ).length;
+    
+    const leaveDays = attendances.filter(
+      (item) => item.status === AttendanceStatus.LEAVE,
+    ).length;
 
     // LEAVE BALANCE
     const leaveBalance = await this.leaveBalanceRepo.findOne({
@@ -126,30 +136,43 @@ export class PayrollService {
 
     const unpaidLeaves = leaveBalance?.unpaidLeavesUsed ?? 0;
 
-    const perDaySalary = Number(salary.netSalary) / effectiveWorkingDays;
-    const perHourSalary = perDaySalary / 8; // Still hardcoded to 8 hours as requested
+    // UNIFIED RECONCILIATION FORMULA
+    const totalAttendanceMissing = absentDays + leaveDays + (halfDays * 0.5);
+    const totalApprovedLeaves = paidLeaves + unpaidLeaves;
+    const unapprovedMissingDays = Math.max(0, totalAttendanceMissing - totalApprovedLeaves);
 
-    const absentDeduction = absentDays * perDaySalary;
-    const halfDayDeduction = halfDays * (perDaySalary / 2);
-    const leaveDeduction = unpaidLeaves * perDaySalary;
+    const perDaySalary = this.roundCurrency(Number(salary.netSalary) / effectiveWorkingDays);
+    const perHourSalary = this.roundCurrency(perDaySalary / 8); 
+
+    // Allocate deductions gracefully
+    let remainingUnapproved = unapprovedMissingDays;
+    
+    const allocatedHalfDays = Math.min(remainingUnapproved, halfDays * 0.5);
+    const halfDayDeduction = this.roundCurrency(allocatedHalfDays * perDaySalary);
+    remainingUnapproved -= allocatedHalfDays;
+    
+    const absentDeduction = this.roundCurrency(remainingUnapproved * perDaySalary);
+    const leaveDeduction = this.roundCurrency(unpaidLeaves * perDaySalary);
 
     // OVERTIME
     const overtimeMinutes = attendances.reduce((acc, curr) => acc + (curr.overtimeMinutes ?? 0), 0);
-    const overtimeHours = overtimeMinutes / 60;
-    const overtimeAmount = overtimeHours * perHourSalary;
+    const overtimeHours = this.roundCurrency(overtimeMinutes / 60);
+    const overtimeAmount = this.roundCurrency(overtimeHours * perHourSalary);
 
     // LATE DEDUCTION (Per Minute)
-    const lateMinutes = attendances.reduce((acc, curr) => acc + (curr.lateMinutes ?? 0), 0);
-    const lateHours = lateMinutes / 60;
-    const lateDeduction = lateHours * perHourSalary;
+    const lateMinutes = attendances
+      .filter((item) => item.status !== AttendanceStatus.HALF_DAY)
+      .reduce((acc, curr) => acc + (curr.lateMinutes ?? 0), 0);
+    const lateHours = this.roundCurrency(lateMinutes / 60);
+    const lateDeduction = this.roundCurrency(lateHours * perHourSalary);
 
     // OVERRIDES
-    const bonusAmount = options?.bonusAmount ? Number(options.bonusAmount) : 0;
+    const bonusAmount = this.roundCurrency(options?.bonusAmount ? Number(options.bonusAmount) : 0);
     const bonusReason = options?.bonusReason || null;
-    const deductionAmount = options?.deductionAmount ? Number(options.deductionAmount) : 0;
+    const deductionAmount = this.roundCurrency(options?.deductionAmount ? Number(options.deductionAmount) : 0);
     const deductionReason = options?.deductionReason || null;
 
-    const finalSalary =
+    const finalSalary = this.roundCurrency(
       Number(salary.netSalary) -
       absentDeduction -
       halfDayDeduction -
@@ -157,7 +180,8 @@ export class PayrollService {
       lateDeduction +
       overtimeAmount +
       bonusAmount -
-      deductionAmount;
+      deductionAmount
+    );
 
     // SAVE
     const payroll = await this.payrollRepo.save({
@@ -168,8 +192,14 @@ export class PayrollService {
       year,
 
       grossSalary: salary.grossSalary,
-
       netSalary: salary.netSalary,
+
+      baseBasicSalary: salary.basicSalary ? Number(salary.basicSalary) : 0,
+      baseHra: salary.hra ? Number(salary.hra) : 0,
+      baseAllowance: salary.allowance ? Number(salary.allowance) : 0,
+      basePf: salary.pf ? Number(salary.pf) : 0,
+      baseEsic: salary.esic ? Number(salary.esic) : 0,
+      baseProfessionalTax: salary.professionalTax ? Number(salary.professionalTax) : 0,
 
       presentDays,
 
@@ -222,6 +252,9 @@ export class PayrollService {
       limit = 10,
     } = query;
 
+    const parsedPage = Math.max(1, isNaN(Number(page)) ? 1 : Number(page));
+    const parsedLimit = Math.max(1, isNaN(Number(limit)) ? 10 : Number(limit));
+
     const qb = this.payrollRepo.createQueryBuilder('payroll');
 
     qb.leftJoinAndSelect('payroll.employee', 'employee');
@@ -259,11 +292,11 @@ export class PayrollService {
       );
     }
 
-    qb.orderBy('payroll.created_at', 'DESC');
+    qb.orderBy('payroll.createdAt', 'DESC');
 
-    qb.skip((Number(page) - 1) * Number(limit));
+    qb.skip((parsedPage - 1) * parsedLimit);
 
-    qb.take(Number(limit));
+    qb.take(parsedLimit);
 
     const [data, total] = await qb.getManyAndCount();
 
@@ -273,11 +306,11 @@ export class PayrollService {
       meta: {
         total,
 
-        page: Number(page),
+        page: parsedPage,
 
-        limit: Number(limit),
+        limit: parsedLimit,
 
-        totalPages: Math.ceil(total / Number(limit)),
+        totalPages: Math.ceil(total / parsedLimit),
       },
     };
   }
@@ -306,11 +339,36 @@ export class PayrollService {
     return payroll;
   }
 
+  async payAll(month: number, year: number) {
+    const payrolls = await this.payrollRepo.find({
+      where: { month, year, isPaid: false },
+    });
+
+    if (payrolls.length === 0) {
+      return { message: 'No unpaid payrolls found for the specified month and year', paidCount: 0 };
+    }
+
+    const paidAt = new Date();
+    payrolls.forEach(p => {
+      p.isPaid = true;
+      p.paidAt = paidAt;
+    });
+
+    await this.payrollRepo.save(payrolls);
+
+    return {
+      message: `Successfully marked ${payrolls.length} payroll(s) as paid`,
+      paidCount: payrolls.length,
+    };
+  }
+
   async generateAllPayroll(month: number, year: number) {
     const employees = await this.employeeRepo.find({
       where: { isActive: true },
       select: { id: true },
     });
+
+    const weekends = await this.weekendRepo.find({ where: { isOff: true } });
 
     let generated = 0;
     let skipped = 0;
@@ -324,21 +382,15 @@ export class PayrollService {
       
       const promises = batch.map(async (employee) => {
         try {
-          // CHECK DUPLICATE
-          const existing = await this.payrollRepo.findOne({
-            where: { employeeId: employee.id, month, year },
-          });
-
-          if (existing) {
-            skipped++;
-            return;
-          }
-
-          await this.generatePayroll(employee.id, month, year);
+          await this.generatePayroll(employee.id, month, year, undefined, weekends);
           generated++;
         } catch (error: any) {
-          failed++;
-          errors.push({ employeeId: employee.id, reason: error.message });
+          if (error.message === 'Payroll already generated') {
+            skipped++;
+          } else {
+            failed++;
+            errors.push({ employeeId: employee.id, reason: error.message });
+          }
         }
       });
 
@@ -356,7 +408,7 @@ export class PayrollService {
     };
   }
 
-  @Cron('59 23 28-31 * *')
+  @Cron('59 23 28-31 * *', { timeZone: 'Asia/Kolkata' })
   async handleCronGenerateAllPayroll() {
     const today = new Date();
     const tomorrow = new Date(today);
@@ -371,13 +423,22 @@ export class PayrollService {
     }
   }
 
-  private async calculateWorkingDays(year: number, month: number) {
+  private calculateWorkingDays(year: number, month: number, weekends: WeekendSetting[], joiningDate?: Date | null) {
     const lastDay = new Date(year, month, 0).getDate();
-    const weekends = await this.weekendRepo.find({ where: { isOff: true } });
     
+    let startDay = 1;
+    if (joiningDate) {
+       const jDate = new Date(joiningDate);
+       if (jDate.getFullYear() === year && (jDate.getMonth() + 1) === month) {
+         startDay = jDate.getDate();
+       } else if (jDate.getFullYear() > year || (jDate.getFullYear() === year && (jDate.getMonth() + 1) > month)) {
+         return 0; // Joined after this month
+       }
+    }
+
     let workingDays = 0;
     
-    for (let day = 1; day <= lastDay; day++) {
+    for (let day = startDay; day <= lastDay; day++) {
       const date = new Date(year, month - 1, day);
       const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
       

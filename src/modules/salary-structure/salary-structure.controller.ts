@@ -40,8 +40,9 @@ export class SalaryStructureController {
   create(
     @Body()
     dto: CreateSalaryStructureDto,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.salaryService.create(dto);
+    return this.salaryService.create(dto, currentUser);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -53,8 +54,9 @@ export class SalaryStructureController {
 
     @Body()
     dto: UpdateSalaryStructureDto,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.salaryService.update(id, dto);
+    return this.salaryService.update(id, dto, currentUser);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
