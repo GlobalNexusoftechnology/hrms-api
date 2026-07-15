@@ -37,22 +37,25 @@ export class EmployeesService {
     private readonly roleRepository: Repository<Role>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
-  ) {}
+  ) { }
 
-  async generateEmployeeCode() {
+  async generateEmployeeCode(): Promise<string> {
     const latestEmployee = await this.employeeRepository.find({
-      order: {
-        createdAt: 'DESC',
-      },
+      order: { createdAt: 'DESC' },
       take: 1,
     });
 
     let nextNumber = 1;
 
     if (latestEmployee.length > 0 && latestEmployee[0].employeeCode) {
-      const lastNumber = parseInt(latestEmployee[0].employeeCode.split('-')[1]);
+      const lastNumber = Number.parseInt(
+        latestEmployee[0].employeeCode.split('-')[1],
+        10,
+      );
 
-      nextNumber = lastNumber + 1;
+      if (!Number.isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
     }
 
     return `EMP-${String(nextNumber).padStart(3, '0')}`;
