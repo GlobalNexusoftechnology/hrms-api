@@ -4,6 +4,7 @@ export enum PermissionEnum {
   EMPLOYEE_READ = 'employee.read',
   EMPLOYEE_UPDATE = 'employee.update',
   EMPLOYEE_DELETE = 'employee.delete',
+  EMPLOYEE_RESTORE = 'employee.restore',
 
   // DEPARTMENT
   DEPARTMENT_CREATE = 'department.create',

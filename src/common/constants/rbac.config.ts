@@ -73,6 +73,7 @@ export const RBAC_CONFIG = {
     PermissionEnum.ATTENDANCE_READ,
 
     PermissionEnum.EMPLOYEE_READ,
+    PermissionEnum.EMPLOYEE_UPDATE,
 
     PermissionEnum.ATTENDANCE_CORRECTION_CREATE,
 
@@ -88,5 +89,7 @@ export const RBAC_CONFIG = {
 
     PermissionEnum.TRAINING_READ,
     PermissionEnum.TRAINING_UPDATE,
+
+
   ],
 };

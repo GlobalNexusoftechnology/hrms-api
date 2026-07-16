@@ -11,6 +11,7 @@ import {
   ParseUUIDPipe,
   Res,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -28,14 +29,15 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-// @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('employees')
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) {}
+  constructor(private readonly employeesService: EmployeesService) { }
 
-  // @Public()
+
   @Permissions('employee.create')
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
@@ -77,16 +79,20 @@ export class EmployeesController {
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id')
   update(
-    @Param('id', ParseUUIDPipe)
-    id: string,
-
-    @Body()
-    dto: UpdateEmployeeDto,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateEmployeeDto,
+    @CurrentUser() user: any, // 👈 1. Get the logged-in user
   ) {
+    // 2 & 3. If the user is a regular employee, verify the IDs match
+    if (user.role === RoleEnum.EMPLOYEE && user.id !== id) {
+      // 4. Deny access
+      throw new ForbiddenException('You can only update your own details.');
+    }
+    // 5. Proceed with update
     return this.employeesService.update(id, dto);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id/profile-photo')
   @UseInterceptors(
@@ -130,7 +136,11 @@ export class EmployeesController {
 
     @UploadedFile()
     file: Express.Multer.File,
+    @CurrentUser() user: any,
   ) {
+    if (user.role === RoleEnum.EMPLOYEE && user.id !== id) {
+      throw new ForbiddenException('You can only update your own profile photo.');
+    }
     return this.employeesService.uploadProfilePhoto(id, file);
   }
 
@@ -144,7 +154,7 @@ export class EmployeesController {
     return this.employeesService.remove(id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  @Roles(RoleEnum.SUPER_ADMIN)
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id/restore')
   restore(
