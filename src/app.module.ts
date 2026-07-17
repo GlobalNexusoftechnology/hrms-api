@@ -74,6 +74,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     TrainingModule,
     InterviewModule,
     DashboardModule,
+
   ],
 
   providers: [
