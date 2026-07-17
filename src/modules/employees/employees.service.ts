@@ -40,25 +40,20 @@ export class EmployeesService {
   ) { }
 
   async generateEmployeeCode(): Promise<string> {
-    const latestEmployee = await this.employeeRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 1,
-    });
+    const latest = await this.employeeRepository
+      .createQueryBuilder('employee')
+      .withDeleted()
+      .orderBy(
+        "CAST(SUBSTRING(employee.employee_code FROM 5) AS INTEGER)",
+        'DESC',
+      )
+      .getOne();
 
-    let nextNumber = 1;
+    const nextNumber = latest
+      ? Number(latest.employeeCode.replace('EMP-', '')) + 1
+      : 1;
 
-    if (latestEmployee.length > 0 && latestEmployee[0].employeeCode) {
-      const lastNumber = Number.parseInt(
-        latestEmployee[0].employeeCode.split('-')[1],
-        10,
-      );
-
-      if (!Number.isNaN(lastNumber)) {
-        nextNumber = lastNumber + 1;
-      }
-    }
-
-    return `EMP-${String(nextNumber).padStart(3, '0')}`;
+    return `EMP-${nextNumber.toString().padStart(3, '0')}`;
   }
 
   async create(dto: CreateEmployeeDto) {
