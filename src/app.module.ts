@@ -28,6 +28,8 @@ import { MailModule } from './modules/mail/mail.module';
 import { TrainingModule } from './modules/training/training.module';
 import { InterviewModule } from './modules/interview/interview.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { OrganizationModule } from './modules/organization/organization.module';
+import { SystemModule } from './modules/system/system.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     TrainingModule,
     InterviewModule,
     DashboardModule,
+    OrganizationModule,
+    SystemModule,
   ],
 
   providers: [

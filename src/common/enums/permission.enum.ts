@@ -1,4 +1,8 @@
 export enum PermissionEnum {
+  // ORGANIZATION
+  ORGANIZATION_READ = 'organization.read',
+  ORGANIZATION_UPDATE = 'organization.update',
+
   // EMPLOYEE
   EMPLOYEE_CREATE = 'employee.create',
   EMPLOYEE_READ = 'employee.read',

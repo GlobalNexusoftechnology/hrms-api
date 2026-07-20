@@ -15,6 +15,7 @@ async function bootstrap() {
   const uploadsDir = join(process.cwd(), 'uploads');
   const profilesDir = join(uploadsDir, 'profiles');
   const documentsDir = join(uploadsDir, 'documents');
+  const organizationDir = join(uploadsDir, 'organization');
   const logsDir = join(process.cwd(), 'logs');
 
   if (!fs.existsSync(uploadsDir)) {
@@ -25,6 +26,9 @@ async function bootstrap() {
   }
   if (!fs.existsSync(documentsDir)) {
     fs.mkdirSync(documentsDir, { recursive: true });
+  }
+  if (!fs.existsSync(organizationDir)) {
+    fs.mkdirSync(organizationDir, { recursive: true });
   }
   if (!fs.existsSync(logsDir)) {
     fs.mkdirSync(logsDir);
