@@ -14,22 +14,23 @@ export class BranchService {
     private readonly organizationService: OrganizationService,
   ) {}
 
-  async create(createDto: CreateBranchDto) {
+  async create(createDto: CreateBranchDto, userId?: string) {
     const org = await this.organizationService.get();
     
     // If this is set as head office, we might want to unset others. Keeping simple for now.
     const branch = this.branchRepo.create({
       ...createDto,
       organizationId: org.id,
+        createdByUserId: userId
     });
     return this.branchRepo.save(branch);
   }
 
-  async update(id: string, updateDto: UpdateBranchDto) {
+  async update(id: string, updateDto: UpdateBranchDto, userId?: string) {
     const branch = await this.branchRepo.findOne({ where: { id } });
     if (!branch) throw new NotFoundException('Branch not found');
 
-    Object.assign(branch, updateDto);
+    Object.assign(branch, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
     return this.branchRepo.save(branch);
   }
   

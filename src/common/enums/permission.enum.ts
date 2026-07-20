@@ -75,4 +75,9 @@ export enum PermissionEnum {
   INTERVIEW_READ = 'interview.read',
   INTERVIEW_UPDATE = 'interview.update',
   INTERVIEW_DELETE = 'interview.delete',
+
+  TEAM_CREATE = 'team.create',
+  TEAM_READ = 'team.read',
+  TEAM_UPDATE = 'team.update',
+  TEAM_DELETE = 'team.delete',
 }

@@ -14,20 +14,21 @@ export class OrganizationBankAccountService {
     private readonly organizationService: OrganizationService,
   ) {}
 
-  async create(createDto: CreateOrganizationBankAccountDto) {
+  async create(createDto: CreateOrganizationBankAccountDto, userId?: string) {
     const org = await this.organizationService.get();
     const bankAccount = this.bankAccountRepo.create({
       ...createDto,
       organizationId: org.id,
+        createdByUserId: userId
     });
     return this.bankAccountRepo.save(bankAccount);
   }
 
-  async update(id: string, updateDto: UpdateOrganizationBankAccountDto) {
+  async update(id: string, updateDto: UpdateOrganizationBankAccountDto, userId?: string) {
     const bankAccount = await this.bankAccountRepo.findOne({ where: { id } });
     if (!bankAccount) throw new NotFoundException('Bank Account not found');
 
-    Object.assign(bankAccount, updateDto);
+    Object.assign(bankAccount, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
     return this.bankAccountRepo.save(bankAccount);
   }
   
@@ -36,7 +37,7 @@ export class OrganizationBankAccountService {
     return this.bankAccountRepo.find({ where: { organizationId: org.id } });
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId?: string) {
     const bankAccount = await this.bankAccountRepo.findOne({ where: { id } });
     if (!bankAccount) throw new NotFoundException('Bank Account not found');
     return this.bankAccountRepo.softRemove(bankAccount);

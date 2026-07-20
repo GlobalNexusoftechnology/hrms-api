@@ -1,51 +1,36 @@
-import { IsString, IsNotEmpty, ValidateNested, IsEmail, IsOptional } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsNotEmpty, IsEmail, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { CreateOrganizationDto } from '../../organization/dto/create-organization.dto';
-import { CreateOrganizationAddressDto } from '../../organization/dto/create-organization-address.dto';
-import { CreateOrganizationTaxDto } from '../../organization/dto/create-organization-tax.dto';
-import { CreateOrganizationSettingsDto } from '../../organization/dto/create-organization-settings.dto';
-import { CreateBranchDto } from '../../organization/dto/create-branch.dto';
 
-export class AdminUserBootstrapDto {
-  @ApiProperty({ example: 'Admin User' })
-  @IsString() @IsNotEmpty() name!: string;
-
-  @ApiProperty({ example: 'admin@company.com' })
-  @IsEmail() @IsNotEmpty() email!: string;
-
-  @ApiProperty({ example: 'SuperSecurePassword123!' })
-  @IsString() @IsNotEmpty() password!: string;
-}
-
+/**
+ * Payload required to bootstrap the system.
+ * This will create the very first SUPER_ADMIN user (the Chairman).
+ * All other organization details (Company Profile, Address, Tax, etc.)
+ * will be created by this Chairman user later using standard protected APIs.
+ */
 export class BootstrapSystemDto {
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => CreateOrganizationDto)
-  organization!: CreateOrganizationDto;
+  @ApiProperty({ example: 'John', description: 'First name of the Chairman' })
+  @IsString()
+  @IsNotEmpty()
+  firstName!: string;
 
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => CreateOrganizationAddressDto)
-  address!: CreateOrganizationAddressDto;
+  @ApiProperty({ example: 'Doe', description: 'Last name of the Chairman' })
+  @IsString()
+  @IsNotEmpty()
+  lastName!: string;
 
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => CreateOrganizationTaxDto)
-  tax!: CreateOrganizationTaxDto;
+  @ApiProperty({ example: 'chairman@company.com' })
+  @IsEmail()
+  @IsNotEmpty()
+  email!: string;
 
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => CreateOrganizationSettingsDto)
-  settings!: CreateOrganizationSettingsDto;
+  @ApiProperty({ example: '+91 9876543210', description: 'Mobile with country code' })
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\+\d{1,4}\s?\d{6,14}$/, { message: 'Mobile must include a valid country code (e.g. +91 9876543210)' })
+  mobile!: string;
 
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => CreateBranchDto)
-  headOffice!: CreateBranchDto;
-
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => AdminUserBootstrapDto)
-  adminUser!: AdminUserBootstrapDto;
+  @ApiProperty({ example: 'SuperSecurePassword123!', description: 'Will be bcrypt-hashed before storage' })
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
 }

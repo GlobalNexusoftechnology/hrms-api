@@ -14,7 +14,7 @@ export class OrganizationAddressService {
     private readonly organizationService: OrganizationService,
   ) {}
 
-  async create(createDto: CreateOrganizationAddressDto) {
+  async create(createDto: CreateOrganizationAddressDto, userId?: string) {
     const org = await this.organizationService.get();
     
     const existing = await this.addressRepo.findOne({
@@ -27,15 +27,16 @@ export class OrganizationAddressService {
     const address = this.addressRepo.create({
       ...createDto,
       organizationId: org.id,
+        createdByUserId: userId
     });
     return this.addressRepo.save(address);
   }
 
-  async update(id: string, updateDto: UpdateOrganizationAddressDto) {
+  async update(id: string, updateDto: UpdateOrganizationAddressDto, userId?: string) {
     const address = await this.addressRepo.findOne({ where: { id } });
     if (!address) throw new NotFoundException('Address not found');
 
-    Object.assign(address, updateDto);
+    Object.assign(address, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
     return this.addressRepo.save(address);
   }
   

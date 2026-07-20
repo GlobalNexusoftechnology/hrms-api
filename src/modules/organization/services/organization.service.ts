@@ -12,12 +12,12 @@ export class OrganizationService {
     private readonly organizationRepo: Repository<Organization>,
   ) {}
 
-  async create(createDto: CreateOrganizationDto): Promise<Organization> {
+  async create(createDto: CreateOrganizationDto, userId?: string): Promise<Organization> {
     const count = await this.organizationRepo.count();
     if (count > 0) {
       throw new BadRequestException('Organization already exists. Only one organization is allowed.');
     }
-    const org = this.organizationRepo.create(createDto);
+    const org = this.organizationRepo.create({ ...createDto, createdByUserId: userId });
     return this.organizationRepo.save(org);
   }
 
@@ -32,13 +32,13 @@ export class OrganizationService {
     return org;
   }
 
-  async update(updateDto: UpdateOrganizationDto): Promise<Organization> {
+  async update(updateDto: UpdateOrganizationDto, userId?: string): Promise<Organization> {
     const org = await this.get();
-    Object.assign(org, updateDto);
+    Object.assign(org, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
     return this.organizationRepo.save(org);
   }
 
-  async uploadLogo(file: Express.Multer.File): Promise<Organization> {
+  async uploadLogo(file: Express.Multer.File, userId?: string): Promise<Organization> {
     const org = await this.get();
     org.logoUrl = `/uploads/organization/${file.filename}`;
     return this.organizationRepo.save(org);

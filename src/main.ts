@@ -109,6 +109,10 @@ async function bootstrap() {
 
   SwaggerModule.setup('api/docs', app, document);
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT;
+  if (!port) {
+    throw new Error('PORT environment variable is not defined in .env');
+  }
+  await app.listen(port);
 }
 bootstrap();

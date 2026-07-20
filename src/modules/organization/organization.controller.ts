@@ -5,6 +5,7 @@ import { extname } from 'path';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PermissionEnum } from '../../common/enums/permission.enum';
 
 import { OrganizationService } from './services/organization.service';
@@ -51,7 +52,6 @@ export class OrganizationController {
   // --- Organization Core ---
   
   @Get()
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get the singleton organization profile' })
   async getOrganization() {
@@ -59,25 +59,22 @@ export class OrganizationController {
   }
 
   @Post()
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Initialize the singleton organization (Internal Bootstrap Use)' })
-  async createOrganization(@Body() createDto: CreateOrganizationDto) {
-    return this.organizationService.create(createDto);
+  async createOrganization(@Body() createDto: CreateOrganizationDto, @CurrentUser() user: any) {
+    return this.organizationService.create(createDto, user?.id);
   }
 
   @Patch()
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Update the organization profile' })
-  async updateOrganization(@Body() updateDto: UpdateOrganizationDto) {
-    return this.organizationService.update(updateDto);
+  async updateOrganization(@Body() updateDto: UpdateOrganizationDto, @CurrentUser() user: any) {
+    return this.organizationService.update(updateDto, user?.id);
   }
 
   @Post('logo')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
-  @ApiOperation({ summary: 'Upload organization logo' })
+  @ApiOperation({ summary: 'Upload organization logo (multipart/form-data)' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -96,69 +93,88 @@ export class OrganizationController {
       limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
     }),
   )
-  async uploadLogo(@UploadedFile() file: Express.Multer.File) {
+  async uploadLogo(@UploadedFile() file: Express.Multer.File, @CurrentUser() user: any) {
     if (!file) throw new BadRequestException('File is required');
-    return this.organizationService.uploadLogo(file);
+    return this.organizationService.uploadLogo(file, user?.id);
+  }
+
+  @Patch('logo')
+  @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
+  @ApiOperation({ summary: 'Replace / update organization logo (multipart/form-data)' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/organization',
+        filename: (req, file, callback) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          callback(null, `logo-${uniqueSuffix}${extname(file.originalname)}`);
+        },
+      }),
+      fileFilter: (req, file, callback) => {
+        if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
+          return callback(new BadRequestException('Only image files (jpg, jpeg, png, webp) are allowed!'), false);
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  async updateLogo(@UploadedFile() file: Express.Multer.File, @CurrentUser() user: any) {
+    if (!file) throw new BadRequestException('File is required');
+    return this.organizationService.uploadLogo(file, user?.id);
   }
 
   // --- Address ---
 
   @Post('address')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Add an address to the organization' })
-  async createAddress(@Body() createDto: CreateOrganizationAddressDto) {
-    return this.addressService.create(createDto);
+  async createAddress(@Body() createDto: CreateOrganizationAddressDto, @CurrentUser() user: any) {
+    return this.addressService.create(createDto, user?.id);
   }
 
   @Patch('address/:id')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Update a specific address' })
-  async updateAddress(@Param('id') id: string, @Body() updateDto: UpdateOrganizationAddressDto) {
-    return this.addressService.update(id, updateDto);
+  async updateAddress(@Param('id') id: string, @Body() updateDto: UpdateOrganizationAddressDto, @CurrentUser() user: any) {
+    return this.addressService.update(id, updateDto, user?.id);
   }
 
   // --- Tax ---
 
   @Post('tax')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Set the organization tax profile' })
-  async createTax(@Body() createDto: CreateOrganizationTaxDto) {
-    return this.taxService.create(createDto);
+  async createTax(@Body() createDto: CreateOrganizationTaxDto, @CurrentUser() user: any) {
+    return this.taxService.create(createDto, user?.id);
   }
 
   @Patch('tax')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Update the organization tax profile' })
-  async updateTax(@Body() updateDto: UpdateOrganizationTaxDto) {
-    return this.taxService.update(updateDto);
+  async updateTax(@Body() updateDto: UpdateOrganizationTaxDto, @CurrentUser() user: any) {
+    return this.taxService.update(updateDto, user?.id);
   }
 
   // --- Settings ---
 
   @Post('settings')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Set the organization settings' })
-  async createSettings(@Body() createDto: CreateOrganizationSettingsDto) {
-    return this.settingsService.create(createDto);
+  async createSettings(@Body() createDto: CreateOrganizationSettingsDto, @CurrentUser() user: any) {
+    return this.settingsService.create(createDto, user?.id);
   }
 
   @Patch('settings')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Update the organization settings' })
-  async updateSettings(@Body() updateDto: UpdateOrganizationSettingsDto) {
-    return this.settingsService.update(updateDto);
+  async updateSettings(@Body() updateDto: UpdateOrganizationSettingsDto, @CurrentUser() user: any) {
+    return this.settingsService.update(updateDto, user?.id);
   }
 
   // --- Branch ---
 
   @Get('branch')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get all branches' })
   async getBranches() {
@@ -166,51 +182,63 @@ export class OrganizationController {
   }
 
   @Post('branch')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Add a new branch' })
-  async createBranch(@Body() createDto: CreateBranchDto) {
-    return this.branchService.create(createDto);
+  async createBranch(@Body() createDto: CreateBranchDto, @CurrentUser() user: any) {
+    return this.branchService.create(createDto, user?.id);
   }
 
   @Patch('branch/:id')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
-  @ApiOperation({ summary: 'Update a specific branch' })
-  async updateBranch(@Param('id') id: string, @Body() updateDto: UpdateBranchDto) {
-    return this.branchService.update(id, updateDto);
+  @ApiOperation({ summary: 'Update a specific branch (also use this to assign managerId after employee is created)' })
+  async updateBranch(@Param('id') id: string, @Body() updateDto: UpdateBranchDto, @CurrentUser() user: any) {
+    return this.branchService.update(id, updateDto, user?.id);
+  }
+
+  @Get('branch/:id/contact')
+  @Permissions(PermissionEnum.ORGANIZATION_READ)
+  @ApiOperation({ summary: 'Get all contacts for a specific branch' })
+  async getBranchContacts(@Param('id') branchId: string) {
+    return this.contactService.findByBranch(branchId);
+  }
+
+  @Post('branch/:id/contact')
+  @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
+  @ApiOperation({ summary: 'Add a contact directly linked to a specific branch' })
+  async createBranchContact(
+    @Param('id') branchId: string,
+    @Body() createDto: CreateOrganizationContactDto, @CurrentUser() user: any
+  ) {
+    // Inject branchId from URL param (overrides body if provided)
+    return this.contactService.create({ ...createDto, branchId }, user?.id);
   }
 
   // --- Contact ---
 
   @Get('contact')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_READ)
-  @ApiOperation({ summary: 'Get all organization contacts' })
+  @ApiOperation({ summary: 'Get all org-level contacts (not linked to any specific branch). For branch contacts use GET /organization/branch/:id/contact' })
   async getContacts() {
-    return this.contactService.findAll();
+    return this.contactService.findOrgLevel();
   }
 
   @Post('contact')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Add a new contact' })
-  async createContact(@Body() createDto: CreateOrganizationContactDto) {
-    return this.contactService.create(createDto);
+  async createContact(@Body() createDto: CreateOrganizationContactDto, @CurrentUser() user: any) {
+    return this.contactService.create(createDto, user?.id);
   }
 
   @Patch('contact/:id')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Update a contact' })
-  async updateContact(@Param('id') id: string, @Body() updateDto: UpdateOrganizationContactDto) {
-    return this.contactService.update(id, updateDto);
+  async updateContact(@Param('id') id: string, @Body() updateDto: UpdateOrganizationContactDto, @CurrentUser() user: any) {
+    return this.contactService.update(id, updateDto, user?.id);
   }
 
   // --- Bank Account ---
 
   @Get('bank-account')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get all organization bank accounts' })
   async getBankAccounts() {
@@ -218,25 +246,22 @@ export class OrganizationController {
   }
 
   @Post('bank-account')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Add a new bank account' })
-  async createBankAccount(@Body() createDto: CreateOrganizationBankAccountDto) {
-    return this.bankAccountService.create(createDto);
+  async createBankAccount(@Body() createDto: CreateOrganizationBankAccountDto, @CurrentUser() user: any) {
+    return this.bankAccountService.create(createDto, user?.id);
   }
 
   @Patch('bank-account/:id')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Update a bank account' })
-  async updateBankAccount(@Param('id') id: string, @Body() updateDto: UpdateOrganizationBankAccountDto) {
-    return this.bankAccountService.update(id, updateDto);
+  async updateBankAccount(@Param('id') id: string, @Body() updateDto: UpdateOrganizationBankAccountDto, @CurrentUser() user: any) {
+    return this.bankAccountService.update(id, updateDto, user?.id);
   }
 
   // --- Document ---
 
   @Get('document')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get all organization documents' })
   async getDocuments() {
@@ -244,15 +269,13 @@ export class OrganizationController {
   }
 
   @Post('document')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Add a new document' })
-  async createDocument(@Body() createDto: CreateOrganizationDocumentDto) {
-    return this.documentService.create(createDto);
+  async createDocument(@Body() createDto: CreateOrganizationDocumentDto, @CurrentUser() user: any) {
+    return this.documentService.create(createDto, user?.id);
   }
 
   @Post('document/upload')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Upload an organization document file' })
   @ApiConsumes('multipart/form-data')
@@ -291,25 +314,23 @@ export class OrganizationController {
   )
   async uploadDocument(
     @Body() body: any,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File, @CurrentUser() user: any
   ) {
     if (!file) throw new BadRequestException('File is required');
-    return this.documentService.uploadDocument(body, file);
+    return this.documentService.uploadDocument(body, file, user?.id);
   }
 
   @Patch('document/:id')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Update a document' })
-  async updateDocument(@Param('id') id: string, @Body() updateDto: UpdateOrganizationDocumentDto) {
-    return this.documentService.update(id, updateDto);
+  async updateDocument(@Param('id') id: string, @Body() updateDto: UpdateOrganizationDocumentDto, @CurrentUser() user: any) {
+    return this.documentService.update(id, updateDto, user?.id);
   }
 
   @Delete('document/:id')
-  @Public()
   @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
   @ApiOperation({ summary: 'Delete a document' })
-  async deleteDocument(@Param('id') id: string) {
-    return this.documentService.remove(id);
+  async deleteDocument(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.documentService.remove(id, user?.id);
   }
 }

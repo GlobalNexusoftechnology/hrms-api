@@ -14,16 +14,17 @@ export class OrganizationDocumentService {
     private readonly organizationService: OrganizationService,
   ) {}
 
-  async create(createDto: CreateOrganizationDocumentDto) {
+  async create(createDto: CreateOrganizationDocumentDto, userId?: string) {
     const org = await this.organizationService.get();
     const document = this.documentRepo.create({
       ...createDto,
       organizationId: org.id,
+        createdByUserId: userId
     });
     return this.documentRepo.save(document);
   }
 
-  async uploadDocument(body: any, file: Express.Multer.File) {
+  async uploadDocument(body: any, file: Express.Multer.File, userId?: string) {
     const org = await this.organizationService.get();
     
     // Fallbacks if body parsing failed
@@ -44,11 +45,11 @@ export class OrganizationDocumentService {
     return this.documentRepo.save(document);
   }
 
-  async update(id: string, updateDto: UpdateOrganizationDocumentDto) {
+  async update(id: string, updateDto: UpdateOrganizationDocumentDto, userId?: string) {
     const document = await this.documentRepo.findOne({ where: { id } });
     if (!document) throw new NotFoundException('Document not found');
 
-    Object.assign(document, updateDto);
+    Object.assign(document, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
     return this.documentRepo.save(document);
   }
   
@@ -57,7 +58,7 @@ export class OrganizationDocumentService {
     return this.documentRepo.find({ where: { organizationId: org.id } });
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId?: string) {
     const document = await this.documentRepo.findOne({ where: { id } });
     if (!document) throw new NotFoundException('Document not found');
     return this.documentRepo.softRemove(document);

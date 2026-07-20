@@ -27,6 +27,13 @@ export class Role {
   })
   isActive!: boolean;
 
+  @Column({
+    name: 'is_protected',
+    default: false,
+    comment: 'Protected roles cannot be deleted, renamed, deactivated, or have permissions removed',
+  })
+  isProtected!: boolean;
+
   @ManyToMany(() => Permission, (permission) => permission.roles, {
     cascade: true,
   })

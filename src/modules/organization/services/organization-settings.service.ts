@@ -14,7 +14,7 @@ export class OrganizationSettingsService {
     private readonly organizationService: OrganizationService,
   ) {}
 
-  async create(createDto: CreateOrganizationSettingsDto) {
+  async create(createDto: CreateOrganizationSettingsDto, userId?: string) {
     const org = await this.organizationService.get();
     
     const count = await this.settingsRepo.count({ where: { organizationId: org.id } });
@@ -25,17 +25,18 @@ export class OrganizationSettingsService {
     const settings = this.settingsRepo.create({
       ...createDto,
       organizationId: org.id,
+        createdByUserId: userId
     });
     return this.settingsRepo.save(settings);
   }
 
-  async update(updateDto: UpdateOrganizationSettingsDto) {
+  async update(updateDto: UpdateOrganizationSettingsDto, userId?: string) {
     const org = await this.organizationService.get();
     const settings = await this.settingsRepo.findOne({ where: { organizationId: org.id } });
     
     if (!settings) throw new NotFoundException('Settings not found');
 
-    Object.assign(settings, updateDto);
+    Object.assign(settings, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
     return this.settingsRepo.save(settings);
   }
   
