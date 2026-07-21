@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, ConflictException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
@@ -31,6 +31,7 @@ export class BootstrapService {
 
   constructor(
     private readonly dataSource: DataSource,
+    @Inject(forwardRef(() => RBACInitializerService))
     private readonly rbacInitializer: RBACInitializerService,
   ) {}
 
