@@ -1,16 +1,16 @@
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { RolesService } from './roles.service';
 import { RolesController } from './roles.controller';
 import { Role } from './entities/role.entity';
-import { Permission } from '../permissions/entities/permission.entity';
-import { RBACInitializerService } from './services/rbac-initializer.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Role, Permission])],
+  imports: [TypeOrmModule.forFeature([Role])],
   controllers: [RolesController],
-  providers: [RolesService, RBACInitializerService],
-  exports: [TypeOrmModule, RBACInitializerService],
+  providers: [RolesService],
+  exports: [TypeOrmModule],
 })
-export class RolesModule {}
+export class RolesModule { }
+
