@@ -99,7 +99,33 @@ Organization
 
 ---
 
-## 4. Single Source of Truth
+## 4. Future Multi-Tenant Strategy (Deferred)
+
+The current HRMS is intentionally designed as a single-tenant application. Therefore, the `Organization` entity operates as the root of the business hierarchy for all transactional data. 
+
+To prepare the database schema for future SaaS multi-tenancy, a dedicated `Tenant` entity has been introduced *above* `Organization`:
+
+```text
+Tenant
+    ↓
+Organization
+    ↓
+Branch
+    ↓
+Department
+    ↓
+Team
+    ↓
+Employee
+```
+
+At this stage, the `tenant_id` foreign key exists only on the `Organization` table. Transactional entities continue to relate through the existing organizational hierarchy (`organization_id`), minimizing migration effort.
+
+No tenant switching, tenant authentication, or tenant-scoped repositories have been implemented yet. Authentication, authorization, repositories, and services continue to work exactly as they do today (single-tenant). Tenant resolution and middleware will be implemented only when the application evolves into a true SaaS platform.
+
+---
+
+## 5. Single Source of Truth
 
 To ensure consistency, dynamic modules read strictly from configuration tables.
 

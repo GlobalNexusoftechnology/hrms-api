@@ -5,6 +5,8 @@ import { Employee } from '../../employees/entities/employee.entity';
 import { OrganizationContact } from './organization-contact.entity';
 import { OrganizationBankAccount } from './organization-bank-account.entity';
 import { OrganizationDocument } from './organization-document.entity';
+import { BranchType } from '../../../common/enums/branch-type.enum';
+import { BranchStatus } from '../../../common/enums/branch-status.enum';
 
 @Entity('branches')
 export class Branch extends BaseEntity {
@@ -19,35 +21,50 @@ export class Branch extends BaseEntity {
   @Column()
   name!: string;
 
+  @Column({ name: 'display_name', nullable: true })
+  displayName?: string;
+
+  @Column({ type: 'text', nullable: true })
+  description?: string;
+
+  @Column({ name: 'branch_type', type: 'enum', enum: BranchType, default: BranchType.BRANCH_OFFICE })
+  branchType!: BranchType;
+
   @Column({ unique: true })
   code!: string;
 
   @Column({ name: 'is_head_office', type: 'boolean', default: false })
   isHeadOffice!: boolean;
 
-  @Column({ name: 'line1' })
-  line1!: string;
+  @Column({ nullable: true })
+  email?: string;
+
+  @Column({ nullable: true })
+  phone?: string;
+
+  @Column({ name: 'line1', nullable: true })
+  line1?: string;
 
   @Column({ name: 'line2', type: 'varchar', nullable: true })
-  line2: string | null = null;
+  line2?: string;
 
-  @Column()
-  city!: string;
+  @Column({ nullable: true })
+  city?: string;
 
-  @Column()
-  state!: string;
+  @Column({ nullable: true })
+  state?: string;
 
-  @Column()
-  country!: string;
+  @Column({ nullable: true })
+  country?: string;
 
-  @Column()
-  zip!: string;
+  @Column({ nullable: true })
+  zip?: string;
 
   @Column({ type: 'varchar', nullable: true })
-  timezone: string | null = null;
+  timezone?: string;
 
-  @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive!: boolean;
+  @Column({ type: 'enum', enum: BranchStatus, default: BranchStatus.ACTIVE })
+  status!: BranchStatus;
 
   @Column({ name: 'manager_id', nullable: true })
   @Index()

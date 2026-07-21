@@ -396,6 +396,14 @@
 | 2026-07-20 | Team | Added: Team Module foundation (entities, controller, service) linked to Departments and Employees |
 | 2026-07-20 | Team | Added: Notification & NotificationPreference Modules foundation |
 | 2026-07-20 | Team | Migration: 1784558068151-Team_and_notification APPLIED |
+| 2026-07-21 | Team | Updated: BootstrapService to decouple Organization creation from Tenant/Chairman setup |
+| 2026-07-21 | Team | Updated: Global ValidationPipe in main.ts to return structured field-level errors |
+| 2026-07-21 | Team | Added: BranchType and BranchStatus enums |
+| 2026-07-21 | Team | Updated: Branch entity and DTO to include displayName, branchType, email, phone |
+| 2026-07-21 | Team | Updated: RolesController to use actual @CurrentUser() instead of mocked ActingUser |
+| 2026-07-21 | Team | Added: Unique constraint database error (23505) handling in RolesService and BranchService (returns 409 Conflict) |
+| 2026-07-21 | Team | Removed: updatedByUserId population on entity creation across services |
+| 2026-07-21 | Team | Added: seed:permissions command and sync-permissions.ts script to allow dynamic permission seeding without static roles |
 
 ---
 

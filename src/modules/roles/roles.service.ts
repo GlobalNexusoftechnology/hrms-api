@@ -1,28 +1,127 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { Role } from './entities/role.entity';
+import { Permission } from '../permissions/entities/permission.entity';
+import { CreateRoleDto } from './dto/create-role.dto';
+import { UpdateRoleDto } from './dto/update-role.dto';
+
+export interface ActingUser {
+  id: string;
+  authorityLevel: number;
+}
 
 @Injectable()
 export class RolesService {
-    constructor(
-        @InjectRepository(Role)
-        private readonly roleRepository: Repository<Role>,
-    ) { }
+  private readonly logger = new Logger(RolesService.name);
 
-    async findAll() {
-        return this.roleRepository.find({
-            select: {
-                id: true,
-                name: true,
-            },
-            where: {
-                isActive: true,
-            },
-            order: {
-                name: 'ASC',
-            },
-        });
+  constructor(
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
+    @InjectRepository(Permission)
+    private readonly permissionRepository: Repository<Permission>,
+  ) { }
+
+  async create(createRoleDto: CreateRoleDto, actingUser: ActingUser) {
+    if (createRoleDto.authorityLevel >= actingUser.authorityLevel) {
+      throw new ForbiddenException('Cannot create a role with an authority level equal to or greater than your own.');
     }
+
+    const permissions = await this.permissionRepository.find({
+      where: { id: In(createRoleDto.permissionIds) },
+    });
+
+    if (permissions.length !== createRoleDto.permissionIds.length) {
+      throw new NotFoundException('One or more requested permissions do not exist.');
+    }
+
+    const role = this.roleRepository.create({
+      ...createRoleDto,
+      createdByUserId: actingUser.id,
+      permissions,
+    });
+
+    try {
+      const savedRole = await this.roleRepository.save(role);
+      this.logger.log(`AUDIT: Role created [ID: ${savedRole.id}, Name: ${savedRole.name}] by User [${actingUser.id}]`);
+      return savedRole;
+    } catch (error: any) {
+      if (error.code === '23505') {
+        throw new ConflictException(`A role with the name '${createRoleDto.name}' already exists.`);
+      }
+      throw error;
+    }
+  }
+
+  async findAll() {
+    return this.roleRepository.find({
+      order: { authorityLevel: 'DESC', name: 'ASC' },
+      relations: { permissions: true },
+    });
+  }
+
+  async findOne(id: string) {
+    const role = await this.roleRepository.findOne({
+      where: { id },
+      relations: { permissions: true },
+    });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${id} not found`);
+    }
+    return role;
+  }
+
+  async update(id: string, updateRoleDto: UpdateRoleDto, actingUser: ActingUser) {
+    const role = await this.findOne(id);
+
+    if (role.isProtected) {
+      throw new ForbiddenException('Protected roles cannot be modified.');
+    }
+
+    if (role.authorityLevel >= actingUser.authorityLevel) {
+      throw new ForbiddenException('Cannot modify a role with an authority level equal to or greater than your own.');
+    }
+
+    if (updateRoleDto.authorityLevel !== undefined && updateRoleDto.authorityLevel >= actingUser.authorityLevel) {
+      throw new ForbiddenException('Cannot escalate a role to an authority level equal to or greater than your own.');
+    }
+
+    if (updateRoleDto.permissionIds) {
+      const permissions = await this.permissionRepository.find({
+        where: { id: In(updateRoleDto.permissionIds) },
+      });
+      if (permissions.length !== updateRoleDto.permissionIds.length) {
+        throw new NotFoundException('One or more requested permissions do not exist.');
+      }
+      role.permissions = permissions;
+    }
+
+    if (updateRoleDto.name) role.name = updateRoleDto.name;
+    if (updateRoleDto.description !== undefined) role.description = updateRoleDto.description;
+    if (updateRoleDto.authorityLevel !== undefined) role.authorityLevel = updateRoleDto.authorityLevel;
+    
+    role.updatedByUserId = actingUser.id;
+
+    const savedRole = await this.roleRepository.save(role);
+    this.logger.log(`AUDIT: Role updated [ID: ${savedRole.id}] by User [${actingUser.id}]`);
+    return savedRole;
+  }
+
+  async remove(id: string, actingUser: ActingUser) {
+    const role = await this.findOne(id);
+
+    if (role.isSystem) {
+      throw new ForbiddenException('System roles cannot be deleted.');
+    }
+
+    if (role.authorityLevel >= actingUser.authorityLevel) {
+      throw new ForbiddenException('Cannot delete a role with an authority level equal to or greater than your own.');
+    }
+
+    role.deletedAt = new Date();
+    role.updatedByUserId = actingUser.id;
+    await this.roleRepository.save(role);
+    this.logger.log(`AUDIT: Role deleted [ID: ${id}] by User [${actingUser.id}]`);
+  }
 }

@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany, OneToOne, Index } from 'typeorm';
+import { Entity, Column, OneToMany, OneToOne, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { OrganizationStatus } from '../../../common/enums/organization-status.enum';
 import { OrganizationAddress } from './organization-address.entity';
@@ -8,9 +8,17 @@ import { Branch } from './branch.entity';
 import { OrganizationContact } from './organization-contact.entity';
 import { OrganizationBankAccount } from './organization-bank-account.entity';
 import { OrganizationDocument } from './organization-document.entity';
+import { Tenant } from '../../tenant/entities/tenant.entity';
 
 @Entity('organizations')
 export class Organization extends BaseEntity {
+  @Column({ name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId!: string | null;
+
+  @ManyToOne(() => Tenant, (tenant) => tenant.organizations, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant!: Tenant | null;
   @Index({ unique: true })
   @Column({ name: 'organization_code' })
   organizationCode!: string;

@@ -24,7 +24,8 @@
     "migration:generate": "typeorm-ts-node-commonjs migration:generate src/database/migrations/Updates -d src/database/data-source.ts",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/database/data-source.ts",
     "migration:revert": "npm run typeorm migration:revert",
-    "seed": "ts-node src/database/seeds/seed.ts"
+    "seed": "ts-node src/database/seeds/seed.ts",
+    "seed:permissions": "ts-node src/database/seeds/sync-permissions.ts"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.3.6",

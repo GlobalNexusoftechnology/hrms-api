@@ -6,6 +6,9 @@ import { BootstrapSystemDto } from '../dto/bootstrap.dto';
 import { SystemConfig } from '../entities/system-config.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 import { RBACInitializerService } from '../../roles/services/rbac-initializer.service';
+import { Tenant } from '../../tenant/entities/tenant.entity';
+import { Organization } from '../../organization/entities/organization.entity';
+import { Branch } from '../../organization/entities/branch.entity';
 
 const BOOTSTRAP_FLAG = 'system.bootstrapped';
 
@@ -57,11 +60,24 @@ export class BootstrapService {
     try {
       this.logger.log('Bootstrap transaction started.');
 
-      // ── Step 1: RBAC Initialization (delegated to RBACInitializerService) ────
+      // ── Step 1: Create or Find Tenant ──────────────────────────────────────────
+      let tenant = await queryRunner.manager.findOne(Tenant, { where: { code: 'TNT-001' } });
+      if (!tenant) {
+        tenant = queryRunner.manager.create(Tenant, {
+          name: 'Default Tenant',
+          code: 'TNT-001',
+        });
+        await queryRunner.manager.save(Tenant, tenant);
+        this.logger.log(`Tenant created: [${tenant.id}] with code TNT-001`);
+      } else {
+        this.logger.log(`Tenant already exists: [${tenant.id}] with code TNT-001. Using existing.`);
+      }
+
+      // ── Step 3: RBAC Initialization (delegated to RBACInitializerService) ────
       const superAdminRole = await this.rbacInitializer.seed(queryRunner);
       this.logger.log(`RBAC initialized. SUPER_ADMIN role: [${superAdminRole.id}]`);
 
-      // ── Step 2: Chairman Employee ────────────────────────────────────────────
+      // ── Step 5: Chairman Employee ────────────────────────────────────────────
       const latestEmployee = await queryRunner.manager.find(Employee, {
         order: { createdAt: 'DESC' },
         take: 1,
@@ -102,7 +118,7 @@ export class BootstrapService {
         this.logger.log(`Chairman employee created: ${chairman.email} [${chairman.employeeCode}]`);
       }
 
-      // ── Step 3: Mark system as bootstrapped ──────────────────────────────────
+      // ── Step 6: Mark system as bootstrapped ──────────────────────────────────
       const configFlag = queryRunner.manager.create(SystemConfig, {
         key: BOOTSTRAP_FLAG,
         value: 'true',

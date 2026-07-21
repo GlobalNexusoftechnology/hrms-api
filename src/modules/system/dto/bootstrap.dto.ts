@@ -8,6 +8,8 @@ import { ApiProperty } from '@nestjs/swagger';
  * will be created by this Chairman user later using standard protected APIs.
  */
 export class BootstrapSystemDto {
+
+  // --- Chairman Details ---
   @ApiProperty({ example: 'John', description: 'First name of the Chairman' })
   @IsString()
   @IsNotEmpty()

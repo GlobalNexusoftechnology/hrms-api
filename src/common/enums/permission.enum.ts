@@ -2,6 +2,8 @@ export enum PermissionEnum {
   // ORGANIZATION
   ORGANIZATION_READ = 'organization.read',
   ORGANIZATION_UPDATE = 'organization.update',
+  ORGANIZATION_CREATE = 'organization.create',
+  ORGANIZATION_DELETE = 'organization.delete',
 
   // EMPLOYEE
   EMPLOYEE_CREATE = 'employee.create',
@@ -80,4 +82,24 @@ export enum PermissionEnum {
   TEAM_READ = 'team.read',
   TEAM_UPDATE = 'team.update',
   TEAM_DELETE = 'team.delete',
+
+  BRANCH_CREATE = 'branch.create',
+  BRANCH_READ = 'branch.read',
+  BRANCH_UPDATE = 'branch.update',
+  BRANCH_DELETE = 'branch.delete', 
+
+  ROLE_CREATE = 'role.create',
+  ROLE_READ = 'role.read',
+  ROLE_UPDATE = 'role.update',
+  ROLE_DELETE = 'role.delete', 
+
+  ASSIGNMENT_CREATE = 'assignment.create',
+  ASSIGNMENT_READ = 'assignment.read',
+  ASSIGNMENT_UPDATE = 'assignment.update',
+  ASSIGNMENT_DELETE = 'assignment.delete', 
+
+  ASSIGN_ROLE_CREATE = 'assign_role.create',
+  ASSIGN_ROLE_READ = 'assign_role.read',
+  ASSIGN_ROLE_UPDATE = 'assign_role.update',
+  ASSIGN_ROLE_DELETE = 'assign_role.delete', 
 }

@@ -30,6 +30,7 @@ import { InterviewModule } from './modules/interview/interview.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { SystemModule } from './modules/system/system.module';
+import { TenantModule } from './modules/tenant/tenant.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { SystemModule } from './modules/system/system.module';
     DashboardModule,
     OrganizationModule,
     SystemModule,
+    TenantModule,
   ],
 
   providers: [

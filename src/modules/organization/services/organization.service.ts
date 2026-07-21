@@ -13,11 +13,25 @@ export class OrganizationService {
   ) {}
 
   async create(createDto: CreateOrganizationDto, userId?: string): Promise<Organization> {
-    const count = await this.organizationRepo.count();
-    if (count > 0) {
-      throw new BadRequestException('Organization already exists. Only one organization is allowed.');
+    const tenant = await this.organizationRepo.manager.findOne('Tenant', { where: {} }) as any;
+    
+    if (!tenant) {
+      throw new BadRequestException('System is not bootstrapped. Tenant not found.');
     }
-    const org = this.organizationRepo.create({ ...createDto, createdByUserId: userId });
+
+    const count = await this.organizationRepo.count({
+      where: { tenantId: tenant.id },
+    });
+
+    if (count > 0) {
+      throw new BadRequestException('Organization already exists for this tenant. Only one organization is allowed.');
+    }
+
+    const org = this.organizationRepo.create({ 
+      ...createDto, 
+      tenantId: tenant.id,
+      createdByUserId: userId 
+    });
     return this.organizationRepo.save(org);
   }
 

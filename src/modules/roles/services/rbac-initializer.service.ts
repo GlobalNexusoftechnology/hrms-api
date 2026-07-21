@@ -3,25 +3,12 @@ import { QueryRunner } from 'typeorm';
 import { Role } from '../entities/role.entity';
 import { Permission } from '../../permissions/entities/permission.entity';
 import { PermissionEnum } from '../../../common/enums/permission.enum';
+import { MAX_AUTHORITY_LEVEL } from '../constants/role.constants';
 
-/**
- * RBACInitializerService — lives in the Roles/RBAC module.
- * Responsible for seeding all permissions and creating the protected SUPER_ADMIN role.
- *
- * Idempotent: safe to call multiple times (won't create duplicates).
- * Must receive an active QueryRunner from the caller's transaction.
- */
 @Injectable()
 export class RBACInitializerService {
   private readonly logger = new Logger(RBACInitializerService.name);
 
-  /**
-   * Seeds all permissions from PermissionEnum, creates the protected SUPER_ADMIN role,
-   * and assigns all permissions to it.
-   *
-   * @param queryRunner - Active QueryRunner from the caller's DB transaction
-   * @returns The SUPER_ADMIN Role record
-   */
   async seed(queryRunner: QueryRunner): Promise<Role> {
     this.logger.log('RBAC Initialization: Seeding permissions...');
 
@@ -54,18 +41,32 @@ export class RBACInitializerService {
     if (!superAdminRole) {
       superAdminRole = queryRunner.manager.create(Role, {
         name: 'SUPER_ADMIN',
+        description: 'System Administrator with full access',
         isActive: true,
-        isProtected: true, // Cannot be deleted, renamed, deactivated, or stripped of permissions
+        isProtected: true,
+        isSystem: true,
+        authorityLevel: MAX_AUTHORITY_LEVEL,
       });
       await queryRunner.manager.save(Role, superAdminRole);
       this.logger.log('RBAC Initialization: SUPER_ADMIN role created.');
     } else {
-      // Ensure it's always marked protected (in case migration ran before this flag existed)
+      let needsSave = false;
       if (!superAdminRole.isProtected) {
         superAdminRole.isProtected = true;
+        needsSave = true;
+      }
+      if (!superAdminRole.isSystem) {
+        superAdminRole.isSystem = true;
+        needsSave = true;
+      }
+      if (superAdminRole.authorityLevel !== MAX_AUTHORITY_LEVEL) {
+        superAdminRole.authorityLevel = MAX_AUTHORITY_LEVEL;
+        needsSave = true;
+      }
+      if (needsSave) {
         await queryRunner.manager.save(Role, superAdminRole);
       }
-      this.logger.log('RBAC Initialization: SUPER_ADMIN role already exists, skipping creation.');
+      this.logger.log('RBAC Initialization: SUPER_ADMIN role exists, verified constraints.');
     }
 
     // ── Step 3: Assign ALL permissions to SUPER_ADMIN (idempotent) ──
@@ -73,7 +74,6 @@ export class RBACInitializerService {
       where: { isActive: true },
     });
 
-    // Overwrite the permissions relation with the full set (safe even if already assigned)
     superAdminRole.permissions = allPermissions;
     await queryRunner.manager.save(Role, superAdminRole);
 

@@ -1,5 +1,7 @@
-import { IsString, IsBoolean, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsNotEmpty, IsEnum, IsEmail } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BranchType } from '../../../common/enums/branch-type.enum';
+import { BranchStatus } from '../../../common/enums/branch-status.enum';
 
 export class CreateBranchDto {
   @ApiProperty({ example: 'Head Office' })
@@ -7,50 +9,80 @@ export class CreateBranchDto {
   @IsNotEmpty()
   name!: string;
 
-  @ApiProperty({ example: 'HQ' })
+  @ApiPropertyOptional({ example: 'HQ-001', description: 'Will be auto-generated if not provided' })
   @IsString()
-  @IsNotEmpty()
-  code!: string;
-
-  @ApiPropertyOptional({ example: true })
-  @IsBoolean()
   @IsOptional()
-  isHeadOffice?: boolean;
+  code?: string;
 
-  @ApiProperty({ example: '123 Business Rd' })
+  @ApiProperty({ example: 'Corporate Head Office' })
   @IsString()
   @IsNotEmpty()
-  line1!: string;
+  displayName!: string;
+
+  @ApiProperty({ example: 'Main corporate office' })
+  @IsString()
+  @IsNotEmpty()
+  description!: string;
+
+  @ApiProperty({ enum: BranchType, example: BranchType.HEAD_OFFICE })
+  @IsEnum(BranchType)
+  @IsNotEmpty()
+  branchType!: BranchType;
+
+  @ApiProperty({ example: true })
+  @IsBoolean()
+  @IsNotEmpty()
+  isHeadOffice!: boolean;
+
+  @ApiPropertyOptional({ example: 'headoffice@company.com' })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @ApiPropertyOptional({ example: '+91-9876543210' })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: '123 Business Rd' })
+  @IsString()
+  @IsOptional()
+  line1?: string;
 
   @ApiPropertyOptional({ example: 'Suite 100' })
   @IsString()
   @IsOptional()
   line2?: string;
 
-  @ApiProperty({ example: 'Mumbai' })
+  @ApiPropertyOptional({ example: 'Mumbai' })
   @IsString()
-  @IsNotEmpty()
-  city!: string;
+  @IsOptional()
+  city?: string;
 
-  @ApiProperty({ example: 'MH' })
+  @ApiPropertyOptional({ example: 'MH' })
   @IsString()
-  @IsNotEmpty()
-  state!: string;
+  @IsOptional()
+  state?: string;
 
-  @ApiProperty({ example: 'India' })
+  @ApiPropertyOptional({ example: 'India' })
   @IsString()
-  @IsNotEmpty()
-  country!: string;
+  @IsOptional()
+  country?: string;
 
-  @ApiProperty({ example: '400001' })
+  @ApiPropertyOptional({ example: '400001' })
   @IsString()
-  @IsNotEmpty()
-  zip!: string;
+  @IsOptional()
+  zip?: string;
 
   @ApiPropertyOptional({ example: 'Asia/Kolkata' })
   @IsString()
   @IsOptional()
   timezone?: string;
+
+  @ApiPropertyOptional({ enum: BranchStatus, example: BranchStatus.ACTIVE })
+  @IsEnum(BranchStatus)
+  @IsOptional()
+  status?: BranchStatus;
 
   @ApiPropertyOptional({ example: 'uuid-of-employee' })
   @IsString()
