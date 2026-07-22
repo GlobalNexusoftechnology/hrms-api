@@ -8,6 +8,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmployeesModule } from './modules/employees/employees.module';
+import { CommonModule } from './common/common.module';
 
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -31,6 +32,14 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { SystemModule } from './modules/system/system.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { TeamModule } from './modules/team/team.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { NotificationPreferenceModule } from './modules/notification-preference/notification-preference.module';
+import { ShiftModule } from './modules/shift/shift.module';
+import { LeaveTypeModule } from './modules/leave-type/leave-type.module';
+import { LeavePolicyModule } from './modules/leave-policy/leave-policy.module';
+import { LeaveLedgerModule } from './modules/leave-ledger/leave-ledger.module';
+import { LeaveEngineModule } from './modules/leave-engine/leave-engine.module';
 
 @Module({
   imports: [
@@ -59,6 +68,11 @@ import { TenantModule } from './modules/tenant/tenant.module';
       synchronize: false,
     }),
 
+    CommonModule,
+    TeamModule,
+    NotificationModule,
+    NotificationPreferenceModule,
+    ShiftModule,
     RolesModule,
     PermissionsModule,
     AuthModule,
@@ -80,6 +94,10 @@ import { TenantModule } from './modules/tenant/tenant.module';
     OrganizationModule,
     SystemModule,
     TenantModule,
+    LeaveTypeModule,
+    LeavePolicyModule,
+    LeaveLedgerModule,
+    LeaveEngineModule,
   ],
 
   providers: [

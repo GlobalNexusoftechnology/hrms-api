@@ -22,6 +22,7 @@ import { createCanvas, loadImage } from 'canvas';
 import * as QRCode from 'qrcode';
 import * as path from 'path';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class EmployeesService {
@@ -37,6 +38,7 @@ export class EmployeesService {
     private readonly roleRepository: Repository<Role>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
+    private readonly dataScopeService: DataScopeService,
   ) { }
 
   async generateEmployeeCode(): Promise<string> {
@@ -107,6 +109,10 @@ export class EmployeesService {
     let department: Department | null = null;
 
     if (dto.departmentId) {
+      if (!dto.branchId) {
+        throw new BadRequestException('Branch is required when department is selected');
+      }
+
       department = await this.departmentRepository.findOne({
         where: {
           id: dto.departmentId,
@@ -117,6 +123,10 @@ export class EmployeesService {
 
       if (!department) {
         throw new NotFoundException('Department not found');
+      }
+
+      if (department.branchId && department.branchId !== dto.branchId) {
+        throw new BadRequestException('Selected department does not belong to the selected branch');
       }
     }
 
@@ -163,6 +173,8 @@ export class EmployeesService {
       password: hashedPassword,
 
       roleId: dto.roleId,
+
+      branchId: dto.branchId,
 
       departmentId: dto.departmentId,
 
@@ -252,7 +264,7 @@ export class EmployeesService {
     });
   }
 
-  async findAll(query: GetEmployeesDto) {
+  async findAll(query: GetEmployeesDto, currentUser: Employee) {
     const {
       page = '1',
       limit = '10',
@@ -361,6 +373,12 @@ export class EmployeesService {
       );
     }
 
+    this.dataScopeService.applyScope(queryBuilder, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id'
+    });
+
     queryBuilder.orderBy(orderBy, sortOrder);
 
     queryBuilder.skip((pageNumber - 1) * limitNumber);
@@ -384,18 +402,21 @@ export class EmployeesService {
     };
   }
 
-  async findOne(id: string) {
-    const employee = await this.employeeRepository.findOne({
-      where: {
-        id,
-      },
+  async findOne(id: string, currentUser?: Employee) {
+    const queryBuilder = this.employeeRepository.createQueryBuilder('employee')
+      .leftJoinAndSelect('employee.role', 'role')
+      .leftJoinAndSelect('role.permissions', 'permissions')
+      .where('employee.id = :id', { id });
 
-      relations: {
-        role: {
-          permissions: true,
-        },
-      },
-    });
+    if (currentUser) {
+      this.dataScopeService.applyScope(queryBuilder, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+        employee: 'employee.id'
+      });
+    }
+
+    const employee = await queryBuilder.getOne();
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
@@ -449,6 +470,22 @@ export class EmployeesService {
     // PASSWORD HASH
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
+    }
+
+    const branchId = dto.branchId !== undefined ? dto.branchId : employee.branchId;
+    const departmentId = dto.departmentId !== undefined ? dto.departmentId : employee.departmentId;
+
+    if (departmentId) {
+      if (!branchId) {
+        throw new BadRequestException('Branch is required when department is selected');
+      }
+      const department = await this.departmentRepository.findOne({
+        where: { id: departmentId, deletedAt: IsNull(), isActive: true }
+      });
+      if (!department) throw new NotFoundException('Department not found');
+      if (department.branchId && department.branchId !== branchId) {
+        throw new BadRequestException('Selected department does not belong to the selected branch');
+      }
     }
 
     Object.assign(employee, dto);

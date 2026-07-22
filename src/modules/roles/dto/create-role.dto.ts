@@ -1,6 +1,7 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min, Max, IsArray, ArrayNotEmpty, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, Min, Max, IsArray, ArrayNotEmpty, IsUUID, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { MAX_AUTHORITY_LEVEL, MIN_AUTHORITY_LEVEL } from '../constants/role.constants';
+import { DataScopeEnum } from '../../../common/enums/data-scope.enum';
 
 export class CreateRoleDto {
   @ApiProperty({ example: 'HR Manager', description: 'Name of the custom role' })
@@ -24,4 +25,9 @@ export class CreateRoleDto {
   @ArrayNotEmpty()
   @IsUUID('all', { each: true })
   permissionIds!: string[];
+
+  @ApiProperty({ example: 'SELF', description: 'Data scope for the role', enum: DataScopeEnum, required: false })
+  @IsOptional()
+  @IsEnum(DataScopeEnum)
+  dataScope?: DataScopeEnum;
 }

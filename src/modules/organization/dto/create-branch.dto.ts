@@ -88,4 +88,9 @@ export class CreateBranchDto {
   @IsString()
   @IsOptional()
   managerId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-shift' })
+  @IsString()
+  @IsOptional()
+  defaultShiftId?: string;
 }

@@ -5,10 +5,12 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { AttendanceCorrection } from './../entities/correction.entity';
 import { Attendance } from './../entities/attendance.entity';
+import { Employee } from '../../employees/entities/employee.entity';
 import { CorrectionRequestDto } from './../dto/correction-request.dto';
 import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 import { formatIST } from '../../../utils/time.util';
+import { DataScopeService } from '../../../common/services/data-scope.service';
 
 dayjs.extend(isBetween);
 
@@ -21,6 +23,7 @@ export class CorrectionService {
     @InjectRepository(Attendance)
     private attendanceRepo: Repository<Attendance>,
     private dataSource: DataSource,
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   async requestCorrection(employeeId: string, dto: CorrectionRequestDto) {
@@ -236,7 +239,7 @@ export class CorrectionService {
     });
   }
 
-  async findAll(query: any) {
+  async findAll(query: any, currentUser: Employee) {
     const {
       status,
       employeeId,
@@ -268,6 +271,12 @@ export class CorrectionService {
         employeeId,
       });
     }
+
+    this.dataScopeService.applyScope(qb, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id'
+    });
 
     qb.orderBy('correction.created_at', 'DESC');
 

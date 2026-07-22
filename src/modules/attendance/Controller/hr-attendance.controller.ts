@@ -32,8 +32,9 @@ export class HrAttendanceController {
   getAll(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.attendanceQueryService.getFilteredAttendance(query);
+    return this.attendanceQueryService.getFilteredAttendance(query, employee);
   }
 
   @Permissions(PermissionEnum.ATTENDANCE_CORRECTION_UPDATE)
@@ -77,14 +78,17 @@ export class HrAttendanceController {
   getCorrections(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.correctionService.findAll(query);
+    return this.correctionService.findAll(query, employee);
   }
 
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('dashboard')
-  getDashboard() {
-    return this.attendanceDashboardService.getHrDashboard();
+  getDashboard(
+    @CurrentUser() employee: any,
+  ) {
+    return this.attendanceDashboardService.getHrDashboard(employee);
   }
 
   @Permissions(PermissionEnum.ATTENDANCE_READ)
@@ -92,7 +96,8 @@ export class HrAttendanceController {
   getTodayAttendance(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.attendanceQueryService.getTodayAttendance(query);
+    return this.attendanceQueryService.getTodayAttendance(query, employee);
   }
 }

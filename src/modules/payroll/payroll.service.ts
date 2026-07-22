@@ -14,12 +14,13 @@ import { Payroll } from './entities/payroll.entity';
 import { Employee } from './../employees/entities/employee.entity';
 
 import { Attendance } from './../attendance/entities/attendance.entity';
+import { Leave } from './../attendance/entities/leave.entity';
 
 import { SalaryStructure } from './../salary-structure/entities/salary-structure.entity';
-
-import { LeaveBalance } from './../leave-balance/entities/leave-balance.entity';
+import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
 import { WeekendSetting } from '../weekend_settings/entities/weekend_setting.entity';
 import { AttendanceStatus } from './../../common/enums/AttendanceStatus.enum';
+import { DataScopeService } from './../../common/services/data-scope.service';
 
 @Injectable()
 export class PayrollService {
@@ -36,11 +37,16 @@ export class PayrollService {
     @InjectRepository(SalaryStructure)
     private readonly salaryRepo: Repository<SalaryStructure>,
 
-    @InjectRepository(LeaveBalance)
-    private readonly leaveBalanceRepo: Repository<LeaveBalance>,
+    @InjectRepository(Leave)
+    private readonly leaveRequestRepo: Repository<Leave>,
+
+    @InjectRepository(LeavePolicy)
+    private readonly leavePolicyRepo: Repository<LeavePolicy>,
 
     @InjectRepository(WeekendSetting)
     private readonly weekendRepo: Repository<WeekendSetting>,
+
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   // =====================
@@ -121,20 +127,35 @@ export class PayrollService {
       (item) => item.status === AttendanceStatus.LEAVE,
     ).length;
 
-    // LEAVE BALANCE
-    const leaveBalance = await this.leaveBalanceRepo.findOne({
-      where: {
-        employeeId,
+    // LEAVE RECONCILIATION
+    let paidLeaves = 0;
+    let unpaidLeaves = 0;
 
-        month,
+    const approvedLeaves = await this.leaveRequestRepo.createQueryBuilder('leave')
+      .leftJoinAndSelect('leave.leaveType', 'leaveType')
+      .where('leave.employeeId = :employeeId', { employeeId })
+      .andWhere('leave.status = :status', { status: 'APPROVED' })
+      .andWhere('(leave.startDate <= :endDate AND leave.endDate >= :startDate)', { startDate, endDate })
+      .getMany();
 
-        year,
-      },
-    });
+    for (const req of approvedLeaves) {
+      // Find overlap days in this month
+      const startOverlap = new Date(Math.max(new Date(req.startDate).getTime(), new Date(startDate).getTime()));
+      const endOverlap = new Date(Math.min(new Date(req.endDate).getTime(), new Date(endDate).getTime()));
+      
+      const overlapDays = Math.max(0, (endOverlap.getTime() - startOverlap.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const paidLeaves = leaveBalance?.paidLeavesUsed ?? 0;
+      // Get policy for isPaid
+      const policy = await this.leavePolicyRepo.findOne({
+        where: { leaveTypeId: req.leaveTypeId, isActive: true }
+      });
 
-    const unpaidLeaves = leaveBalance?.unpaidLeavesUsed ?? 0;
+      if (policy && policy.isPaid) {
+        paidLeaves += overlapDays;
+      } else {
+        unpaidLeaves += overlapDays;
+      }
+    }
 
     // UNIFIED RECONCILIATION FORMULA
     const totalAttendanceMissing = absentDays + leaveDays + (halfDays * 0.5);
@@ -242,7 +263,7 @@ export class PayrollService {
     };
   }
 
-  async findAll(query: any) {
+  async findAll(query: any, currentUser: Employee) {
     const {
       month,
       year,
@@ -291,6 +312,12 @@ export class PayrollService {
         },
       );
     }
+
+    this.dataScopeService.applyScope(qb, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id'
+    });
 
     qb.orderBy('payroll.createdAt', 'DESC');
 

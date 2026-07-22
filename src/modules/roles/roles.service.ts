@@ -100,6 +100,7 @@ export class RolesService {
     if (updateRoleDto.name) role.name = updateRoleDto.name;
     if (updateRoleDto.description !== undefined) role.description = updateRoleDto.description;
     if (updateRoleDto.authorityLevel !== undefined) role.authorityLevel = updateRoleDto.authorityLevel;
+    if (updateRoleDto.dataScope !== undefined) role.dataScope = updateRoleDto.dataScope;
     
     role.updatedByUserId = actingUser.id;
 

@@ -13,6 +13,7 @@ import { Employee } from '../../employees/entities/employee.entity';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 
 import { formatIST, todayIST } from '../../../utils/time.util';
+import { DataScopeService } from '../../../common/services/data-scope.service';
 
 @Injectable()
 export class AttendanceDashboardService {
@@ -22,6 +23,8 @@ export class AttendanceDashboardService {
 
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
+
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   async getEmployeeDashboard(employeeId: string) {
@@ -153,7 +156,7 @@ export class AttendanceDashboardService {
     };
   }
 
-  async getHrDashboard() {
+  async getHrDashboard(currentUser: Employee) {
     const today = todayIST();
 
     const startOfWeek = dayjs().startOf('week').format('YYYY-MM-DD');
@@ -164,25 +167,26 @@ export class AttendanceDashboardService {
 
     const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
 
-    const totalEmployees = await this.employeeRepo.count({
-      where: {
-        isActive: true,
-
-        deletedAt: IsNull(),
-      },
+    const qbEmployee = this.employeeRepo.createQueryBuilder('employee')
+      .where('employee.is_active = :isActive', { isActive: true })
+      .andWhere('employee.deleted_at IS NULL');
+    this.dataScopeService.applyScope(qbEmployee, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id'
     });
+    const totalEmployees = await qbEmployee.getCount();
 
-    const todayAttendance = await this.attendanceRepo.find({
-      where: {
-        date: today,
-      },
-
-      relations: {
-        employee: {
-          department: true,
-        },
-      },
+    const qbToday = this.attendanceRepo.createQueryBuilder('attendance')
+      .leftJoinAndSelect('attendance.employee', 'employee')
+      .leftJoinAndSelect('employee.department', 'department')
+      .where('attendance.date = :today', { today });
+    this.dataScopeService.applyScope(qbToday, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id'
     });
+    const todayAttendance = await qbToday.getMany();
 
     const present = todayAttendance.filter(
       (item) => item.status === AttendanceStatus.PRESENT,
@@ -204,23 +208,35 @@ export class AttendanceDashboardService {
       (item) => item.status === AttendanceStatus.ABSENT,
     ).length;
 
-    const weeklyAttendance = await this.attendanceRepo
+    const qbWeekly = this.attendanceRepo
       .createQueryBuilder('attendance')
+      .leftJoinAndSelect('attendance.employee', 'employee')
       .where('attendance.date BETWEEN :start AND :end', {
         start: startOfWeek,
 
         end: endOfWeek,
-      })
-      .getMany();
+      });
+    this.dataScopeService.applyScope(qbWeekly, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id'
+    });
+    const weeklyAttendance = await qbWeekly.getMany();
 
-    const monthlyAttendance = await this.attendanceRepo
+    const qbMonthly = this.attendanceRepo
       .createQueryBuilder('attendance')
+      .leftJoinAndSelect('attendance.employee', 'employee')
       .where('attendance.date BETWEEN :start AND :end', {
         start: startOfMonth,
 
         end: endOfMonth,
-      })
-      .getMany();
+      });
+    this.dataScopeService.applyScope(qbMonthly, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id'
+    });
+    const monthlyAttendance = await qbMonthly.getMany();
 
     const totalWorkedMinutes = monthlyAttendance.reduce(
       (acc, curr) => acc + (curr.workedMinutes || 0),

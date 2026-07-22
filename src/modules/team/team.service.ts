@@ -19,6 +19,7 @@ import { UpdateTeamDto } from './dto/update-team.dto';
 import { ChangeTeamLeadDto } from './dto/change-team-lead.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../../common/enums/NotificationType.enum';
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class TeamService {
@@ -36,6 +37,7 @@ export class TeamService {
     private readonly departmentRepository: Repository<Department>,
 
     private readonly notificationService: NotificationService,
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   async createTeam(dto: CreateTeamDto) {
@@ -93,35 +95,37 @@ export class TeamService {
     return saved;
   }
 
-  async findAll(filterDto: TeamFilterDto) {
+  async findAll(filterDto: TeamFilterDto, currentUser?: Employee) {
     const { search, departmentId, isActive, page = 1, limit = 10 } = filterDto;
 
-    const where: any = {};
+    const qb = this.teamRepository.createQueryBuilder('team')
+      .leftJoinAndSelect('team.department', 'department')
+      .leftJoinAndSelect('team.teamLead', 'teamLead');
 
     if (search) {
-      where.name = ILike(`%${search}%`);
+      qb.andWhere('team.name ILIKE :search', { search: `%${search}%` });
     }
 
     if (departmentId) {
-      where.departmentId = departmentId;
+      qb.andWhere('team.department_id = :departmentId', { departmentId });
     }
 
     if (isActive !== undefined) {
-      where.isActive = isActive;
+      qb.andWhere('team.is_active = :isActive', { isActive });
     }
 
-    const [teams, total] = await this.teamRepository.findAndCount({
-      where,
-      relations: {
-        department: true,
-        teamLead: true,
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'department.branchId',
+        department: 'department.id'
+      });
+    }
+
+    qb.orderBy('team.created_at', 'DESC');
+    qb.skip((page - 1) * limit);
+    qb.take(limit);
+
+    const [teams, total] = await qb.getManyAndCount();
 
     return {
       data: teams,
@@ -132,19 +136,22 @@ export class TeamService {
     };
   }
 
-  async findOne(id: string) {
-    const team = await this.teamRepository.findOne({
-      where: {
-        id,
-      },
-      relations: {
-        department: true,
-        teamLead: true,
-        members: {
-          employee: true,
-        },
-      },
-    });
+  async findOne(id: string, currentUser?: Employee) {
+    const qb = this.teamRepository.createQueryBuilder('team')
+      .leftJoinAndSelect('team.department', 'department')
+      .leftJoinAndSelect('team.teamLead', 'teamLead')
+      .leftJoinAndSelect('team.members', 'members')
+      .leftJoinAndSelect('members.employee', 'employee')
+      .where('team.id = :id', { id });
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'department.branchId',
+        department: 'department.id'
+      });
+    }
+
+    const team = await qb.getOne();
 
     if (!team) {
       throw new NotFoundException('Team not found');
@@ -170,6 +177,15 @@ export class TeamService {
 
     if (employees.length !== employeeIds.length) {
       throw new BadRequestException('One or more employees not found');
+    }
+
+    if (team.departmentId) {
+      const invalidEmployees = employees.filter(emp => emp.departmentId !== team.departmentId);
+      if (invalidEmployees.length > 0) {
+        throw new BadRequestException(
+          `Employees must belong to the same department as the team. Invalid employees: ${invalidEmployees.map(e => e.id).join(', ')}`
+        );
+      }
     }
 
     // Only check if employee already exists in SAME team

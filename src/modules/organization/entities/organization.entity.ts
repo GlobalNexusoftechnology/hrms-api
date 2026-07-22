@@ -9,6 +9,7 @@ import { OrganizationContact } from './organization-contact.entity';
 import { OrganizationBankAccount } from './organization-bank-account.entity';
 import { OrganizationDocument } from './organization-document.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
+import { Shift } from '../../shift/entities/shift.entity';
 
 @Entity('organizations')
 export class Organization extends BaseEntity {
@@ -73,4 +74,11 @@ export class Organization extends BaseEntity {
 
   @OneToMany(() => OrganizationDocument, (document) => document.organization, { cascade: ['soft-remove'] })
   documents!: OrganizationDocument[];
+
+  @Column({ name: 'default_shift_id', type: 'uuid', nullable: true })
+  defaultShiftId!: string | null;
+
+  @ManyToOne(() => Shift, { nullable: true })
+  @JoinColumn({ name: 'default_shift_id' })
+  defaultShift!: Shift | null;
 }

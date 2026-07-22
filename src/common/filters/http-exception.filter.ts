@@ -28,7 +28,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     let message = 'Internal Server Error';
 
-    let errors: string[] = [];
+    let errors: any[] = [];
 
     if (exceptionResponse && typeof exceptionResponse === 'object') {
       const responseObj = exceptionResponse as any;
@@ -39,6 +39,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = 'Validation Error';
       } else {
         message = responseObj.message || message;
+        
+        if (typeof message === 'string' && (message.includes('JSON at position') || message.includes('Unexpected token'))) {
+          errors = [{ field: 'payload', message: 'Invalid JSON format' }];
+          message = 'Validation Error';
+        }
       }
     }
 

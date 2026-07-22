@@ -38,7 +38,15 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsUUID()
+  branchId?: string;
+
+  @IsOptional()
+  @IsUUID()
   departmentId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  shiftId?: string;
 
   @IsOptional()
   @IsUUID()

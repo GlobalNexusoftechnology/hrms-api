@@ -24,6 +24,7 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionEnum } from '../../common/enums/permission.enum';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('team')
@@ -62,8 +63,9 @@ export class TeamController {
   async findAll(
     @Query()
     query: TeamFilterDto,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.findAll(query);
+    return this.teamService.findAll(query, employee);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -72,8 +74,9 @@ export class TeamController {
   async findOne(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.findOne(id);
+    return this.teamService.findOne(id, employee);
   }
 
   

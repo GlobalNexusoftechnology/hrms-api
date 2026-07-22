@@ -7,6 +7,7 @@ import { OrganizationBankAccount } from './organization-bank-account.entity';
 import { OrganizationDocument } from './organization-document.entity';
 import { BranchType } from '../../../common/enums/branch-type.enum';
 import { BranchStatus } from '../../../common/enums/branch-status.enum';
+import { Shift } from '../../shift/entities/shift.entity';
 
 @Entity('branches')
 export class Branch extends BaseEntity {
@@ -82,4 +83,11 @@ export class Branch extends BaseEntity {
 
   @OneToMany(() => OrganizationDocument, (document) => document.branch)
   documents!: OrganizationDocument[];
+
+  @Column({ name: 'default_shift_id', type: 'uuid', nullable: true })
+  defaultShiftId!: string | null;
+
+  @ManyToOne(() => Shift, { nullable: true })
+  @JoinColumn({ name: 'default_shift_id' })
+  defaultShift!: Shift | null;
 }

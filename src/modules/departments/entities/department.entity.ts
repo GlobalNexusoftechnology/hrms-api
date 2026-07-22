@@ -7,10 +7,13 @@ import {
   DeleteDateColumn,
   OneToMany,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 
 import { Employee } from '../../employees/entities/employee.entity';
 import { Designation } from '../../designations/entities/designation.entity';
+import { Branch } from '../../organization/entities/branch.entity';
 
 @Index('unique_department_name_active', ['name'], {
   unique: true,
@@ -42,6 +45,13 @@ export class Department {
     name: 'is_active',
   })
   isActive!: boolean;
+
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId!: string | null;
+
+  @ManyToOne(() => Branch, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'branch_id' })
+  branch!: Branch;
 
   @OneToMany(() => Employee, (employee) => employee.department)
   employees!: Employee[];

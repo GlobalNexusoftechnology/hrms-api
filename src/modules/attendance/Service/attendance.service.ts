@@ -12,7 +12,7 @@ import { Attendance } from '../entities/attendance.entity';
 
 import { AttendanceValidationService } from './attendance-validation.service';
 
-import { calculateAttendanceStatus } from '../helpers/attendance-status.helper';
+
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 
 import { formatAttendanceResponse } from '../helpers/attendance-response.helper';
@@ -36,7 +36,7 @@ export class AttendanceService {
   };
 
   async checkIn(employeeId: string, location?: string) {
-    await this.validationService.validateEmployee(employeeId);
+    const employee = await this.validationService.validateEmployee(employeeId);
 
     await this.validationService.validateWorkingDay(employeeId);
 
@@ -59,7 +59,7 @@ export class AttendanceService {
         },
       });
 
-      this.validationService.validateCheckIn(attendance);
+      this.validationService.validateCheckIn(attendance, employee, nowDate);
 
       if (!attendance) {
         attendance = manager.create(Attendance, {
@@ -85,13 +85,22 @@ export class AttendanceService {
 
       attendance.isAutoCheckout = false;
 
-      attendance.status = calculateAttendanceStatus(nowDate);
+      const shift = this.validationService.getEffectiveShift(employee);
+      const [startHour, startMinute] = shift.startTime.split(':').map(Number);
+      const shiftStartTime = dayjs(nowDate).hour(startHour).minute(startMinute).second(0).millisecond(0);
+      const graceTime = shiftStartTime.add(shift.lateGraceMinutes, 'minute');
+      const halfDayTime = shiftStartTime.add(shift.halfDayThresholdMinutes, 'minute');
 
-      if (attendance.status === AttendanceStatus.LATE || attendance.status === AttendanceStatus.HALF_DAY) {
-        const presentEnd = dayjs(nowDate).startOf('day').hour(11).minute(0).second(0).millisecond(0);
-        const diff = dayjs(nowDate).diff(presentEnd, 'minute');
-        attendance.lateMinutes = diff > 0 ? diff : 0;
+      const nowDayjs = dayjs(nowDate);
+
+      if (nowDayjs.isAfter(halfDayTime)) {
+        attendance.status = AttendanceStatus.HALF_DAY;
+        attendance.lateMinutes = nowDayjs.diff(shiftStartTime, 'minute');
+      } else if (nowDayjs.isAfter(graceTime)) {
+        attendance.status = AttendanceStatus.LATE;
+        attendance.lateMinutes = nowDayjs.diff(shiftStartTime, 'minute');
       } else {
+        attendance.status = AttendanceStatus.PRESENT;
         attendance.lateMinutes = 0;
       }
 
@@ -112,7 +121,7 @@ export class AttendanceService {
   }
 
   async checkOut(employeeId: string, location?: string, reason?: string) {
-    await this.validationService.validateEmployee(employeeId);
+    const employee = await this.validationService.validateEmployee(employeeId);
 
     return this.dataSource.transaction(async (manager) => {
       const today = todayIST();
@@ -137,22 +146,41 @@ export class AttendanceService {
 
       const checkInTime = dayjs(attendance!.checkIn);
 
-      const workedMinutes = Math.floor(now.diff(checkInTime, 'minute'));
+      const shift = this.validationService.getEffectiveShift(employee);
 
+      let breakMinutes = 0;
+      if (!shift.includeBreakInWorkingHours) {
+        breakMinutes = shift.totalBreakMinutes || 0;
+      }
+
+      const workedMinutes = Math.floor(now.diff(checkInTime, 'minute')) - breakMinutes;
       const workedHours = workedMinutes / 60;
 
       attendance!.workedMinutes = workedMinutes;
 
       const checkoutValidation = this.validationService.validateEarlyCheckout(
+        shift,
         workedMinutes,
-
+        nowDate,
         reason,
       );
 
       attendance!.earlyCheckoutReason = checkoutValidation.reason;
 
-      attendance!.overtimeMinutes =
-        workedMinutes > 480 ? workedMinutes - 480 : 0;
+      // Half-day logic on checkout
+      if (workedMinutes < shift.halfDayThresholdMinutes) {
+        attendance!.status = AttendanceStatus.HALF_DAY;
+      }
+
+      // Overtime Logic
+      let overtimeMinutes = 0;
+      if (workedMinutes > shift.overtimeThresholdMinutes) {
+        const potentialOt = workedMinutes - shift.overtimeThresholdMinutes;
+        if (potentialOt >= shift.minimumOvertimeMinutes) {
+          overtimeMinutes = potentialOt;
+        }
+      }
+      attendance!.overtimeMinutes = overtimeMinutes;
 
       attendance!.checkOut = nowDate;
 

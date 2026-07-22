@@ -16,6 +16,7 @@ import { formatAttendanceResponse } from '../helpers/attendance-response.helper'
 
 import { formatIST, todayIST } from '../../../utils/time.util';
 import { buildAttendanceCalendar } from '../helpers/attendance-calendar.helper';
+import { DataScopeService } from '../../../common/services/data-scope.service';
 
 @Injectable()
 export class AttendanceQueryService {
@@ -25,6 +26,8 @@ export class AttendanceQueryService {
 
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
+
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   async getMyAttendance(employeeId: string) {
@@ -64,7 +67,7 @@ export class AttendanceQueryService {
     };
   }
 
-  async getFilteredAttendance(query: any) {
+  async getFilteredAttendance(query: any, currentUser: Employee) {
     const {
       date,
       month,
@@ -126,6 +129,12 @@ export class AttendanceQueryService {
       );
     }
 
+    this.dataScopeService.applyScope(qb, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id',
+    });
+
     qb.orderBy('attendance.date', 'DESC');
 
     qb.skip((pageNumber - 1) * limitNumber);
@@ -177,7 +186,7 @@ export class AttendanceQueryService {
     return buildAttendanceCalendar(records, employeeId, month, year);
   }
 
-  async getTodayAttendance(query: any) {
+  async getTodayAttendance(query: any, currentUser: Employee) {
     const { departmentId, status, search } = query;
 
     const today = todayIST();
@@ -220,6 +229,12 @@ export class AttendanceQueryService {
         },
       );
     }
+
+    this.dataScopeService.applyScope(qb, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id',
+    });
 
     const data = await qb.getMany();
 

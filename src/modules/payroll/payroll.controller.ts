@@ -65,8 +65,9 @@ export class PayrollController {
   findAll(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.payrollService.findAll(query);
+    return this.payrollService.findAll(query, employee);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)

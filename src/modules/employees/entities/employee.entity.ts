@@ -19,6 +19,8 @@ import { EmployeeDocument } from '../../employee-documents/entities/employee-doc
 import { Attendance } from '../../attendance/entities/attendance.entity';
 import { AttendanceCorrection } from '../../attendance/entities/correction.entity';
 import { SalaryStructure } from '../../salary-structure/entities/salary-structure.entity';
+import { Branch } from '../../organization/entities/branch.entity';
+import { Shift } from '../../shift/entities/shift.entity';
 
 @Entity('employees')
 export class Employee {
@@ -97,6 +99,20 @@ export class Employee {
     name: 'department_id',
   })
   department!: Department;
+
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId!: string | null;
+
+  @ManyToOne(() => Branch, { nullable: true })
+  @JoinColumn({ name: 'branch_id' })
+  branch!: Branch;
+
+  @Column({ name: 'shift_id', type: 'uuid', nullable: true })
+  shiftId!: string | null;
+
+  @ManyToOne(() => Shift, { nullable: true })
+  @JoinColumn({ name: 'shift_id' })
+  shift!: Shift;
 
   @OneToMany(
     () => SalaryStructure,

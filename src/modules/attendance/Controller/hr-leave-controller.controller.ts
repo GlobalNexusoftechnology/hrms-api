@@ -25,8 +25,9 @@ export class HrLeaveController {
   findAll(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.leaveService.findAll(query);
+    return this.leaveService.findAll(query, employee);
   }
 
   @Permissions(PermissionEnum.LEAVE_APPROVAL)

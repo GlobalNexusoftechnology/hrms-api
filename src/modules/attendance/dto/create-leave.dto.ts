@@ -1,10 +1,9 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsString } from 'class-validator';
-
-import { LeaveTypeEnum } from '../../../common/enums/leave-type.enum';
+import { IsDateString, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class CreateLeaveDto {
-  @IsEnum(LeaveTypeEnum)
-  type!: LeaveTypeEnum;
+  @IsNotEmpty()
+  @IsUUID()
+  leaveTypeId!: string;
 
   @IsDateString()
   startDate!: string;

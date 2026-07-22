@@ -13,12 +13,15 @@ import { Department } from './entities/department.entity';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 
 import { UpdateDepartmentDto } from './dto/update-department.dto';
+import { DataScopeService } from '../../common/services/data-scope.service';
+import { Employee } from '../employees/entities/employee.entity';
 
 @Injectable()
 export class DepartmentsService {
   constructor(
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   async create(dto: CreateDepartmentDto) {
@@ -53,7 +56,7 @@ export class DepartmentsService {
     return await this.departmentRepository.save(department);
   }
 
-  async findAll(page = 1, limit = 10, search?: string) {
+  async findAll(page = 1, limit = 10, search?: string, currentUser?: Employee) {
     const queryBuilder =
       this.departmentRepository.createQueryBuilder('department');
 
@@ -78,6 +81,13 @@ export class DepartmentsService {
       );
     }
 
+    if (currentUser) {
+      this.dataScopeService.applyScope(queryBuilder, currentUser, {
+        branch: 'department.branchId',
+        department: 'department.id'
+      });
+    }
+
     queryBuilder.skip((page - 1) * limit);
 
     queryBuilder.take(limit);
@@ -99,13 +109,21 @@ export class DepartmentsService {
     };
   }
 
-  async findOne(id: string) {
-    const department = await this.departmentRepository.findOne({
-      where: {
-        id,
-        deletedAt: IsNull(),
-      },
-    });
+  async findOne(id: string, currentUser?: Employee) {
+    const queryBuilder = this.departmentRepository.createQueryBuilder('department');
+
+    queryBuilder
+      .where('department.id = :id', { id })
+      .andWhere('department.deleted_at IS NULL');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(queryBuilder, currentUser, {
+        branch: 'department.branchId',
+        department: 'department.id'
+      });
+    }
+
+    const department = await queryBuilder.getOne();
 
     if (!department) {
       throw new NotFoundException('Department not found');

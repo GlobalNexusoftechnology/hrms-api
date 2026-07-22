@@ -627,7 +627,7 @@ export class DashboardService {
     const currentYear = dayjs().year();
 
     const balanceRecord = await this.leaveBalanceRepo.findOne({
-      where: { employeeId, month: currentMonth, year: currentYear },
+      where: { employeeId, year: currentYear },
     });
 
     const approvedLeaves = await this.leaveRepo.find({

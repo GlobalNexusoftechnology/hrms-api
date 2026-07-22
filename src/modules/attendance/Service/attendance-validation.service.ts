@@ -19,6 +19,7 @@ import { WeekendSetting } from '../../weekend_settings/entities/weekend_setting.
 import { Leave } from '../entities/leave.entity';
 import { WeekNumberEnum } from 'src/common/enums/WeekNumberEnum.enum';
 import { WeekDayEnum } from 'src/common/enums/WeekDayEnum.enum';
+import { Shift } from '../../shift/entities/shift.entity';
 
 @Injectable()
 export class AttendanceValidationService {
@@ -43,10 +44,17 @@ export class AttendanceValidationService {
     const employee = await this.employeeRepo.findOne({
       where: {
         id: employeeId,
-
         isActive: true,
-
         deletedAt: IsNull(),
+      },
+      relations: {
+        shift: true,
+        branch: {
+          defaultShift: true,
+          organization: {
+            defaultShift: true,
+          },
+        },
       },
     });
 
@@ -58,10 +66,20 @@ export class AttendanceValidationService {
   }
 
   // =====================
+  // GET EFFECTIVE SHIFT
+  // =====================
+  getEffectiveShift(employee: Employee) {
+    if (employee.shift) return employee.shift;
+    if (employee.branch?.defaultShift) return employee.branch.defaultShift;
+    if (employee.branch?.organization?.defaultShift) return employee.branch.organization.defaultShift;
+    throw new BadRequestException('No shift assigned to employee, branch, or organization');
+  }
+
+  // =====================
   // CHECK-IN VALIDATION
   // =====================
 
-  validateCheckIn(attendance?: Attendance | null) {
+  validateCheckIn(attendance: Attendance | null | undefined, employee: Employee, nowDate: Date) {
     // ALREADY CHECKED IN
     if (attendance?.checkIn) {
       throw new BadRequestException('Already checked in');
@@ -76,6 +94,25 @@ export class AttendanceValidationService {
       throw new BadRequestException(
         `Today is ${attendance.status.toLowerCase().replace('_', ' ')}`,
       );
+    }
+
+    // SHIFT CHECK-IN WINDOW
+    const shift = this.getEffectiveShift(employee);
+    if (!shift.isFlexible) {
+      const [startHour, startMinute] = shift.startTime.split(':').map(Number);
+      const shiftStartTime = dayjs(nowDate).hour(startHour).minute(startMinute).second(0).millisecond(0);
+      const now = dayjs(nowDate);
+      
+      const earliestTime = shiftStartTime.subtract(shift.earliestCheckInMinutes, 'minute');
+      const latestTime = shiftStartTime.add(shift.latestCheckInMinutes, 'minute');
+
+      if (now.isBefore(earliestTime)) {
+        throw new BadRequestException(`Too early to check-in. Earliest check-in time is ${earliestTime.format('HH:mm')}`);
+      }
+
+      if (now.isAfter(latestTime)) {
+        throw new BadRequestException(`Too late to check-in. Latest check-in time was ${latestTime.format('HH:mm')}`);
+      }
     }
   }
 
@@ -99,32 +136,47 @@ export class AttendanceValidationService {
   // EARLY CHECKOUT
   // =====================
 
-  validateEarlyCheckout(workedMinutes: number, reason?: string) {
+  validateEarlyCheckout(shift: Shift, workedMinutes: number, nowDate: Date, reason?: string) {
     const cleanedReason = reason?.trim();
 
-    // < 8 HOURS
-    if (workedMinutes < 480) {
+    let isEarly = false;
+
+    if (shift.isFlexible) {
+      if (workedMinutes < shift.standardWorkingMinutes) {
+        isEarly = true;
+      }
+    } else {
+      const [endHour, endMinute] = shift.endTime.split(':').map(Number);
+      let shiftEndTime = dayjs(nowDate).hour(endHour).minute(endMinute).second(0).millisecond(0);
+      
+      // If it's a cross-midnight shift and now is past midnight but before end time, the shift end time was probably 'today' while start was 'yesterday'. 
+      // This is simplified. Proper cross midnight will be handled in service.
+      
+      const earlyLeaveThreshold = shiftEndTime.subtract(shift.earlyLeaveGraceMinutes, 'minute');
+      
+      if (dayjs(nowDate).isBefore(earlyLeaveThreshold)) {
+        isEarly = true;
+      }
+    }
+
+    if (isEarly) {
       if (!cleanedReason) {
         throw new BadRequestException(
-          'Working hours not completed. Please provide reason for early checkout.',
+          'Early checkout detected. Please provide a reason.',
         );
       }
 
       return {
         isEarly: true,
-
         reason: cleanedReason,
-
         message: 'Early checkout recorded',
       };
     }
 
     return {
       isEarly: false,
-
       reason: null,
-
-      message: 'Working hours completed. Checkout successful.',
+      message: 'Checkout successful.',
     };
   }
 

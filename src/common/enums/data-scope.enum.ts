@@ -1,0 +1,7 @@
+export enum DataScopeEnum {
+  ORGANIZATION = 'ORGANIZATION',
+  BRANCH = 'BRANCH',
+  DEPARTMENT = 'DEPARTMENT',
+  TEAM = 'TEAM',
+  SELF = 'SELF',
+}

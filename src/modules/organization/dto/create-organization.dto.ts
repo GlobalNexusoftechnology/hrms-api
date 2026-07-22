@@ -43,4 +43,9 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsEnum(OrganizationStatus)
   status?: OrganizationStatus;
+
+  @ApiPropertyOptional({ example: 'uuid-of-shift' })
+  @IsString()
+  @IsOptional()
+  defaultShiftId?: string;
 }

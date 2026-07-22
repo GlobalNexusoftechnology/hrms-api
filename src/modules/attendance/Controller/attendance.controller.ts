@@ -85,8 +85,9 @@ export class AttendanceController {
   getFilteredAttendance(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.attendanceQueryService.getFilteredAttendance(query);
+    return this.attendanceQueryService.getFilteredAttendance(query, employee);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_DASHBOARD_READ)
@@ -104,8 +105,9 @@ export class AttendanceController {
   getTodayAttendance(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.attendanceQueryService.getTodayAttendance(query);
+    return this.attendanceQueryService.getTodayAttendance(query, employee);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)

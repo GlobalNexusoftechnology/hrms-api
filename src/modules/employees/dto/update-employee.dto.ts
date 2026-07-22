@@ -40,7 +40,15 @@ export class UpdateEmployeeDto {
 
   @IsOptional()
   @IsUUID()
+  branchId?: string;
+
+  @IsOptional()
+  @IsUUID()
   departmentId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  shiftId?: string;
 
   @IsOptional()
   @IsUUID()

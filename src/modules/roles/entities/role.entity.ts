@@ -6,6 +6,7 @@ import {
 } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Permission } from '../../permissions/entities/permission.entity';
+import { DataScopeEnum } from '../../../common/enums/data-scope.enum';
 
 @Entity('roles')
 export class Role extends BaseEntity {
@@ -47,6 +48,15 @@ export class Role extends BaseEntity {
     comment: 'Protected roles cannot have their name, permissions, or authority level modified',
   })
   isProtected!: boolean;
+
+  @Column({
+    name: 'data_scope',
+    type: 'enum',
+    enum: DataScopeEnum,
+    default: DataScopeEnum.SELF,
+    comment: 'Phase 1 implementation. Planned to migrate to EmployeeRole assignment table in Phase 2.',
+  })
+  dataScope!: DataScopeEnum;
 
   @ManyToMany(() => Permission, (permission) => permission.roles, {
     cascade: true,

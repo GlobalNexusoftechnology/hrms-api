@@ -17,6 +17,7 @@ import { RoleEnum } from '../../common/enums/role.enum';
 import { PermissionEnum } from '../../common/enums/permission.enum';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { CreateDepartmentDto } from './dto/create-department.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('departments')
 @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -43,8 +44,10 @@ export class DepartmentsController {
 
     @Query('search')
     search?: string,
+    
+    @CurrentUser() employee?: any,
   ) {
-    return this.departmentsService.findAll(Number(page), Number(limit), search);
+    return this.departmentsService.findAll(Number(page), Number(limit), search, employee);
   }
 
   @Permissions(PermissionEnum.DEPARTMENT_READ)
@@ -52,8 +55,10 @@ export class DepartmentsController {
   findOne(
     @Param('id', ParseUUIDPipe)
     id: string,
+
+    @CurrentUser() employee?: any,
   ) {
-    return this.departmentsService.findOne(id);
+    return this.departmentsService.findOne(id, employee);
   }
 
   @Permissions(PermissionEnum.DEPARTMENT_UPDATE)

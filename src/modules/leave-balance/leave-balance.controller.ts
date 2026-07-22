@@ -16,10 +16,10 @@ export class LeaveBalanceController {
   @Permissions(PermissionEnum.LEAVE_READ)
   @Get('leave-balance/me')
   getMyBalance(
-    @CurrentUser()
-    employee: any,
+    @CurrentUser() employee: any,
+    @Query('year') year?: number,
   ) {
-    return this.leaveBalanceService.getEmployeeBalance(employee.id);
+    return this.leaveBalanceService.getEmployeeBalance(employee.id, year);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -32,10 +32,4 @@ export class LeaveBalanceController {
     return this.leaveBalanceService.getAllBalances(query);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
-  @Permissions(PermissionEnum.LEAVE_UPDATE)
-  @Post('hr/leave-balance/run-credit')
-  runMonthlyCredit() {
-    return this.leaveBalanceService.creditMonthlyLeave();
-  }
 }

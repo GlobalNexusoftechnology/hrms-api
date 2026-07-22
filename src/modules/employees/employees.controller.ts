@@ -53,8 +53,9 @@ export class EmployeesController {
   findAll(
     @Query()
     query: GetEmployeesDto,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.employeesService.findAll(query);
+    return this.employeesService.findAll(query, currentUser);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
@@ -62,8 +63,9 @@ export class EmployeesController {
   findOne(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.employeesService.findOne(id);
+    return this.employeesService.findOne(id, currentUser);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
