@@ -415,6 +415,10 @@
 | 2026-07-22 | Team | Implemented: Shift resolution cascade (Employee -> Branch -> Organization) |
 | 2026-07-22 | Team | Added: Dedicated `PATCH /employees/:id/role` endpoint for secure Role Assignment |
 | 2026-07-22 | Team | Removed: Security vulnerability where employees could escalate roles via `UpdateEmployeeDto` |
+| 2026-07-23 | Team | Added: Career Movements module (Promotions, Demotions, Transfers) with dual-step Approval & Execute workflow |
+| 2026-07-23 | Team | Added: Global Activity Logging Interceptor with asynchronous execution and sensitive data masking |
+| 2026-07-23 | Team | Added: Technical and Business Activity logging synchronization using Correlation IDs |
+| 2026-07-23 | Team | Added: Resignations & Exit Management module with notice period enforcement and automatic login deactivation |
 
 ---
 

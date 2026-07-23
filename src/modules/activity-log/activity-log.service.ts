@@ -14,22 +14,19 @@ export class ActivityLogService {
   ) {}
 
   /**
-   * Logs a new activity.
+   * Logs a new activity asynchronously (fire-and-forget).
    */
-  async logAction(data: Partial<ActivityLog>): Promise<ActivityLog> {
-    try {
-      // Remove sensitive fields from metadata/oldValue/newValue if they exist
-      const sanitizedData = this.sanitizeSensitiveData(data);
-      const newLog = this.activityLogRepository.create(sanitizedData);
-      const savedLog = await this.activityLogRepository.save(newLog);
-      
-      return savedLog;
-    } catch (error) {
-      this.logger.error(`Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`);
-      // Re-throw or swallow depending on if you want auditing to be critical path
-      // usually audit logs should not break the main business flow if they fail
-      return data as ActivityLog; 
-    }
+  logAction(data: Partial<ActivityLog>): void {
+    setImmediate(async () => {
+      try {
+        // Remove sensitive fields from metadata/oldValue/newValue if they exist
+        const sanitizedData = this.sanitizeSensitiveData(data);
+        const newLog = this.activityLogRepository.create(sanitizedData);
+        await this.activityLogRepository.save(newLog);
+      } catch (error) {
+        this.logger.error(`Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
   }
 
   /**

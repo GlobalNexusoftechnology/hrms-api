@@ -56,6 +56,12 @@ export class ActivityLog {
   @Column({ length: 20, nullable: true })
   status?: string;
 
+  @Column({ name: 'status_code', type: 'int', nullable: true })
+  statusCode?: number;
+
+  @Column({ name: 'response_time', type: 'int', nullable: true })
+  responseTime?: number; // in milliseconds
+
   @Column({ name: 'correlation_id', type: 'uuid', nullable: true })
   correlationId?: string;
 

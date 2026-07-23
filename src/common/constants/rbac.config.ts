@@ -67,6 +67,16 @@ export const RBAC_CONFIG = {
 
     PermissionEnum.ACTIVITY_LOG_READ,
     PermissionEnum.ACTIVITY_LOG_EXPORT,
+
+    PermissionEnum.CAREER_MOVEMENT_CREATE,
+    PermissionEnum.CAREER_MOVEMENT_READ,
+    PermissionEnum.CAREER_MOVEMENT_APPROVE,
+    PermissionEnum.CAREER_MOVEMENT_EXECUTE,
+
+    PermissionEnum.RESIGNATION_CREATE,
+    PermissionEnum.RESIGNATION_READ,
+    PermissionEnum.RESIGNATION_APPROVE,
+    PermissionEnum.RESIGNATION_EXECUTE,
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],
@@ -93,6 +103,7 @@ export const RBAC_CONFIG = {
     PermissionEnum.TRAINING_READ,
     PermissionEnum.TRAINING_UPDATE,
 
-
+    PermissionEnum.RESIGNATION_CREATE,
+    PermissionEnum.RESIGNATION_READ,
   ],
 };

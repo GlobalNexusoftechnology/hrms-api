@@ -51,6 +51,12 @@ export class ActivityLogDto {
   status?: string;
 
   @ApiProperty({ nullable: true })
+  statusCode?: number;
+
+  @ApiProperty({ nullable: true })
+  responseTime?: number;
+
+  @ApiProperty({ nullable: true })
   correlationId?: string;
 
   @ApiProperty()

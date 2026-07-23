@@ -23,6 +23,8 @@ import * as QRCode from 'qrcode';
 import * as path from 'path';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { DataScopeService } from '../../common/services/data-scope.service';
+import { ActivityLogService } from '../activity-log/activity-log.service';
+import { ActivityAction } from '../activity-log/enums/activity-action.enum';
 
 @Injectable()
 export class EmployeesService {
@@ -39,6 +41,7 @@ export class EmployeesService {
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
     private readonly dataScopeService: DataScopeService,
+    private readonly activityLogService: ActivityLogService,
   ) { }
 
   async generateEmployeeCode(): Promise<string> {
@@ -188,6 +191,8 @@ export class EmployeesService {
 
       designationId: dto.designationId,
 
+      shiftId: dto.shiftId,
+
       joiningDate: dto.joiningDate,
 
       employmentType: dto.employmentType,
@@ -304,6 +309,13 @@ export class EmployeesService {
         role: {
           permissions: true,
         },
+        addresses: true,
+        emergencyContacts: true,
+        families: true,
+        educations: true,
+        experiences: true,
+        skills: true,
+        banks: true,
       },
     });
   }
@@ -450,6 +462,13 @@ export class EmployeesService {
     const queryBuilder = this.employeeRepository.createQueryBuilder('employee')
       .leftJoinAndSelect('employee.role', 'role')
       .leftJoinAndSelect('role.permissions', 'permissions')
+      .leftJoinAndSelect('employee.addresses', 'addresses')
+      .leftJoinAndSelect('employee.emergencyContacts', 'emergencyContacts')
+      .leftJoinAndSelect('employee.families', 'families')
+      .leftJoinAndSelect('employee.educations', 'educations')
+      .leftJoinAndSelect('employee.experiences', 'experiences')
+      .leftJoinAndSelect('employee.skills', 'skills')
+      .leftJoinAndSelect('employee.banks', 'banks')
       .where('employee.id = :id', { id });
 
     if (currentUser) {

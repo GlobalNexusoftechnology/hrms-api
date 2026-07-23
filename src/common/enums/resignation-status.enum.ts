@@ -1,0 +1,7 @@
+export enum ResignationStatusEnum {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  WITHDRAWN = 'WITHDRAWN',
+  EXECUTED = 'EXECUTED',
+}

@@ -24,6 +24,14 @@ import { AttendanceCorrection } from '../../attendance/entities/correction.entit
 import { SalaryStructure } from '../../salary-structure/entities/salary-structure.entity';
 import { Branch } from '../../organization/entities/branch.entity';
 import { Shift } from '../../shift/entities/shift.entity';
+import { EmployeeAddress } from '../../employee-address/entities/employee-address.entity';
+import { EmployeeEmergencyContact } from '../../employee-emergency-contact/entities/employee-emergency-contact.entity';
+import { EmployeeFamily } from '../../employee-family/entities/employee-family.entity';
+import { EmployeeEducation } from '../../employee-education/entities/employee-education.entity';
+import { EmployeeExperience } from '../../employee-experience/entities/employee-experience.entity';
+import { EmployeeSkill } from '../../employee-skill/entities/employee-skill.entity';
+import { EmployeeBank } from '../../employee-bank/entities/employee-bank.entity';
+import { EmployeeCareerMovement } from '../../career-movements/entities/career-movement.entity';
 
 @Entity('employees')
 export class Employee {
@@ -182,6 +190,30 @@ export class Employee {
 
   @OneToMany(() => Attendance, (attendance) => attendance.employee)
   attendances!: Attendance[];
+
+  @OneToMany(() => EmployeeAddress, (address) => address.employee)
+  addresses!: EmployeeAddress[];
+
+  @OneToMany(() => EmployeeEmergencyContact, (contact) => contact.employee)
+  emergencyContacts!: EmployeeEmergencyContact[];
+
+  @OneToMany(() => EmployeeFamily, (family) => family.employee)
+  families!: EmployeeFamily[];
+
+  @OneToMany(() => EmployeeEducation, (education) => education.employee)
+  educations!: EmployeeEducation[];
+
+  @OneToMany(() => EmployeeExperience, (experience) => experience.employee)
+  experiences!: EmployeeExperience[];
+
+  @OneToMany(() => EmployeeSkill, (skill) => skill.employee)
+  skills!: EmployeeSkill[];
+
+  @OneToMany(() => EmployeeBank, (bank) => bank.employee)
+  banks!: EmployeeBank[];
+
+  @OneToMany(() => EmployeeCareerMovement, (movement) => movement.employee)
+  careerMovements!: EmployeeCareerMovement[];
 
   @OneToMany(() => AttendanceCorrection, (correction) => correction.employee)
   attendanceCorrections!: AttendanceCorrection[];

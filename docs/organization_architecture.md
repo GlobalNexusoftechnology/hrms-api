@@ -71,6 +71,15 @@ Payroll Domain
 ├── Salary Component
 ├── Salary Template
 ├── Payroll Config
+│
+Employee Lifecycle Domain
+│
+├── Career Movements (Promotions/Transfers)
+├── Resignations & Exits
+│
+Auditing Domain
+│
+├── Global Activity Logs
 ```
 
 ---

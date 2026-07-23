@@ -106,4 +106,14 @@ export enum PermissionEnum {
   ACTIVITY_LOG_READ = 'activity_log.read',
   ACTIVITY_LOG_EXPORT = 'activity_log.export',
   ACTIVITY_LOG_DELETE = 'activity_log.delete',
+
+  CAREER_MOVEMENT_CREATE = 'career_movement.create',
+  CAREER_MOVEMENT_READ = 'career_movement.read',
+  CAREER_MOVEMENT_APPROVE = 'career_movement.approve',
+  CAREER_MOVEMENT_EXECUTE = 'career_movement.execute',
+  // Resignations
+  RESIGNATION_READ = 'resignation.read',
+  RESIGNATION_CREATE = 'resignation.create',
+  RESIGNATION_APPROVE = 'resignation.approve',
+  RESIGNATION_EXECUTE = 'resignation.execute',
 }

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { RolesModule } from './modules/roles/roles.module';
@@ -13,6 +13,7 @@ import { CommonModule } from './common/common.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { ActivityLogInterceptor } from './common/interceptors/activity-log.interceptor';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { DesignationsModule } from './modules/designations/designations.module';
 import { EmployeeDocumentsModule } from './modules/employee-documents/employee-documents.module';
@@ -48,6 +49,8 @@ import { EmployeeEducationModule } from './modules/employee-education/employee-e
 import { EmployeeExperienceModule } from './modules/employee-experience/employee-experience.module';
 import { EmployeeSkillModule } from './modules/employee-skill/employee-skill.module';
 import { EmployeeBankModule } from './modules/employee-bank/employee-bank.module';
+import { CareerMovementsModule } from './modules/career-movements/career-movements.module';
+import { ResignationsModule } from './modules/resignations/resignations.module';
 
 @Module({
   imports: [
@@ -114,6 +117,8 @@ import { EmployeeBankModule } from './modules/employee-bank/employee-bank.module
     EmployeeExperienceModule,
     EmployeeSkillModule,
     EmployeeBankModule,
+    CareerMovementsModule,
+    ResignationsModule,
   ],
 
   providers: [
@@ -133,6 +138,10 @@ import { EmployeeBankModule } from './modules/employee-bank/employee-bank.module
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ActivityLogInterceptor,
     },
   ],
 })
