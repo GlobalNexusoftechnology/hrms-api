@@ -12,6 +12,9 @@ import {
 import { GenderEnum } from '../../../common/enums/gender.enum';
 
 import { EmploymentTypeEnum } from '../../../common/enums/employment-type.enum';
+import { WorkLocationEnum } from '../../../common/enums/work-location.enum';
+import { MaritalStatusEnum } from '../../../common/enums/marital-status.enum';
+import { EmploymentStatusEnum } from '../../../common/enums/employment-status.enum';
 
 export class UpdateEmployeeDto {
   @IsOptional()
@@ -23,8 +26,20 @@ export class UpdateEmployeeDto {
   lastName?: string;
 
   @IsOptional()
+  @IsString()
+  middleName?: string;
+
+  @IsOptional()
+  @IsString()
+  displayName?: string;
+
+  @IsOptional()
   @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsEmail()
+  personalEmail?: string;
 
   @IsOptional()
   @IsString()
@@ -32,7 +47,7 @@ export class UpdateEmployeeDto {
 
   @IsOptional()
   @IsString()
-  currentAddress?: string;
+  alternatePhone?: string;
 
 
   @IsOptional()
@@ -58,6 +73,18 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsEnum(EmploymentTypeEnum)
   employmentType?: EmploymentTypeEnum;
+
+  @IsOptional()
+  @IsEnum(EmploymentStatusEnum)
+  employmentStatus?: EmploymentStatusEnum;
+
+  @IsOptional()
+  @IsEnum(WorkLocationEnum)
+  workLocation?: WorkLocationEnum;
+
+  @IsOptional()
+  @IsEnum(MaritalStatusEnum)
+  maritalStatus?: MaritalStatusEnum;
 
   @IsOptional()
   @IsEnum(GenderEnum)

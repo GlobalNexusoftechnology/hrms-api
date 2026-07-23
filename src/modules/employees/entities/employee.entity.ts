@@ -15,6 +15,9 @@ import { Role } from '../../roles/entities/role.entity';
 import { Designation } from '../../designations/entities/designation.entity';
 import { EmploymentTypeEnum } from '../../../common/enums/employment-type.enum';
 import { GenderEnum } from '../../../common/enums/gender.enum';
+import { WorkLocationEnum } from '../../../common/enums/work-location.enum';
+import { MaritalStatusEnum } from '../../../common/enums/marital-status.enum';
+import { EmploymentStatusEnum } from '../../../common/enums/employment-status.enum';
 import { EmployeeDocument } from '../../employee-documents/entities/employee-document.entity';
 import { Attendance } from '../../attendance/entities/attendance.entity';
 import { AttendanceCorrection } from '../../attendance/entities/correction.entity';
@@ -39,9 +42,23 @@ export class Employee {
   firstName!: string;
 
   @Column({
+    type: 'varchar',
+    name: 'middle_name',
+    nullable: true,
+  })
+  middleName: string | null = null;
+
+  @Column({
     name: 'last_name',
   })
   lastName!: string;
+
+  @Column({
+    type: 'varchar',
+    name: 'display_name',
+    nullable: true,
+  })
+  displayName: string | null = null;
 
   @Column({
     unique: true,
@@ -49,9 +66,23 @@ export class Employee {
   email!: string;
 
   @Column({
+    type: 'varchar',
+    name: 'personal_email',
+    nullable: true,
+  })
+  personalEmail: string | null = null;
+
+  @Column({
     unique: true,
   })
   mobile!: string;
+
+  @Column({
+    type: 'varchar',
+    name: 'alternate_phone',
+    nullable: true,
+  })
+  alternatePhone: string | null = null;
 
   @Column({
     select: false,
@@ -59,11 +90,28 @@ export class Employee {
   password!: string;
 
   @Column({
-    type: 'text',
-    nullable: true,
-    name: 'current_address',
+    type: 'enum',
+    enum: EmploymentStatusEnum,
+    name: 'employment_status',
+    default: EmploymentStatusEnum.ACTIVE,
   })
-  currentAddress: string | null = null;
+  employmentStatus!: EmploymentStatusEnum;
+
+  @Column({
+    type: 'enum',
+    enum: WorkLocationEnum,
+    name: 'work_location',
+    nullable: true,
+  })
+  workLocation!: WorkLocationEnum | null;
+
+  @Column({
+    type: 'enum',
+    enum: MaritalStatusEnum,
+    name: 'marital_status',
+    nullable: true,
+  })
+  maritalStatus!: MaritalStatusEnum | null;
 
   @Column({
     type: 'text',

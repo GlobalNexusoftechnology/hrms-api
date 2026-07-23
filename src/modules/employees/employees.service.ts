@@ -42,24 +42,26 @@ export class EmployeesService {
   ) { }
 
   async generateEmployeeCode(): Promise<string> {
-    const latestEmployee = await this.employeeRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 1,
+    const allEmployees = await this.employeeRepository.find({
+      select: { employeeCode: true },
+      withDeleted: true,
     });
 
-    let nextNumber = 1;
+    let maxNumber = 0;
 
-    if (latestEmployee.length > 0 && latestEmployee[0].employeeCode) {
-      const lastNumber = Number.parseInt(
-        latestEmployee[0].employeeCode.split('-')[1],
-        10,
-      );
-
-      if (!Number.isNaN(lastNumber)) {
-        nextNumber = lastNumber + 1;
+    for (const emp of allEmployees) {
+      if (emp.employeeCode && emp.employeeCode.startsWith('EMP-')) {
+        const parts = emp.employeeCode.split('-');
+        if (parts.length > 1) {
+          const num = Number.parseInt(parts[1], 10);
+          if (!Number.isNaN(num) && num > maxNumber) {
+            maxNumber = num;
+          }
+        }
       }
     }
 
+    const nextNumber = maxNumber + 1;
     return `EMP-${String(nextNumber).padStart(3, '0')}`;
   }
 
@@ -164,11 +166,17 @@ export class EmployeesService {
 
       lastName: dto.lastName,
 
+      middleName: dto.middleName,
+
+      displayName: dto.displayName,
+
       email: dto.email,
+
+      personalEmail: dto.personalEmail,
 
       mobile: dto.mobile,
 
-      currentAddress: dto.currentAddress,
+      alternatePhone: dto.alternatePhone,
 
       password: hashedPassword,
 
@@ -183,6 +191,12 @@ export class EmployeesService {
       joiningDate: dto.joiningDate,
 
       employmentType: dto.employmentType,
+
+      employmentStatus: dto.employmentStatus,
+
+      workLocation: dto.workLocation,
+
+      maritalStatus: dto.maritalStatus,
 
       gender: dto.gender,
 
@@ -685,7 +699,7 @@ export class EmployeesService {
 
     ctx.fillText(`DOB: ${employee.dateOfBirth ?? 'N/A'}`, 220, 330);
 
-    ctx.fillText(`Address: ${employee.currentAddress ?? 'N/A'}`, 220, 370);
+    ctx.fillText(`Mobile: ${employee.mobile ?? 'N/A'}`, 220, 370);
 
     res.setHeader('Content-Type', 'image/png');
 

@@ -41,6 +41,13 @@ import { LeavePolicyModule } from './modules/leave-policy/leave-policy.module';
 import { LeaveLedgerModule } from './modules/leave-ledger/leave-ledger.module';
 import { LeaveEngineModule } from './modules/leave-engine/leave-engine.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
+import { EmployeeAddressModule } from './modules/employee-address/employee-address.module';
+import { EmployeeEmergencyContactModule } from './modules/employee-emergency-contact/employee-emergency-contact.module';
+import { EmployeeFamilyModule } from './modules/employee-family/employee-family.module';
+import { EmployeeEducationModule } from './modules/employee-education/employee-education.module';
+import { EmployeeExperienceModule } from './modules/employee-experience/employee-experience.module';
+import { EmployeeSkillModule } from './modules/employee-skill/employee-skill.module';
+import { EmployeeBankModule } from './modules/employee-bank/employee-bank.module';
 
 @Module({
   imports: [
@@ -100,6 +107,13 @@ import { ActivityLogModule } from './modules/activity-log/activity-log.module';
     LeaveLedgerModule,
     LeaveEngineModule,
     ActivityLogModule,
+    EmployeeAddressModule,
+    EmployeeEmergencyContactModule,
+    EmployeeFamilyModule,
+    EmployeeEducationModule,
+    EmployeeExperienceModule,
+    EmployeeSkillModule,
+    EmployeeBankModule,
   ],
 
   providers: [

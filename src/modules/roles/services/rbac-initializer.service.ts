@@ -3,6 +3,7 @@ import { QueryRunner } from 'typeorm';
 import { Role } from '../entities/role.entity';
 import { Permission } from '../../permissions/entities/permission.entity';
 import { PermissionEnum } from '../../../common/enums/permission.enum';
+import { DataScopeEnum } from '../../../common/enums/data-scope.enum';
 import { MAX_AUTHORITY_LEVEL } from '../constants/role.constants';
 
 @Injectable()
@@ -46,6 +47,7 @@ export class RBACInitializerService {
         isProtected: true,
         isSystem: true,
         authorityLevel: MAX_AUTHORITY_LEVEL,
+        dataScope: DataScopeEnum.ORGANIZATION,
       });
       await queryRunner.manager.save(Role, superAdminRole);
       this.logger.log('RBAC Initialization: SUPER_ADMIN role created.');
@@ -61,6 +63,10 @@ export class RBACInitializerService {
       }
       if (superAdminRole.authorityLevel !== MAX_AUTHORITY_LEVEL) {
         superAdminRole.authorityLevel = MAX_AUTHORITY_LEVEL;
+        needsSave = true;
+      }
+      if (superAdminRole.dataScope !== DataScopeEnum.ORGANIZATION) {
+        superAdminRole.dataScope = DataScopeEnum.ORGANIZATION;
         needsSave = true;
       }
       if (needsSave) {
