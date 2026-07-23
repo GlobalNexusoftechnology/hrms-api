@@ -288,23 +288,22 @@
 ## Phase 2.2 — Attendance Foundation
 ## ─────────────────────────────────────
 
-> **Status:** ⏳ Pending
-> **Target Start:** TBD
+> **Status:** ✅ Complete
+> **Completed On:** 2026-07-22
 
 | Item | File | Status | Date |
 |---|---|---|---|
-| `Shift` entity (name, startTime, endTime, orgId, branchId) | `src/modules/attendance/entities/shift.entity.ts` | ⏳ Pending | — |
-| `Break` entity (name, duration, linked to Shift) | `src/modules/attendance/entities/break.entity.ts` | ⏳ Pending | — |
-| `WorkingDayPolicy` entity (which days are working days) | `src/modules/attendance/entities/working-day-policy.entity.ts` | ⏳ Pending | — |
+| `Shift` entity (configuration-driven timings and breaks) | `src/modules/shift/entities/shift.entity.ts` | ✅ Done | 2026-07-22 |
+| `Break` entity | — | ❌ Skipped (Merged into Shift) | 2026-07-22 |
+| Shift Service + Controller + DTOs | `src/modules/shift/` | ✅ Done | 2026-07-22 |
+| Cascading Shift Assignment (Org -> Branch -> Employee) | `Employee`, `Branch`, `Organization` entities & DTOs | ✅ Done | 2026-07-22 |
+| Attendance Validation Service (dynamic window checks) | `src/modules/attendance/Service/attendance-validation.service.ts` | ✅ Done | 2026-07-22 |
+| Refactored Attendance Service (removed hardcoded rules) | `src/modules/attendance/Service/attendance.service.ts` | ✅ Done | 2026-07-22 |
+| `WorkingDayPolicy` entity | `src/modules/attendance/entities/working-day-policy.entity.ts` | ⏳ Pending | — |
 | `HolidayCalendar` entity (org-scoped, year-based) | to be determined | ⏳ Pending | — |
 | `AttendanceConfiguration` entity (late mark grace, overtime rules, etc.) | `src/modules/attendance/entities/attendance-config.entity.ts` | ⏳ Pending | — |
-| Shift Service + Controller + DTOs | — | ⏳ Pending | — |
-| Break Service + Controller + DTOs | — | ⏳ Pending | — |
-| Working Day Policy Service + Controller + DTOs | — | ⏳ Pending | — |
-| Attendance Config Service + Controller + DTOs | — | ⏳ Pending | — |
-| Full RBAC (Roles + Permissions populated) | — | ⏳ Pending | — |
-| Admin User creation from bootstrap | — | ⏳ Pending | — |
-| Unit Tests | — | ⏳ Pending | — |
+| Full RBAC (Roles + Permissions populated) | `src/modules/roles/` | ✅ Done | 2026-07-22 |
+| Dedicated Role Assignment API (Security fix) | `src/modules/employees/employees.controller.ts` | ✅ Done | 2026-07-22 |
 
 ---
 
@@ -312,15 +311,18 @@
 ## Phase 2.3 — Leave Foundation
 ## ─────────────────────────────────────
 
-> **Status:** ⏳ Pending
-> **Target Start:** After Phase 2.2
+> **Status:** 🔄 In Progress
+> **Target Start:** Started
 
 | Item | File | Status | Date |
 |---|---|---|---|
-| `LeaveType` entity (CL, SL, PL, etc. — org-scoped) | — | ⏳ Pending | — |
+| `LeaveType` entity (CL, SL, PL, org-scoped/global) | `src/modules/leave-type/entities/leave-type.entity.ts` | ✅ Done | 2026-07-22 |
+| `LeaveLedger` entity (event-sourced balance engine) | `src/modules/leave-ledger/entities/leave-ledger.entity.ts` | ✅ Done | 2026-07-22 |
 | `LeaveRules` entity (max days, carry-forward, encashment rules) | — | ⏳ Pending | — |
 | `LeavePolicy` entity (maps LeaveType + Rules together) | — | ⏳ Pending | — |
-| Leave Type Service + Controller + DTOs | — | ⏳ Pending | — |
+| Leave Type Service + Controller + DTOs | `src/modules/leave-type/` | ✅ Done | 2026-07-22 |
+| Leave Ledger Service + Controller + DTOs | `src/modules/leave-ledger/` | ✅ Done | 2026-07-22 |
+| Refactored LeaveBalance calculation logic | `src/modules/leave-balance/leave-balance.service.ts` | ✅ Done | 2026-07-22 |
 | Leave Rules Service + Controller + DTOs | — | ⏳ Pending | — |
 | Leave Policy Service + Controller + DTOs | — | ⏳ Pending | — |
 | Unit Tests | — | ⏳ Pending | — |
@@ -404,6 +406,15 @@
 | 2026-07-21 | Team | Added: Unique constraint database error (23505) handling in RolesService and BranchService (returns 409 Conflict) |
 | 2026-07-21 | Team | Removed: updatedByUserId population on entity creation across services |
 | 2026-07-21 | Team | Added: seed:permissions command and sync-permissions.ts script to allow dynamic permission seeding without static roles |
+| 2026-07-22 | Team | Added: LeaveType module with GLOBAL/ORGANIZATION scope capability |
+| 2026-07-22 | Team | Added: LeaveLedger module (Event-sourcing approach for leave balances) |
+| 2026-07-22 | Team | Refactored: LeaveBalance module to dynamically calculate totals from LeaveLedger |
+| 2026-07-22 | Team | Added: Shift module with dynamic configuration instead of hardcoded attendance checks |
+| 2026-07-22 | Team | Refactored: AttendanceValidationService using Shift constraints (earliestCheckIn, lateGrace) |
+| 2026-07-22 | Team | Replaced: Time-bound breaks with flexible `totalBreakMinutes` + `includeBreakInWorkingHours` |
+| 2026-07-22 | Team | Implemented: Shift resolution cascade (Employee -> Branch -> Organization) |
+| 2026-07-22 | Team | Added: Dedicated `PATCH /employees/:id/role` endpoint for secure Role Assignment |
+| 2026-07-22 | Team | Removed: Security vulnerability where employees could escalate roles via `UpdateEmployeeDto` |
 
 ---
 

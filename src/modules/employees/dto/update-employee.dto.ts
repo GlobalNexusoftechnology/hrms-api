@@ -34,9 +34,6 @@ export class UpdateEmployeeDto {
   @IsString()
   currentAddress?: string;
 
-  @IsOptional()
-  @IsUUID()
-  roleId?: string;
 
   @IsOptional()
   @IsUUID()

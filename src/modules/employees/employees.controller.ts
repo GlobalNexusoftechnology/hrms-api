@@ -16,6 +16,7 @@ import {
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { AssignRoleDto } from './dto/assign-role.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { GetEmployeesDto } from './dto/get-employees.dto';
@@ -92,6 +93,16 @@ export class EmployeesController {
     }
     // 5. Proceed with update
     return this.employeesService.update(id, dto);
+  }
+
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  @Permissions('role.assign')
+  @Patch(':id/role')
+  assignRole(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignRoleDto,
+  ) {
+    return this.employeesService.assignRole(id, dto.roleId);
   }
 
   // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)

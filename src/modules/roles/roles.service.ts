@@ -125,4 +125,31 @@ export class RolesService {
     await this.roleRepository.save(role);
     this.logger.log(`AUDIT: Role deleted [ID: ${id}] by User [${actingUser.id}]`);
   }
+
+  async restore(id: string, actingUser: ActingUser) {
+    const role = await this.roleRepository.findOne({
+      where: { id },
+      withDeleted: true,
+      relations: { permissions: true },
+    });
+
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${id} not found`);
+    }
+
+    if (!role.deletedAt) {
+      throw new ConflictException(`Role with ID ${id} is not deleted`);
+    }
+
+    if (role.authorityLevel >= actingUser.authorityLevel) {
+      throw new ForbiddenException('Cannot restore a role with an authority level equal to or greater than your own.');
+    }
+
+    role.deletedAt = null;
+    role.updatedByUserId = actingUser.id;
+    
+    const savedRole = await this.roleRepository.save(role);
+    this.logger.log(`AUDIT: Role restored [ID: ${id}] by User [${actingUser.id}]`);
+    return savedRole;
+  }
 }

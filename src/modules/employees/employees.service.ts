@@ -216,6 +216,36 @@ export class EmployeesService {
     }
   }
 
+  async assignRole(id: string, roleId: string) {
+    const employee = await this.employeeRepository.findOne({
+      where: { id, deletedAt: IsNull() }
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    const role = await this.roleRepository.findOne({
+      where: { id: roleId, deletedAt: IsNull(), isActive: true }
+    });
+
+    if (!role) {
+      throw new NotFoundException('Role not found or is inactive');
+    }
+
+    employee.roleId = roleId;
+    await this.employeeRepository.save(employee);
+
+    // Optional: You could invalidate the user's refresh tokens here to force a re-login
+    // await this.refreshTokenRepository.delete({ employeeId: id });
+
+    return {
+      message: 'Role assigned successfully',
+      employeeId: employee.id,
+      roleId: role.id
+    };
+  }
+
   async findByIdentifier(identifier: string) {
     return this.employeeRepository.findOne({
       where: [

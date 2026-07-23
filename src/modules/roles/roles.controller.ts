@@ -47,4 +47,11 @@ export class RolesController {
         const actingUser: ActingUser = { id: user.id, authorityLevel: user.role?.authorityLevel || 0 };
         return this.rolesService.remove(id, actingUser);
     }
+
+    @Post(':id/restore')
+    @ApiOperation({ summary: 'Restore a deleted role' })
+    async restore(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: Employee) {
+        const actingUser: ActingUser = { id: user.id, authorityLevel: user.role?.authorityLevel || 0 };
+        return this.rolesService.restore(id, actingUser);
+    }
 }
