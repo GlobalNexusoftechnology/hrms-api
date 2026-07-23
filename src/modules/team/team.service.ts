@@ -121,7 +121,7 @@ export class TeamService {
       });
     }
 
-    qb.orderBy('team.created_at', 'DESC');
+    qb.orderBy('team.createdAt', 'DESC');
     qb.skip((page - 1) * limit);
     qb.take(limit);
 

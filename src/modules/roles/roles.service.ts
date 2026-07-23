@@ -6,6 +6,8 @@ import { Role } from './entities/role.entity';
 import { Permission } from '../permissions/entities/permission.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { ActivityLogService } from '../activity-log/activity-log.service';
+import { ActivityAction } from '../activity-log/enums/activity-action.enum';
 
 export interface ActingUser {
   id: string;
@@ -21,6 +23,7 @@ export class RolesService {
     private readonly roleRepository: Repository<Role>,
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
+    private readonly activityLogService: ActivityLogService,
   ) { }
 
   async create(createRoleDto: CreateRoleDto, actingUser: ActingUser) {
@@ -44,7 +47,15 @@ export class RolesService {
 
     try {
       const savedRole = await this.roleRepository.save(role);
-      this.logger.log(`AUDIT: Role created [ID: ${savedRole.id}, Name: ${savedRole.name}] by User [${actingUser.id}]`);
+      await this.activityLogService.logAction({
+        userId: actingUser.id,
+        module: 'RBAC',
+        action: ActivityAction.CREATE,
+        description: `Created Role "${savedRole.name}"`,
+        entityType: 'Role',
+        entityId: savedRole.id,
+        newValue: savedRole as unknown as Record<string, any>,
+      });
       return savedRole;
     } catch (error: any) {
       if (error.code === '23505') {
@@ -105,7 +116,15 @@ export class RolesService {
     role.updatedByUserId = actingUser.id;
 
     const savedRole = await this.roleRepository.save(role);
-    this.logger.log(`AUDIT: Role updated [ID: ${savedRole.id}] by User [${actingUser.id}]`);
+    await this.activityLogService.logAction({
+      userId: actingUser.id,
+      module: 'RBAC',
+      action: ActivityAction.UPDATE,
+      description: `Updated Role "${savedRole.name}"`,
+      entityType: 'Role',
+      entityId: savedRole.id,
+      newValue: savedRole as unknown as Record<string, any>,
+    });
     return savedRole;
   }
 
@@ -123,7 +142,14 @@ export class RolesService {
     role.deletedAt = new Date();
     role.updatedByUserId = actingUser.id;
     await this.roleRepository.save(role);
-    this.logger.log(`AUDIT: Role deleted [ID: ${id}] by User [${actingUser.id}]`);
+    await this.activityLogService.logAction({
+      userId: actingUser.id,
+      module: 'RBAC',
+      action: ActivityAction.DELETE,
+      description: `Deleted Role "${role.name}"`,
+      entityType: 'Role',
+      entityId: role.id,
+    });
   }
 
   async restore(id: string, actingUser: ActingUser) {
@@ -149,7 +175,14 @@ export class RolesService {
     role.updatedByUserId = actingUser.id;
     
     const savedRole = await this.roleRepository.save(role);
-    this.logger.log(`AUDIT: Role restored [ID: ${id}] by User [${actingUser.id}]`);
+    await this.activityLogService.logAction({
+      userId: actingUser.id,
+      module: 'RBAC',
+      action: ActivityAction.UPDATE,
+      description: `Restored Role "${savedRole.name}"`,
+      entityType: 'Role',
+      entityId: savedRole.id,
+    });
     return savedRole;
   }
 }

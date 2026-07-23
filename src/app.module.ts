@@ -40,6 +40,7 @@ import { LeaveTypeModule } from './modules/leave-type/leave-type.module';
 import { LeavePolicyModule } from './modules/leave-policy/leave-policy.module';
 import { LeaveLedgerModule } from './modules/leave-ledger/leave-ledger.module';
 import { LeaveEngineModule } from './modules/leave-engine/leave-engine.module';
+import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { LeaveEngineModule } from './modules/leave-engine/leave-engine.module';
     LeavePolicyModule,
     LeaveLedgerModule,
     LeaveEngineModule,
+    ActivityLogModule,
   ],
 
   providers: [

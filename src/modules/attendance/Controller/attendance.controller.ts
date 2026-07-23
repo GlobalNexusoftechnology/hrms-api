@@ -21,7 +21,7 @@ import { CheckInDto } from '../dto/check-In.dto';
 
 import { CheckOutDto } from '../dto/check-out.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { RoleEnum } from 'src/common/enums/role.enum';
+import { RoleEnum } from '../../../common/enums/role.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('attendance')

@@ -64,6 +64,9 @@ export const RBAC_CONFIG = {
     PermissionEnum.INTERVIEW_READ,
     PermissionEnum.INTERVIEW_UPDATE,
     PermissionEnum.INTERVIEW_DELETE,
+
+    PermissionEnum.ACTIVITY_LOG_READ,
+    PermissionEnum.ACTIVITY_LOG_EXPORT,
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],

@@ -102,4 +102,8 @@ export enum PermissionEnum {
   ASSIGN_ROLE_READ = 'assign_role.read',
   ASSIGN_ROLE_UPDATE = 'assign_role.update',
   ASSIGN_ROLE_DELETE = 'assign_role.delete', 
+
+  ACTIVITY_LOG_READ = 'activity_log.read',
+  ACTIVITY_LOG_EXPORT = 'activity_log.export',
+  ACTIVITY_LOG_DELETE = 'activity_log.delete',
 }
