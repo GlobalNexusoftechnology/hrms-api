@@ -6,16 +6,20 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionEnum } from '../../common/enums/permission.enum';
+import { using } from 'rxjs';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 // import { RolesGuard } from '../../common/guards/roles.guard';
 
 
 @ApiTags('Activity Logs')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('activity-log')
-@UseGuards(JwtAuthGuard,PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ActivityLogController {
-  constructor(private readonly activityLogService: ActivityLogService) {}
+  constructor(private readonly activityLogService: ActivityLogService) { }
 
+  @Permissions(PermissionEnum.ACTIVITY_LOG_READ,)
   @Get()
   @Permissions(PermissionEnum.ACTIVITY_LOG_READ,)
   @ApiOperation({ summary: 'Search and filter activity logs' })

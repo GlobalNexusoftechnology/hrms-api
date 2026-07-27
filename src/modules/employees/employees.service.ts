@@ -317,6 +317,9 @@ export class EmployeesService {
         experiences: true,
         skills: true,
         banks: true,
+        department: true,
+        designation: true,
+        branch: true,
       },
     });
   }
@@ -470,6 +473,9 @@ export class EmployeesService {
       .leftJoinAndSelect('employee.experiences', 'experiences')
       .leftJoinAndSelect('employee.skills', 'skills')
       .leftJoinAndSelect('employee.banks', 'banks')
+      .leftJoinAndSelect('employee.department', 'department')
+      .leftJoinAndSelect('employee.designation', 'designation')
+      .leftJoinAndSelect('employee.branch', 'branch')
       .where('employee.id = :id', { id });
 
     if (currentUser) {

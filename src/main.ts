@@ -69,6 +69,7 @@ async function bootstrap() {
   app.use(
     helmet({
       contentSecurityPolicy: false, // Disables CSP so Swagger UI assets load without blockages
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
 
