@@ -59,7 +59,6 @@ export class PayrollController {
     );
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.PAYROLL_READ)
   @Get('hr/payroll')
   findAll(

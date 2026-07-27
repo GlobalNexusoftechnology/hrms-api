@@ -15,12 +15,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('interview')
 export class InterviewController {
   constructor(private readonly interviewService: InterviewService) {}
 
   // ------------------- PUBLIC ENDPOINTS -------------------
+  @Public()
   @Get('public/jobs')
   getPublicJobs() {
     // Ideally this filters for JobStatusEnum.OPEN in the service,
@@ -28,6 +30,7 @@ export class InterviewController {
     return this.interviewService.getJobPostings();
   }
 
+  @Public()
   @Get('public/jobs/:id')
   getPublicJob(
     @Param('id', ParseUUIDPipe) id: string,
@@ -35,6 +38,7 @@ export class InterviewController {
     return this.interviewService.getJobPosting(id);
   }
 
+  @Public()
   @Post('public/jobs/:id/apply')
   applyToJob(
     @Param('id', ParseUUIDPipe) id: string,

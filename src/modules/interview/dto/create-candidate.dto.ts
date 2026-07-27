@@ -1,6 +1,7 @@
 import { IsEmail, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateCandidateDto {
+  @IsOptional()
   @IsUUID()
   jobId!: string;
 

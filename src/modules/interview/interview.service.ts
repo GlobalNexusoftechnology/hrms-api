@@ -90,20 +90,27 @@ export class InterviewService {
     const job = await this.jobRepo.findOne({ where: { id: dto.jobId } });
     if (!job) throw new NotFoundException('Job posting not found');
 
-    let candidate = await this.candidateRepo.findOne({ where: { email: dto.email } });
+    // 1. Validate if Email or Mobile exists in Employee records
+    const employeeExists = await this.employeeRepo.findOne({
+      where: [{ email: dto.email }, { mobile: dto.mobile }],
+    });
+    if (employeeExists) {
+      throw new ConflictException('This email or mobile number already exists in the Employee records.');
+    }
+
+    // 2. Find or Create Candidate (can apply to multiple jobs)
+    let candidate = await this.candidateRepo.findOne({
+      where: [{ email: dto.email }, { mobile: dto.mobile }] 
+    });
     
     if (!candidate) {
-      const employeeExists = await this.employeeRepo.findOne({
-        where: [{ email: dto.email }, { mobile: dto.mobile }],
-      });
-      if (employeeExists) throw new ConflictException('An employee with this email or mobile already exists');
-
       candidate = this.candidateRepo.create(dto);
       candidate = await this.candidateRepo.save(candidate);
     } else {
       Object.assign(candidate, {
         firstName: dto.firstName,
         lastName: dto.lastName,
+        email: dto.email,
         mobile: dto.mobile,
         resumeUrl: dto.resumeUrl || candidate.resumeUrl,
         experience: dto.experience || candidate.experience,
@@ -117,12 +124,16 @@ export class InterviewService {
       candidate = await this.candidateRepo.save(candidate);
     }
 
+    // 3. Validate if Candidate already applied to this specific Job
     const existingApp = await this.applicationRepo.findOne({
       where: { candidateId: candidate.id, jobId: job.id }
     });
 
-    if (existingApp) throw new ConflictException('Candidate already applied to this job');
+    if (existingApp) {
+      throw new ConflictException('You have already applied for this specific job posting.');
+    }
 
+    // 4. Create Application
     const application = this.applicationRepo.create({
       candidateId: candidate.id,
       jobId: job.id,

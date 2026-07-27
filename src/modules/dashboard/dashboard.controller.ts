@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { DataScopeEnum } from '../../common/enums/data-scope.enum';
 
 import { DashboardService } from './dashboard.service';
 
@@ -21,20 +22,22 @@ export class DashboardController {
     @CurrentUser()
     user: any,
   ) {
-    const role = user.role?.name;
+    const scope = user.role?.dataScope;
+    const permissions = user.role?.permissions?.map((p: any) => p.name) || [];
 
-    switch (role) {
-      case 'SUPER_ADMIN':
-        return this.dashboardService.getSuperAdminDashboard();
-
-      case 'HR':
-        return this.dashboardService.getHrDashboard();
-
-      case 'EMPLOYEE':
-        return this.dashboardService.getEmployeeDashboard(user.id);
-
-      default:
-        throw new Error('Invalid role');
+    if (scope === DataScopeEnum.ORGANIZATION || permissions.includes('admin_dashboard.read')) {
+      return this.dashboardService.getSuperAdminDashboard();
     }
+
+    if (
+      scope === DataScopeEnum.BRANCH ||
+      scope === DataScopeEnum.DEPARTMENT ||
+      permissions.includes('hr_dashboard.read')
+    ) {
+      return this.dashboardService.getHrDashboard(user);
+    }
+
+    // Default to the standard employee dashboard for custom roles like Branch Manager
+    return this.dashboardService.getEmployeeDashboard(user.id);
   }
 }

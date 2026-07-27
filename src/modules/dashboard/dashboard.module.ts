@@ -19,9 +19,13 @@ import { Leave } from '../attendance/entities/leave.entity';
 import { Payroll } from '../payroll/entities/payroll.entity';
 import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
 import { Holiday } from '../holiday/entities/holiday.entity';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
+    CacheModule.register({
+      ttl: 15 * 60 * 1000, // 15 minutes
+    }),
     TypeOrmModule.forFeature([
       Employee,
       Department,

@@ -48,7 +48,6 @@ export class EmployeesController {
 
   // @Public()
   // @Permissions(PermissionEnum.EMPLOYEE_READ)
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   findAll(
