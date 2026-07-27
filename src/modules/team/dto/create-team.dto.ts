@@ -23,4 +23,12 @@ export class CreateTeamDto {
   @IsOptional()
   @IsUUID()
   teamLeadId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  organizationId?: string;
 }

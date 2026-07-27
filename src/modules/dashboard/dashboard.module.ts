@@ -12,7 +12,7 @@ import { Department } from '../departments/entities/department.entity';
 
 import { Attendance } from '../attendance/entities/attendance.entity';
 
-import { Candidate } from '../interview/entities/candidate.entity';
+import { CandidateApplication } from '../interview/entities/candidate-application.entity';
 
 import { Course } from '../training/entities/course.entity';
 import { Leave } from '../attendance/entities/leave.entity';
@@ -27,7 +27,7 @@ import { Holiday } from '../holiday/entities/holiday.entity';
       Department,
       Attendance,
       Leave,
-      Candidate,
+      CandidateApplication,
       Course,
       Payroll,
       LeaveBalance,

@@ -14,7 +14,7 @@ import { Attendance } from '../attendance/entities/attendance.entity';
 
 import { Leave } from '../attendance/entities/leave.entity';
 
-import { Candidate } from '../interview/entities/candidate.entity';
+import { CandidateApplication } from '../interview/entities/candidate-application.entity';
 
 import { Course } from '../training/entities/course.entity';
 
@@ -45,8 +45,8 @@ export class DashboardService {
     @InjectRepository(Leave)
     private readonly leaveRepo: Repository<Leave>,
 
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
+    @InjectRepository(CandidateApplication)
+    private readonly applicationRepo: Repository<CandidateApplication>,
 
     @InjectRepository(Course)
     private readonly trainingRepo: Repository<Course>,
@@ -88,13 +88,13 @@ export class DashboardService {
 
       this.departmentRepo.count(),
 
-      this.candidateRepo.count({
+      this.applicationRepo.count({
         where: {
           status: CandidateStatusEnum.INTERVIEW_SCHEDULED,
         },
       }),
 
-      this.candidateRepo.count({
+      this.applicationRepo.count({
         where: {
           status: CandidateStatusEnum.SELECTED,
         },
@@ -201,25 +201,25 @@ export class DashboardService {
     ] = await Promise.all([
       this.employeeRepo.count(),
 
-      this.candidateRepo.count({
+      this.applicationRepo.count({
         where: {
           status: CandidateStatusEnum.APPLIED,
         },
       }),
 
-      this.candidateRepo.count({
+      this.applicationRepo.count({
         where: {
           status: CandidateStatusEnum.SELECTED,
         },
       }),
 
-      this.candidateRepo.count({
+      this.applicationRepo.count({
         where: {
           status: CandidateStatusEnum.REJECTED,
         },
       }),
 
-      this.candidateRepo.count({
+      this.applicationRepo.count({
         where: {
           status: CandidateStatusEnum.INTERVIEW_SCHEDULED,
         },

@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { Candidate } from './candidate.entity';
+import { CandidateApplication } from './candidate-application.entity';
 
 import { Employee } from '../../employees/entities/employee.entity';
 
@@ -23,17 +23,18 @@ export class Interview {
   id!: string;
 
   @Column({
-    name: 'candidate_id',
+    name: 'application_id',
+    type: 'uuid',
   })
-  candidateId!: string;
+  applicationId!: string;
 
-  @ManyToOne(() => Candidate, {
+  @ManyToOne(() => CandidateApplication, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({
-    name: 'candidate_id',
+    name: 'application_id',
   })
-  candidate!: Candidate;
+  application!: CandidateApplication;
 
   @Column({
     name: 'interviewer_id',

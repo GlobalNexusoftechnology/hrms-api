@@ -37,8 +37,9 @@ export class TeamController {
   async create(
     @Body()
     dto: CreateTeamDto,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.createTeam(dto);
+    return this.teamService.createTeam(dto, employee);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -47,8 +48,9 @@ export class TeamController {
   async assignMembers(
     @Body()
     dto: AssignTeamMemberDto,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.assignMembers(dto);
+    return this.teamService.assignMembers(dto, employee);
   }
 
   @Permissions(PermissionEnum.TEAM_READ)
@@ -88,8 +90,9 @@ export class TeamController {
 
     @Body()
     dto: UpdateTeamDto,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.updateTeam(id, dto);
+    return this.teamService.updateTeam(id, dto, employee);
   }
 
   
@@ -98,8 +101,9 @@ export class TeamController {
   async removeMember(
     @Body()
     dto: RemoveTeamMemberDto,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.removeMember(dto);
+    return this.teamService.removeMember(dto, employee);
   }
 
   
@@ -108,8 +112,9 @@ export class TeamController {
   async delete(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.deleteTeam(id);
+    return this.teamService.deleteTeam(id, employee);
   }
 
   
@@ -121,8 +126,9 @@ export class TeamController {
 
     @Body()
     dto: ChangeTeamLeadDto,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.changeTeamLead(teamId, dto);
+    return this.teamService.changeTeamLead(teamId, dto, employee);
   }
 
   
@@ -131,7 +137,8 @@ export class TeamController {
   async toggleStatus(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() employee: any,
   ) {
-    return this.teamService.toggleStatus(id);
+    return this.teamService.toggleStatus(id, employee);
   }
 }

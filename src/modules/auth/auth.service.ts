@@ -195,6 +195,10 @@ export class AuthService {
         throw new UnauthorizedException('Employee not found');
       }
 
+      if (!employee.isActive) {
+        throw new ForbiddenException('Account is deactivated');
+      }
+
       const newPayload = {
         sub: employee.id,
         employeeId: employee.id,

@@ -1,6 +1,9 @@
-import { IsEmail, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateCandidateDto {
+  @IsUUID()
+  jobId!: string;
+
   @IsString()
   firstName!: string;
 

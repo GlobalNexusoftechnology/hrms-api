@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsInt, Min, Max, IsNotEmpty } from 'class-validator';
+import { IsString, IsEnum, IsInt, Min, Max, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { WeekDayEnum } from '../../../common/enums/WeekDayEnum.enum';
 
@@ -38,4 +38,10 @@ export class CreateOrganizationSettingsDto {
   @Min(1)
   @Max(12)
   financialYearStartMonth!: number;
+
+  @ApiProperty({ description: 'Default notice period in days for resignations', example: 30, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  noticePeriodDays?: number;
 }

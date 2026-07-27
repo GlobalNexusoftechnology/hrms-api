@@ -38,6 +38,12 @@ export class Resignation {
   @Column({ type: 'text', nullable: true })
   remarks!: string | null;
 
+  @Column({ name: 'is_shortfall', type: 'boolean', default: false })
+  isShortfall!: boolean;
+
+  @Column({ name: 'shortfall_reason', type: 'text', nullable: true })
+  shortfallReason!: string | null;
+
   @Column({
     type: 'enum',
     enum: ResignationStatusEnum,

@@ -30,6 +30,9 @@ export class OrganizationSettings extends BaseEntity {
   @Column({ name: 'financial_year_start_month', type: 'int' })
   financialYearStartMonth!: number;
 
+  @Column({ name: 'notice_period_days', type: 'int', default: 30 })
+  noticePeriodDays!: number;
+
   @OneToOne(() => Organization, (org) => org.settings)
   @JoinColumn({ name: 'organization_id' })
   organization!: Organization;

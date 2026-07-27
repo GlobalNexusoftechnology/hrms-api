@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, ParseUUIDPipe, UseGuards, Re
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ResignationsService } from './resignations.service';
 import { CreateResignationDto } from './dto/create-resignation.dto';
+import { ApproveResignationDto } from './dto/approve-resignation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -52,10 +53,11 @@ export class ResignationsController {
   @ApiOperation({ summary: 'Approve a resignation request and start notice period' })
   approve(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ApproveResignationDto,
     @CurrentUser() user: any,
     @Req() req: any,
   ) {
-    return this.resignationsService.approve(id, user.id, req.correlationId);
+    return this.resignationsService.approve(id, dto, user.id, req.correlationId);
   }
 
   @Patch(':id/execute')

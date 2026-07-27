@@ -11,7 +11,7 @@ import {
 import { InterviewService } from './interview.service';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
-import { UpdateCandidateStatusDto } from './dto/update-candidate-status.dto';
+import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
 import { ScheduleInterviewDto } from './dto/schedule-interview.dto';
 import { InterviewFeedbackDto } from './dto/interview-feedback.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -22,6 +22,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { CreateJobPostingDto } from './dto/create-job-posting.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -29,28 +30,54 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 export class HrInterviewController {
   constructor(private readonly interviewService: InterviewService) {}
 
+  // ------------------- JOB POSTINGS -------------------
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
-  @Post('candidates')
-  createCandidate(
+  @Post('jobs')
+  createJobPosting(
     @Body()
-    dto: CreateCandidateDto,
+    dto: CreateJobPostingDto,
   ) {
-    return this.interviewService.createCandidate(dto);
+    return this.interviewService.createJobPosting(dto);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
-  @Get('candidates')
-  getCandidates() {
-    return this.interviewService.getCandidates();
+  @Get('jobs')
+  getJobPostings() {
+    return this.interviewService.getJobPostings();
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
-  @Get('candidates/:id')
-  getCandidate(
+  @Get('jobs/:id')
+  getJobPosting(
     @Param('id', ParseUUIDPipe)
     id: string,
   ) {
-    return this.interviewService.getCandidate(id);
+    return this.interviewService.getJobPosting(id);
+  }
+
+  // ------------------- APPLICATIONS -------------------
+  @Permissions(PermissionEnum.INTERVIEW_CREATE)
+  @Post('applications')
+  createApplication(
+    @Body()
+    dto: CreateCandidateDto,
+  ) {
+    return this.interviewService.applyToJob(dto);
+  }
+
+  @Permissions(PermissionEnum.INTERVIEW_READ)
+  @Get('applications')
+  getApplications() {
+    return this.interviewService.getApplications();
+  }
+
+  @Permissions(PermissionEnum.INTERVIEW_READ)
+  @Get('applications/:id')
+  getApplication(
+    @Param('id', ParseUUIDPipe)
+    id: string,
+  ) {
+    return this.interviewService.getApplication(id);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_UPDATE)
@@ -58,7 +85,6 @@ export class HrInterviewController {
   updateCandidate(
     @Param('id', ParseUUIDPipe)
     id: string,
-
     @Body()
     dto: UpdateCandidateDto,
   ) {
@@ -66,19 +92,18 @@ export class HrInterviewController {
   }
 
   @Permissions(PermissionEnum.INTERVIEW_UPDATE)
-  @Patch('candidates/:id/status')
-  updateCandidateStatus(
+  @Patch('applications/:id/status')
+  updateApplicationStatus(
     @Param('id', ParseUUIDPipe)
     id: string,
-
     @Body()
-    dto: UpdateCandidateStatusDto,
+    dto: UpdateApplicationStatusDto,
   ) {
-    return this.interviewService.updateCandidateStatus(id, dto);
+    return this.interviewService.updateApplicationStatus(id, dto);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
-  @Post('candidates/:id/convert')
+  @Post('applications/:id/convert')
   convertToEmployee(
     @Param('id', ParseUUIDPipe)
     id: string,
@@ -88,6 +113,7 @@ export class HrInterviewController {
     return this.interviewService.convertToEmployee(id, dto);
   }
 
+  // ------------------- INTERVIEWS -------------------
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
   @Post('interviews')
   scheduleInterview(
@@ -117,10 +143,8 @@ export class HrInterviewController {
   addFeedback(
     @Param('id', ParseUUIDPipe)
     id: string,
-
     @Body()
     dto: InterviewFeedbackDto,
-
     @CurrentUser()
     user: any,
   ) {

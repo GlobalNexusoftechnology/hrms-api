@@ -1,9 +1,10 @@
-import { CandidateStatusEnum } from '../../../common/enums/candidate-status.enum';
+import { CandidateApplication } from './candidate-application.entity';
 import {
   Column,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -84,12 +85,8 @@ export class Candidate {
   })
   source!: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: CandidateStatusEnum,
-    default: CandidateStatusEnum.APPLIED,
-  })
-  status!: CandidateStatusEnum;
+  @OneToMany(() => CandidateApplication, (app) => app.candidate)
+  applications!: CandidateApplication[];
 
   @CreateDateColumn({
     name: 'created_at',

@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, IsNull, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Employee } from './entities/employee.entity';
+import { Organization } from '../organization/entities/organization.entity';
 import type { Response } from 'express';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { GetEmployeesDto } from './dto/get-employees.dto';
@@ -636,18 +637,18 @@ export class EmployeesService {
 
   async generateIdCard(
     id: string,
-
     res: Response<any>,
   ) {
     const employee = await this.employeeRepository.findOne({
       where: {
         id,
       },
-
       relations: {
         department: true,
-
         designation: true,
+        branch: {
+          organization: true,
+        },
       },
     });
 
@@ -655,73 +656,162 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
-    const canvas = createCanvas(800, 500);
-
+    const canvas = createCanvas(600, 950);
     const ctx = canvas.getContext('2d');
+
+    let orgName = employee.branch?.organization?.name;
+    let orgLogoUrl = employee.branch?.organization?.logoUrl;
+
+    if (!orgName) {
+      const org = await this.employeeRepository.manager.findOne(Organization, {
+        where: {},
+        order: { createdAt: 'ASC' },
+      });
+      if (org) {
+        orgName = org.name;
+        orgLogoUrl = org.logoUrl;
+      } else {
+        orgName = 'GIGA SYSTEM';
+      }
+    }
 
     // BACKGROUND
     ctx.fillStyle = '#ffffff';
-
-    ctx.fillRect(0, 0, 800, 500);
+    ctx.fillRect(0, 0, 600, 950);
 
     // HEADER
     ctx.fillStyle = '#1E40AF';
-
-    ctx.fillRect(0, 0, 800, 100);
+    ctx.fillRect(0, 0, 600, 200);
 
     ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
 
-    ctx.font = 'bold 36px Arial';
+    if (orgLogoUrl) {
+      try {
+        const logoPath = path.join(process.cwd(), orgLogoUrl);
+        const logoImage = await loadImage(logoPath);
+        
+        // Calculate correct aspect ratio
+        const maxLogoWidth = 200;
+        const maxLogoHeight = 90;
+        const ratio = Math.min(maxLogoWidth / logoImage.width, maxLogoHeight / logoImage.height);
+        
+        const logoWidth = logoImage.width * ratio;
+        const logoHeight = logoImage.height * ratio;
+        const logoX = (600 - logoWidth) / 2;
+        // Vertically center in the upper part of the header
+        const logoY = 30;
 
-    ctx.fillText('GIGA SYSTEM', 280, 60);
-
-    // PROFILE PHOTO
-    if (employee.profilePhoto) {
-      const imagePath = path.join(process.cwd(), employee.profilePhoto);
-
-      const image = await loadImage(imagePath);
-
-      ctx.drawImage(image, 40, 140, 140, 140);
+        // Draw image cleanly
+        ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+        
+        // Organization name below the logo
+        ctx.font = 'bold 26px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(orgName.toUpperCase(), 300, logoY + logoHeight + 40);
+      } catch (err) {
+        ctx.font = 'bold 36px Arial';
+        ctx.fillText(orgName.toUpperCase(), 300, 115);
+      }
+    } else {
+      ctx.font = 'bold 36px Arial';
+      ctx.fillText(orgName.toUpperCase(), 300, 115);
     }
+
+    // PROFILE PHOTO (CIRCULAR)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(300, 310, 110, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+
+    if (employee.profilePhoto) {
+      try {
+        const imagePath = path.join(process.cwd(), employee.profilePhoto);
+        const image = await loadImage(imagePath);
+        ctx.drawImage(image, 190, 200, 220, 220);
+      } catch (e) {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(190, 200, 220, 220);
+      }
+    } else {
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(190, 200, 220, 220);
+    }
+    ctx.restore();
+
+    // PROFILE BORDER
+    ctx.beginPath();
+    ctx.arc(300, 310, 110, 0, Math.PI * 2, true);
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    // EMPLOYEE NAME & DESIGNATION
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'center';
+    
+    ctx.font = 'bold 42px Arial';
+    ctx.fillText(`${employee.firstName} ${employee.lastName}`, 300, 480);
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '28px Arial';
+    ctx.fillText(employee.designation?.name || 'Employee', 300, 525);
+
+    // DIVIDER LINE
+    ctx.beginPath();
+    ctx.moveTo(100, 560);
+    ctx.lineTo(500, 560);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // DETAILS LIST
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#334155';
+    
+    const detailsX = 130;
+    let detailsY = 610;
+    
+    ctx.font = 'bold 22px Arial';
+    ctx.fillText('ID Number:', detailsX, detailsY);
+    ctx.font = '22px Arial';
+    ctx.fillText(employee.employeeCode, detailsX + 150, detailsY);
+    detailsY += 40;
+
+    ctx.font = 'bold 22px Arial';
+    ctx.fillText('Department:', detailsX, detailsY);
+    ctx.font = '22px Arial';
+    ctx.fillText(employee.department?.name || 'N/A', detailsX + 150, detailsY);
+    detailsY += 40;
+
+    ctx.font = 'bold 22px Arial';
+    ctx.fillText('Mobile:', detailsX, detailsY);
+    ctx.font = '22px Arial';
+    ctx.fillText(employee.mobile || 'N/A', detailsX + 150, detailsY);
+    detailsY += 40;
+
+    ctx.font = 'bold 22px Arial';
+    ctx.fillText('DOB:', detailsX, detailsY);
+    ctx.font = '22px Arial';
+    ctx.fillText(employee.dateOfBirth ? new Date(employee.dateOfBirth).toLocaleDateString() : 'N/A', detailsX + 150, detailsY);
 
     // QR CODE
     const qrData = await QRCode.toDataURL(
       JSON.stringify({
-        employeeId: employee.id,
-
-        employeeCode: employee.employeeCode,
+        id: employee.id,
+        code: employee.employeeCode,
       }),
+      { width: 140, margin: 1 }
     );
-
     const qrImage = await loadImage(qrData);
+    ctx.drawImage(qrImage, 230, 770, 140, 140);
 
-    ctx.drawImage(qrImage, 620, 300, 120, 120);
-
-    // TEXT
-    ctx.fillStyle = '#000000';
-
-    ctx.font = 'bold 28px Arial';
-
-    ctx.fillText(`${employee.firstName} ${employee.lastName}`, 220, 160);
-
-    ctx.font = '22px Arial';
-
-    ctx.fillText(`ID: ${employee.employeeCode}`, 220, 210);
-
-    ctx.fillText(`Department: ${employee.department?.name ?? 'N/A'}`, 220, 250);
-
-    ctx.fillText(
-      `Designation: ${employee.designation?.name ?? 'N/A'}`,
-      220,
-      290,
-    );
-
-    ctx.fillText(`DOB: ${employee.dateOfBirth ?? 'N/A'}`, 220, 330);
-
-    ctx.fillText(`Mobile: ${employee.mobile ?? 'N/A'}`, 220, 370);
+    // FOOTER BORDER
+    ctx.fillStyle = '#1E40AF';
+    ctx.fillRect(0, 930, 600, 20);
 
     res.setHeader('Content-Type', 'image/png');
-
     canvas.createPNGStream().pipe(res);
   }
 

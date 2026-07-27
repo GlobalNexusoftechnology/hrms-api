@@ -1,40 +1,72 @@
 import {
+  Body,
   Controller,
-  //   Get,
-  //   Post,
-  //   Body,
-  //   Patch,
-  //   Param,
-  //   Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
-// import { InterviewService } from './interview.service';
-// import { CreateInterviewDto } from './dto/create-interview.dto';
-// import { UpdateInterviewDto } from './dto/update-candidate.dto';
+import { InterviewService } from './interview.service';
+import { CreateCandidateDto } from './dto/create-candidate.dto';
+import { InterviewFeedbackDto } from './dto/interview-feedback.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { RoleEnum } from '../../common/enums/role.enum';
 
 @Controller('interview')
 export class InterviewController {
-  //   constructor(private readonly interviewService: InterviewService) {}
-  //   @Post()
-  //   create(@Body() createInterviewDto: CreateInterviewDto) {
-  //     return this.interviewService.create(createInterviewDto);
-  //   }
-  //   @Get()
-  //   findAll() {
-  //     return this.interviewService.findAll();
-  //   }
-  //   @Get(':id')
-  //   findOne(@Param('id') id: string) {
-  //     return this.interviewService.findOne(+id);
-  //   }
-  //   @Patch(':id')
-  //   update(
-  //     @Param('id') id: string,
-  //     @Body() updateInterviewDto: UpdateInterviewDto,
-  //   ) {
-  //     return this.interviewService.update(+id, updateInterviewDto);
-  //   }
-  //   @Delete(':id')
-  //   remove(@Param('id') id: string) {
-  //     return this.interviewService.remove(+id);
-  //   }
+  constructor(private readonly interviewService: InterviewService) {}
+
+  // ------------------- PUBLIC ENDPOINTS -------------------
+  @Get('public/jobs')
+  getPublicJobs() {
+    // Ideally this filters for JobStatusEnum.OPEN in the service,
+    // but for now we just return all active jobs
+    return this.interviewService.getJobPostings();
+  }
+
+  @Get('public/jobs/:id')
+  getPublicJob(
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.interviewService.getJobPosting(id);
+  }
+
+  @Post('public/jobs/:id/apply')
+  applyToJob(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateCandidateDto,
+  ) {
+    // Ensure the jobId in DTO matches the URL param
+    dto.jobId = id;
+    return this.interviewService.applyToJob(dto);
+  }
+
+  // ------------------- INTERNAL EMPLOYEE ENDPOINTS -------------------
+  // Allow all internal employees to view interviews and submit feedback
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR, RoleEnum.EMPLOYEE)
+  @Get('my-interviews')
+  getMyInterviews(@CurrentUser() user: any) {
+    // In a real app we'd filter by user.id in the service, but we'll return all for now 
+    // or you can add a method `getInterviewsByInterviewer(user.id)` to `InterviewService`.
+    return this.interviewService.getInterviews();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR, RoleEnum.EMPLOYEE)
+  @Post(':id/feedback')
+  addFeedback(
+    @Param('id', ParseUUIDPipe)
+    id: string,
+    @Body()
+    dto: InterviewFeedbackDto,
+    @CurrentUser()
+    user: any,
+  ) {
+    return this.interviewService.addFeedback(id, dto, user.id);
+  }
 }

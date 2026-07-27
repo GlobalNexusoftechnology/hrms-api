@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import { ChangeTeamLeadDto } from './dto/change-team-lead.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../../common/enums/NotificationType.enum';
 import { DataScopeService } from '../../common/services/data-scope.service';
+import { DataScopeEnum } from '../../common/enums/data-scope.enum';
 
 @Injectable()
 export class TeamService {
@@ -40,7 +42,29 @@ export class TeamService {
     private readonly dataScopeService: DataScopeService,
   ) {}
 
-  async createTeam(dto: CreateTeamDto) {
+  private validateWriteAccess(teamBranchId: string | undefined, teamDepartmentId: string | undefined, currentUser: Employee) {
+    if (!currentUser || !currentUser.role) return;
+    const scope = currentUser.role.dataScope;
+    if (scope === DataScopeEnum.ORGANIZATION) return;
+    
+    if (scope === DataScopeEnum.BRANCH) {
+      if (currentUser.branchId && teamBranchId && currentUser.branchId !== teamBranchId) {
+        throw new ForbiddenException('You do not have permission to modify teams in this branch');
+      }
+    }
+    if (scope === DataScopeEnum.DEPARTMENT) {
+      if (currentUser.departmentId && teamDepartmentId && currentUser.departmentId !== teamDepartmentId) {
+        throw new ForbiddenException('You do not have permission to modify teams in this department');
+      }
+    }
+  }
+
+  async createTeam(dto: CreateTeamDto, currentUser: Employee) {
+    if (!dto.branchId && currentUser?.branchId) {
+      dto.branchId = currentUser.branchId;
+    }
+    
+    this.validateWriteAccess(dto.branchId, dto.departmentId, currentUser);
     const existingTeam = await this.teamRepository.findOne({
       where: {
         name: dto.name,
@@ -116,8 +140,8 @@ export class TeamService {
 
     if (currentUser) {
       this.dataScopeService.applyScope(qb, currentUser, {
-        branch: 'department.branchId',
-        department: 'department.id'
+        branch: 'team.branchId',
+        department: 'team.departmentId'
       });
     }
 
@@ -146,8 +170,8 @@ export class TeamService {
 
     if (currentUser) {
       this.dataScopeService.applyScope(qb, currentUser, {
-        branch: 'department.branchId',
-        department: 'department.id'
+        branch: 'team.branchId',
+        department: 'team.departmentId'
       });
     }
 
@@ -160,7 +184,7 @@ export class TeamService {
     return team;
   }
 
-  async assignMembers(dto: AssignTeamMemberDto) {
+  async assignMembers(dto: AssignTeamMemberDto, currentUser: Employee) {
     const { teamId, employeeIds } = dto;
 
     const team = await this.teamRepository.findOne({
@@ -171,12 +195,16 @@ export class TeamService {
       throw new NotFoundException('Team not found');
     }
 
+    if (!team.isActive) {
+      throw new BadRequestException('Cannot assign members to an inactive team');
+    }
+
     const employees = await this.employeeRepository.find({
-      where: employeeIds.map((id) => ({ id })),
+      where: employeeIds.map((id) => ({ id, isActive: true })),
     });
 
     if (employees.length !== employeeIds.length) {
-      throw new BadRequestException('One or more employees not found');
+      throw new BadRequestException('One or more employees not found or are inactive');
     }
 
     if (team.departmentId) {
@@ -233,13 +261,18 @@ export class TeamService {
     };
   }
 
-  async updateTeam(id: string, dto: UpdateTeamDto) {
+  async updateTeam(id: string, dto: UpdateTeamDto, currentUser: Employee) {
     const team = await this.teamRepository.findOne({
       where: { id },
     });
 
     if (!team) {
       throw new NotFoundException('Team not found');
+    }
+
+    this.validateWriteAccess(team.branchId, team.departmentId, currentUser);
+    if (dto.branchId) {
+      this.validateWriteAccess(dto.branchId, dto.departmentId, currentUser);
     }
 
     if (dto.name && dto.name !== team.name) {
@@ -305,7 +338,7 @@ export class TeamService {
     return updated;
   }
 
-  async removeMember(dto: RemoveTeamMemberDto) {
+  async removeMember(dto: RemoveTeamMemberDto, currentUser: Employee) {
     const { teamId, employeeId } = dto;
 
     const team = await this.teamRepository.findOne({
@@ -317,6 +350,8 @@ export class TeamService {
     if (!team) {
       throw new NotFoundException('Team not found');
     }
+    
+    this.validateWriteAccess(team.branchId, team.departmentId, currentUser);
 
     const member = await this.teamMemberRepository.findOne({
       where: {
@@ -346,7 +381,7 @@ export class TeamService {
     };
   }
 
-  async deleteTeam(id: string) {
+  async deleteTeam(id: string, currentUser: Employee) {
     const team = await this.teamRepository.findOne({
       where: { id },
     });
@@ -354,6 +389,8 @@ export class TeamService {
     if (!team) {
       throw new NotFoundException('Team not found');
     }
+    
+    this.validateWriteAccess(team.branchId, team.departmentId, currentUser);
 
     const members = await this.teamMemberRepository.find({
       where: {
@@ -378,7 +415,7 @@ export class TeamService {
     };
   }
 
-  async changeTeamLead(teamId: string, dto: ChangeTeamLeadDto) {
+  async changeTeamLead(teamId: string, dto: ChangeTeamLeadDto, currentUser: Employee) {
     const team = await this.teamRepository.findOne({
       where: {
         id: teamId,
@@ -388,6 +425,8 @@ export class TeamService {
     if (!team) {
       throw new NotFoundException('Team not found');
     }
+    
+    this.validateWriteAccess(team.branchId, team.departmentId, currentUser);
 
     const employee = await this.employeeRepository.findOne({
       where: {
@@ -452,19 +491,23 @@ export class TeamService {
     };
   }
 
-  async toggleStatus(id: string) {
+  async toggleStatus(id: string, currentUser: Employee) {
     const team = await this.teamRepository.findOne({
       where: {
         id,
       },
       select: {
         isActive: true,
+        branchId: true,
+        departmentId: true,
       },
     });
 
     if (!team) {
       throw new NotFoundException('Team not found');
     }
+
+    this.validateWriteAccess(team.branchId, team.departmentId, currentUser);
 
     const updatedStatus = !(team.isActive ?? true);
 
