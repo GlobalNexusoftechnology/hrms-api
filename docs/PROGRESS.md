@@ -419,6 +419,12 @@
 | 2026-07-23 | Team | Added: Global Activity Logging Interceptor with asynchronous execution and sensitive data masking |
 | 2026-07-23 | Team | Added: Technical and Business Activity logging synchronization using Correlation IDs |
 | 2026-07-23 | Team | Added: Resignations & Exit Management module with notice period enforcement and automatic login deactivation |
+| 2026-07-27 | Team | Added: Dynamic Shift configurations (late grace, early leave, overtime thresholds, auto-checkout rules) |
+| 2026-07-27 | Team | Added: `AttendanceCronService` for Auto-Absent, Auto-Checkout, and Shift-End notifications directly driven by Shift rules |
+| 2026-07-27 | Team | Refactored: Wired `NotificationService` across Leave, Correction, Interview, Payroll, and Cron services |
+| 2026-07-27 | Team | Implemented: Leave Encashment API (`POST /leave/encash`) with strict balance and policy constraints |
+| 2026-07-27 | Team | Implemented: Leave Encashment integration directly into the Payroll Generation engine (`encashmentAmount`) |
+| 2026-07-27 | Team | Confirmed: Employee Self-Service routes (`/me`) for Dashboard, Leave, Attendance, Payslips, and Team |
 
 ---
 

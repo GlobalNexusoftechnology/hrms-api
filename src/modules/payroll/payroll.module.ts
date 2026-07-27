@@ -13,12 +13,14 @@ import { SalaryStructure } from '../salary-structure/entities/salary-structure.e
 import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
 import { Leave } from '../attendance/entities/leave.entity';
 import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
+import { LeaveLedger } from '../leave-ledger/entities/leave-ledger.entity';
 import { AttendanceModule } from '../attendance/attendance.module';
 import { WeekendSetting } from '../weekend_settings/entities/weekend_setting.entity';
 
 import { PayrollController } from './payroll.controller';
 
 import { PayrollService } from './payroll.service';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -30,8 +32,10 @@ import { PayrollService } from './payroll.service';
       LeaveBalance,
       Leave,
       LeavePolicy,
+      LeaveLedger,
       WeekendSetting,
     ]),
+    NotificationModule,
   ],
 
   controllers: [PayrollController],

@@ -15,8 +15,11 @@ import { DataSource } from 'typeorm';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 import { LeaveEngineService } from '../../leave-engine/leave-engine.service';
 import { LeavePolicy } from '../../leave-policy/entities/leave-policy.entity';
+import { LeaveBalance } from '../../leave-balance/entities/leave-balance.entity';
 import { LeaveTransactionType } from '../../leave-ledger/entities/leave-ledger.entity';
 import { DataScopeService } from '../../../common/services/data-scope.service';
+import { NotificationService } from '../../notification/notification.service';
+import { NotificationType } from '../../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class LeaveService {
@@ -33,10 +36,14 @@ export class LeaveService {
     @InjectRepository(LeavePolicy)
     private readonly leavePolicyRepo: Repository<LeavePolicy>,
 
+    @InjectRepository(LeaveBalance)
+    private readonly leaveBalanceRepo: Repository<LeaveBalance>,
+
     private leaveEngineService: LeaveEngineService,
 
     private readonly dataSource: DataSource,
     private readonly dataScopeService: DataScopeService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async requestLeave(employeeId: string, dto: CreateLeaveDto) {
@@ -127,6 +134,57 @@ export class LeaveService {
     }
 
     return saved;
+  }
+
+  async requestEncashment(employeeId: string, dto: { leaveTypeId: string; days: number; reason?: string }) {
+    // 1. Fetch Policy
+    const policy = await this.leavePolicyRepo.findOne({
+      where: { leaveTypeId: dto.leaveTypeId, isActive: true },
+    });
+
+    if (!policy) {
+      throw new BadRequestException('Active policy not found for this leave type');
+    }
+
+    if (!policy.encashable) {
+      throw new BadRequestException('This leave type is not eligible for encashment');
+    }
+
+    // 2. Check Balance
+    const year = new Date().getFullYear();
+    const balance = await this.leaveBalanceRepo.findOne({
+      where: { employeeId, leaveTypeId: dto.leaveTypeId, year },
+    });
+
+    if (!balance) {
+      throw new BadRequestException('No leave balance found for this year');
+    }
+
+    const remaining = Number(balance.accrued) + Number(balance.carriedForward) - Number(balance.used);
+    
+    if (remaining < dto.days) {
+      throw new BadRequestException(`Insufficient balance. You only have ${remaining} days available to encash.`);
+    }
+
+    // 3. Process Transaction
+    const ledger = await this.leaveEngineService.processTransaction({
+      employeeId,
+      leaveTypeId: dto.leaveTypeId,
+      transactionType: LeaveTransactionType.ENCASHMENT,
+      days: dto.days,
+      remarks: dto.reason || 'Leave Encashment Requested',
+    });
+
+    // 4. Send Notification
+    await this.notificationService.createNotification({
+      employeeId,
+      type: NotificationType.LEAVE,
+      title: 'Leave Encashment',
+      message: `Your request to encash ${dto.days} days has been processed and will be added to your next payslip.`,
+      referenceId: ledger.id,
+    });
+
+    return ledger;
   }
 
   async getMyLeaves(employeeId: string, status?: string) {
@@ -281,7 +339,21 @@ export class LeaveService {
 
       leave.reviewedAt = new Date();
 
-      return manager.save(leave);
+      const updatedLeave = await manager.save(leave);
+
+      const message = status === LeaveStatusEnum.APPROVED 
+        ? `Your leave request from ${dayjs(leave.startDate).format('MMM D')} to ${dayjs(leave.endDate).format('MMM D')} has been approved.`
+        : `Your leave request from ${dayjs(leave.startDate).format('MMM D')} to ${dayjs(leave.endDate).format('MMM D')} has been rejected.`;
+
+      await this.notificationService.createNotification({
+        employeeId: leave.employeeId,
+        type: NotificationType.LEAVE,
+        title: `Leave ${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`,
+        message,
+        referenceId: leave.id,
+      });
+
+      return updatedLeave;
     });
   }
 

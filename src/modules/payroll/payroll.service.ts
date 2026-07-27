@@ -18,9 +18,12 @@ import { Leave } from './../attendance/entities/leave.entity';
 
 import { SalaryStructure } from './../salary-structure/entities/salary-structure.entity';
 import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
+import { LeaveLedger, LeaveTransactionType } from '../leave-ledger/entities/leave-ledger.entity';
 import { WeekendSetting } from '../weekend_settings/entities/weekend_setting.entity';
 import { AttendanceStatus } from './../../common/enums/AttendanceStatus.enum';
 import { DataScopeService } from './../../common/services/data-scope.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class PayrollService {
@@ -43,10 +46,14 @@ export class PayrollService {
     @InjectRepository(LeavePolicy)
     private readonly leavePolicyRepo: Repository<LeavePolicy>,
 
+    @InjectRepository(LeaveLedger)
+    private readonly leaveLedgerRepo: Repository<LeaveLedger>,
+
     @InjectRepository(WeekendSetting)
     private readonly weekendRepo: Repository<WeekendSetting>,
 
     private readonly dataScopeService: DataScopeService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // =====================
@@ -165,6 +172,18 @@ export class PayrollService {
     const perDaySalary = this.roundCurrency(Number(salary.netSalary) / effectiveWorkingDays);
     const perHourSalary = this.roundCurrency(perDaySalary / 8); 
 
+    // ENCASHMENT RECONCILIATION
+    const encashments = await this.leaveLedgerRepo.find({
+      where: {
+        employeeId,
+        transactionType: LeaveTransactionType.ENCASHMENT,
+        createdAt: Between(new Date(startDate + 'T00:00:00Z'), new Date(endDate + 'T23:59:59Z')),
+      },
+    });
+
+    const encashedDays = encashments.reduce((sum, e) => sum + Number(e.days), 0);
+    const encashmentAmount = this.roundCurrency(encashedDays * perDaySalary);
+
     // Allocate deductions gracefully
     let remainingUnapproved = unapprovedMissingDays;
     
@@ -201,7 +220,8 @@ export class PayrollService {
       lateDeduction +
       overtimeAmount +
       bonusAmount -
-      deductionAmount
+      deductionAmount +
+      encashmentAmount
     );
 
     // SAVE
@@ -238,7 +258,17 @@ export class PayrollService {
       bonusReason,
       deductionAmount,
       deductionReason,
+      encashmentAmount,
       finalSalary,
+    });
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    await this.notificationService.createNotification({
+      employeeId: payroll.employeeId,
+      type: NotificationType.PAYROLL,
+      title: `Payslip Generated`,
+      message: `Your payslip for ${monthNames[month - 1]} ${year} has been generated. Net Salary: ₹${finalSalary}`,
+      referenceId: payroll.id,
     });
 
     return payroll;

@@ -50,6 +50,9 @@ export class Shift {
   @Column({ type: 'int', default: 480, name: 'overtime_threshold_minutes' })
   overtimeThresholdMinutes!: number;
 
+  @Column({ type: 'int', default: 240, name: 'max_allowed_overtime_minutes' })
+  maxAllowedOvertimeMinutes!: number;
+
   @Column({ type: 'int', default: 30, name: 'minimum_overtime_minutes' })
   minimumOvertimeMinutes!: number;
 

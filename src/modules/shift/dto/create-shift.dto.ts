@@ -66,6 +66,10 @@ export class CreateShiftDto {
 
   @IsOptional()
   @IsInt()
+  maxAllowedOvertimeMinutes?: number;
+
+  @IsOptional()
+  @IsInt()
   minimumOvertimeMinutes?: number;
 
   @IsOptional()

@@ -10,6 +10,7 @@ import { JobPosting } from './entities/job-posting.entity';
 import { CandidateApplication } from './entities/candidate-application.entity';
 import { HrInterviewController } from './hr-interview.controller';
 import { EmployeesModule } from '../employees/employees.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { EmployeesModule } from '../employees/employees.module';
       CandidateApplication,
     ]),
     EmployeesModule,
+    NotificationModule,
   ],
   controllers: [InterviewController, HrInterviewController],
   providers: [InterviewService],

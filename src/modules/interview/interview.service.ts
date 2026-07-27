@@ -29,6 +29,8 @@ import { Designation } from '../designations/entities/designation.entity';
 import { JobPosting } from './entities/job-posting.entity';
 import { CandidateApplication } from './entities/candidate-application.entity';
 import { CreateJobPostingDto } from './dto/create-job-posting.dto';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class InterviewService {
@@ -61,6 +63,7 @@ export class InterviewService {
     private readonly designationRepo: Repository<Designation>,
 
     private employeeService: EmployeesService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // ------------------- JOB POSTINGS -------------------
@@ -177,7 +180,7 @@ export class InterviewService {
   async scheduleInterview(dto: ScheduleInterviewDto) {
     const application = await this.applicationRepo.findOne({
       where: { id: dto.applicationId },
-      relations: { candidate: true }
+      relations: { candidate: true, job: true }
     });
 
     if (!application) throw new NotFoundException('Application not found');
@@ -242,6 +245,15 @@ export class InterviewService {
     });
 
     const savedInterview = await this.interviewRepo.save(interview);
+
+    // Send Notification to Interviewer
+    await this.notificationService.createNotification({
+      employeeId: dto.interviewerId,
+      type: NotificationType.INTERVIEW,
+      title: `Interview Scheduled: ${roundName}`,
+      message: `An interview has been scheduled with candidate ${application.candidate.firstName} ${application.candidate.lastName} on ${scheduledDate.toLocaleDateString()} at ${scheduledDate.toLocaleTimeString()} for the ${application.job.title} position.`,
+      referenceId: savedInterview.id,
+    });
 
     if (roundName === InterviewRoundEnum.ASSESSMENT) {
       application.status = CandidateStatusEnum.ASSESSMENT_SCHEDULED;

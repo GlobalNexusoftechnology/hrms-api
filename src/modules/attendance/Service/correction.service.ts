@@ -11,6 +11,8 @@ import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 import { formatIST } from '../../../utils/time.util';
 import { DataScopeService } from '../../../common/services/data-scope.service';
+import { NotificationService } from '../../notification/notification.service';
+import { NotificationType } from '../../../common/enums/NotificationType.enum';
 
 dayjs.extend(isBetween);
 
@@ -24,6 +26,7 @@ export class CorrectionService {
     private attendanceRepo: Repository<Attendance>,
     private dataSource: DataSource,
     private readonly dataScopeService: DataScopeService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async requestCorrection(employeeId: string, dto: CorrectionRequestDto) {
@@ -230,6 +233,18 @@ export class CorrectionService {
 
       // SAVE CORRECTION
       await manager.save(correction);
+
+      const message = status === CorrectionStatus.APPROVED
+        ? `Your attendance correction request has been approved.`
+        : `Your attendance correction request has been rejected.`;
+
+      await this.notificationService.createNotification({
+        employeeId: correction.employeeId,
+        type: NotificationType.ATTENDANCE,
+        title: `Attendance Correction ${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`,
+        message,
+        referenceId: correction.id,
+      });
 
       return {
         correction,

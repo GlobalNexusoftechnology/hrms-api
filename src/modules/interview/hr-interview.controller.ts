@@ -81,7 +81,7 @@ export class HrInterviewController {
   }
 
   @Permissions(PermissionEnum.INTERVIEW_UPDATE)
-  @Patch('candidates/:id')
+  @Patch('applications/:id')
   updateCandidate(
     @Param('id', ParseUUIDPipe)
     id: string,

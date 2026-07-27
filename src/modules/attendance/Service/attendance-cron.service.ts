@@ -23,6 +23,10 @@ import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
 import { nowIST, todayIST } from '../../../utils/time.util';
 import { WeekNumberEnum } from '../../../common/enums/WeekNumberEnum.enum';
 import { WeekDayEnum } from '../../../common/enums/WeekDayEnum.enum';
+import dayjs from 'dayjs';
+import { AttendanceValidationService } from './attendance-validation.service';
+import { NotificationService } from '../../notification/notification.service';
+import { NotificationType } from '../../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class AttendanceCronService {
@@ -43,113 +47,102 @@ export class AttendanceCronService {
     private readonly leaveRepo: Repository<Leave>,
 
     private readonly dataSource: DataSource,
+    private readonly validationService: AttendanceValidationService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // =====================
   // AUTO CHECKOUT
-  // 8:00 PM IST
+  // HOURLY CHECK
   // =====================
 
-  @Cron('0 20 * * *', {
+  @Cron('0 * * * *', {
     timeZone: 'Asia/Kolkata',
   })
   async autoCheckOut() {
     const today = todayIST();
+    const now = nowIST();
 
-    console.log('AUTO CHECKOUT RUNNING');
-
-    const autoCheckoutTime = nowIST()
-      .hour(20)
-      .minute(0)
-      .second(0)
-      .millisecond(0)
-      .toDate();
+    console.log('AUTO CHECKOUT HOURLY SCAN RUNNING');
 
     await this.dataSource.transaction(async (manager) => {
       const records = await manager
         .createQueryBuilder(Attendance, 'attendance')
+        .leftJoinAndSelect('attendance.employee', 'employee')
+        .leftJoinAndSelect('employee.shift', 'shift')
+        .leftJoinAndSelect('employee.branch', 'branch')
+        .leftJoinAndSelect('branch.defaultShift', 'branchShift')
+        .leftJoinAndSelect('branch.organization', 'organization')
+        .leftJoinAndSelect('organization.defaultShift', 'orgShift')
         .setLock('pessimistic_write')
-        .where(
-          `
-            attendance.date = :today
-            `,
-          {
-            today,
-          },
-        )
-        .andWhere(
-          `
-            attendance.check_out IS NULL
-            `,
-        )
-        .andWhere(
-          `
-            attendance.check_in IS NOT NULL
-            `,
-        )
-        .andWhere(
-          `
-            attendance.status NOT IN (
-              :...excluded
-            )
-            `,
-          {
-            excluded: [
-              AttendanceStatus.HOLIDAY,
-
-              AttendanceStatus.WEEKEND,
-
-              AttendanceStatus.LEAVE,
-
-              AttendanceStatus.ABSENT,
-            ],
-          },
-        )
+        .where('attendance.check_out IS NULL')
+        .andWhere('attendance.check_in IS NOT NULL')
+        .andWhere('attendance.status NOT IN (:...excluded)', {
+          excluded: [
+            AttendanceStatus.HOLIDAY,
+            AttendanceStatus.WEEKEND,
+            AttendanceStatus.LEAVE,
+            AttendanceStatus.ABSENT,
+          ],
+        })
         .getMany();
 
       for (const attendance of records) {
-        // =====================
-        // AUTO CHECKOUT
-        // =====================
+        if (!attendance.employee) continue;
 
-        attendance.checkOut = autoCheckoutTime;
-
-        attendance.checkOutLocation = 'AUTO';
-
-        attendance.isAutoCheckout = true;
-
-        // AUTO MESSAGE
-        if (!attendance.earlyCheckoutReason) {
-          attendance.earlyCheckoutReason = 'Auto checkout (forgot to checkout)';
+        const shift = this.validationService.getEffectiveShift(attendance.employee);
+        
+        let absoluteMaxTime: dayjs.Dayjs;
+        let officialShiftEndTime: dayjs.Dayjs;
+        
+        if (shift.isFlexible) {
+          officialShiftEndTime = dayjs(attendance.checkIn).add(shift.standardWorkingMinutes, 'minute');
+        } else {
+          const [endHour, endMinute] = shift.endTime.split(':').map(Number);
+          officialShiftEndTime = dayjs(attendance.date).hour(endHour).minute(endMinute).second(0).millisecond(0);
+          
+          if (shift.crossMidnight) {
+            // Simplified handling for cross-midnight. If checkin was before midnight and now is after midnight
+            // The shift end time belongs to 'tomorrow' relative to the start date.
+            if (endHour < 12) {
+              officialShiftEndTime = officialShiftEndTime.add(1, 'day');
+            }
+          }
         }
 
-        // =====================
-        // WORKED TIME
-        // =====================
+        absoluteMaxTime = officialShiftEndTime.add(shift.maxAllowedOvertimeMinutes || 240, 'minute');
 
-        const workedMinutes = Math.floor(
-          (attendance.checkOut.getTime() - attendance.checkIn!.getTime()) /
-            60000,
-        );
+        // Check if the current time has exceeded their Absolute Max Time
+        if (now.isAfter(absoluteMaxTime)) {
+          // =====================
+          // FORCE AUTO CHECKOUT
+          // =====================
+          // User chose Option A: Set checkout time to Official Shift End Time (Forfeiting unapproved overtime)
+          attendance.checkOut = officialShiftEndTime.toDate();
+          attendance.checkOutLocation = 'AUTO';
+          attendance.isAutoCheckout = true;
 
-        attendance.workedMinutes = workedMinutes;
+          if (!attendance.earlyCheckoutReason) {
+            attendance.earlyCheckoutReason = 'Auto checkout (exceeded max allowed time)';
+          }
 
-        // =====================
-        // OVERTIME
-        // =====================
+          let breakMinutes = 0;
+          if (!shift.includeBreakInWorkingHours) {
+            breakMinutes = shift.totalBreakMinutes || 0;
+          }
 
-        attendance.overtimeMinutes =
-          workedMinutes > 480 ? workedMinutes - 480 : 0;
+          const workedMinutes = Math.floor(officialShiftEndTime.diff(dayjs(attendance.checkIn), 'minute')) - breakMinutes;
+          attendance.workedMinutes = workedMinutes > 0 ? workedMinutes : 0;
+          
+          // Overtime is forfeited when forced to auto-checkout
+          attendance.overtimeMinutes = 0;
 
-        // =====================
-        // SAVE
-        // =====================
-
-        await manager.save(attendance);
+          await manager.save(attendance);
+        }
       }
     });
 
-    console.log('AUTO CHECKOUT COMPLETED');
+    console.log('AUTO CHECKOUT HOURLY SCAN COMPLETED');
   }
 
   // =====================
@@ -318,23 +311,28 @@ export class AttendanceCronService {
   // 11:00 PM
   // =====================
 
-  @Cron('02 22 * * *', {
+  @Cron('0 * * * *', {
     timeZone: 'Asia/Kolkata',
   })
   async autoMarkAbsent() {
     const today = todayIST();
-
     const now = nowIST();
+
+    console.log('AUTO ABSENT HOURLY SCAN RUNNING');
 
     const employees = await this.employeeRepo.find({
       where: {
         isActive: true,
-
         deletedAt: IsNull(),
       },
-
-      select: {
-        id: true,
+      relations: {
+        shift: true,
+        branch: {
+          defaultShift: true,
+          organization: {
+            defaultShift: true,
+          },
+        },
       },
     });
 
@@ -398,13 +396,32 @@ export class AttendanceCronService {
       const existingAttendance = await this.attendanceRepo.findOne({
         where: {
           employeeId: employee.id,
-
           date: today,
         },
       });
 
       // ATTENDANCE EXISTS
       if (existingAttendance) {
+        continue;
+      }
+
+      // =====================
+      // DYNAMIC ABSENT CHECK
+      // =====================
+      let shift;
+      try {
+        shift = this.validationService.getEffectiveShift(employee);
+      } catch (e) {
+        console.error(`Skipping absent check for employee ${employee.id}: No shift assigned.`);
+        continue;
+      }
+
+      const [startHour, startMinute] = shift.startTime.split(':').map(Number);
+      const shiftStartTime = dayjs(today).hour(startHour).minute(startMinute).second(0).millisecond(0);
+      const absoluteLatestCheckIn = shiftStartTime.add(shift.latestCheckInMinutes, 'minute');
+
+      // If they still have time to check in, skip them for now
+      if (now.isBefore(absoluteLatestCheckIn)) {
         continue;
       }
 
@@ -504,5 +521,73 @@ export class AttendanceCronService {
     }
 
     console.log('AUTO ABSENT COMPLETED');
+  }
+
+  // =====================
+  // NOTIFY SHIFT END
+  // =====================
+
+  @Cron('*/15 * * * *', {
+    timeZone: 'Asia/Kolkata',
+  })
+  async notifyShiftEnd() {
+    const today = todayIST();
+    const now = nowIST();
+
+    const records = await this.attendanceRepo
+      .createQueryBuilder('attendance')
+      .leftJoinAndSelect('attendance.employee', 'employee')
+      .leftJoinAndSelect('employee.shift', 'shift')
+      .leftJoinAndSelect('employee.branch', 'branch')
+      .leftJoinAndSelect('branch.defaultShift', 'branchShift')
+      .leftJoinAndSelect('branch.organization', 'organization')
+      .leftJoinAndSelect('organization.defaultShift', 'orgShift')
+      .where('attendance.check_out IS NULL')
+      .andWhere('attendance.check_in IS NOT NULL')
+      .andWhere('attendance.status NOT IN (:...excluded)', {
+        excluded: [
+          AttendanceStatus.HOLIDAY,
+          AttendanceStatus.WEEKEND,
+          AttendanceStatus.LEAVE,
+          AttendanceStatus.ABSENT,
+        ],
+      })
+      .getMany();
+
+    for (const attendance of records) {
+      if (!attendance.employee) continue;
+
+      let shift;
+      try {
+        shift = this.validationService.getEffectiveShift(attendance.employee);
+      } catch (e) {
+        continue;
+      }
+
+      let officialShiftEndTime: dayjs.Dayjs;
+      
+      if (shift.isFlexible) {
+        officialShiftEndTime = dayjs(attendance.checkIn).add(shift.standardWorkingMinutes, 'minute');
+      } else {
+        const [endHour, endMinute] = shift.endTime.split(':').map(Number);
+        officialShiftEndTime = dayjs(attendance.date).hour(endHour).minute(endMinute).second(0).millisecond(0);
+        
+        if (shift.crossMidnight && endHour < 12) {
+          officialShiftEndTime = officialShiftEndTime.add(1, 'day');
+        }
+      }
+
+      // Check if shift end time just passed within the last 15 minutes window
+      // The 16-minute upper bound ensures that a 15-minute cron job will catch it exactly once
+      if (now.isAfter(officialShiftEndTime) && now.isBefore(officialShiftEndTime.add(16, 'minute'))) {
+        await this.notificationService.createNotification({
+          employeeId: attendance.employee.id,
+          type: NotificationType.ATTENDANCE,
+          title: `Shift Completed`,
+          message: `Your working hours are complete. You can now check out.`,
+          referenceId: attendance.id,
+        });
+      }
+    }
   }
 }
