@@ -20,7 +20,7 @@ import { CreateDepartmentDto } from './dto/create-department.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('departments')
-@Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+// @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
 export class DepartmentsController {
   constructor(private readonly departmentsService: DepartmentsService) {}
 

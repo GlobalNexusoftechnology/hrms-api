@@ -22,7 +22,7 @@ export class LeaveBalanceController {
     return this.leaveBalanceService.getEmployeeBalance(employee.id, year);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.LEAVE_READ)
   @Get('hr/leave-balance')
   getAllBalances(

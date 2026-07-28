@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { SelectQueryBuilder, ObjectLiteral } from 'typeorm';
 import { Employee } from '../../modules/employees/entities/employee.entity';
 import { DataScopeEnum } from '../enums/data-scope.enum';
+import { TeamMember } from '../../modules/team/entities/team-member.entity';
 
 export interface DataScopePathConfig {
   /** The path to the branchId (e.g., 'employee.branchId', 'department.branchId') */
-  branch: string;
+  branch?: string;
   /** The path to the departmentId (e.g., 'employee.departmentId', 'team.departmentId'). Required for DEPARTMENT scope */
   department?: string;
   /** The path to the employeeId (e.g., 'employee.id', 'attendance.employeeId'). Required for TEAM and SELF scope */
@@ -29,49 +30,52 @@ export class DataScopeService {
   ): SelectQueryBuilder<T> {
     const dataScope = currentUser.role?.dataScope || DataScopeEnum.SELF;
 
+    // Generate a unique parameter suffix to prevent collisions with existing query builder parameters
+    const pId = Math.random().toString(36).substring(2, 9);
+
     switch (dataScope) {
       case DataScopeEnum.ORGANIZATION:
         // No restrictions; user can see all records in the organization
         return qb;
 
       case DataScopeEnum.BRANCH:
-        if (!currentUser.branchId) {
-          // If the user has no branch, fallback to self if possible, otherwise return no results
-          if (paths.employee) return qb.andWhere(`${paths.employee} = :userId`, { userId: currentUser.id });
+        if (!currentUser.branchId || !paths.branch) {
+          // If the user has no branch or path doesn't specify one, fallback to self if possible
+          if (paths.employee) return qb.andWhere(`${paths.employee} = :userId_${pId}`, { [`userId_${pId}`]: currentUser.id });
           return qb.andWhere('1 = 0');
         }
-        return qb.andWhere(`${paths.branch} = :branchId`, {
-          branchId: currentUser.branchId,
+        return qb.andWhere(`${paths.branch} = :branchId_${pId}`, {
+          [`branchId_${pId}`]: currentUser.branchId,
         });
 
       case DataScopeEnum.DEPARTMENT:
-        if (!currentUser.departmentId) {
-          if (paths.employee) return qb.andWhere(`${paths.employee} = :userId`, { userId: currentUser.id });
+        if (!currentUser.departmentId || !paths.department) {
+          // Fallback to self if possible
+          if (paths.employee) return qb.andWhere(`${paths.employee} = :userId_${pId}`, { [`userId_${pId}`]: currentUser.id });
           return qb.andWhere('1 = 0');
         }
-        if (!paths.department) {
-           return qb.andWhere('1 = 0');
-        }
-        return qb.andWhere(`${paths.department} = :departmentId`, {
-          departmentId: currentUser.departmentId,
+        return qb.andWhere(`${paths.department} = :departmentId_${pId}`, {
+          [`departmentId_${pId}`]: currentUser.departmentId,
         });
 
       case DataScopeEnum.TEAM:
         if (!paths.employee) {
           return qb.andWhere('1 = 0'); // TEAM scope requires an employee relationship
         }
-        // Access to employees sharing at least one team membership with the current user.
+        
+        // Access to employees sharing at least one team membership with the current user
+        // Using TypeORM's query builder to leverage metadata instead of hardcoded table names
+        const teamSubQuery = qb.connection.createQueryBuilder(TeamMember, `tm1_${pId}`)
+          .select(`tm1_${pId}.teamId`)
+          .where(`tm1_${pId}.employeeId = :userId_${pId}`);
+
+        const employeeSubQuery = qb.connection.createQueryBuilder(TeamMember, `tm2_${pId}`)
+          .select(`tm2_${pId}.employeeId`)
+          .where(`tm2_${pId}.teamId IN (${teamSubQuery.getQuery()})`);
+
         return qb.andWhere(
-          `${paths.employee} IN (
-            SELECT tm2."employeeId" 
-            FROM team_members tm2 
-            WHERE tm2."teamId" IN (
-              SELECT tm1."teamId" 
-              FROM team_members tm1 
-              WHERE tm1."employeeId" = :userId
-            )
-          )`,
-          { userId: currentUser.id },
+          `${paths.employee} IN (${employeeSubQuery.getQuery()})`,
+          { [`userId_${pId}`]: currentUser.id },
         );
 
       case DataScopeEnum.SELF:
@@ -80,7 +84,7 @@ export class DataScopeService {
           return qb.andWhere('1 = 0'); // SELF scope requires an employee relationship
         }
         // Only their own record
-        return qb.andWhere(`${paths.employee} = :userId`, { userId: currentUser.id });
+        return qb.andWhere(`${paths.employee} = :userId_${pId}`, { [`userId_${pId}`]: currentUser.id });
     }
   }
 }

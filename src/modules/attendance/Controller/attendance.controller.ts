@@ -79,7 +79,7 @@ export class AttendanceController {
     return this.attendanceQueryService.getMyAttendance(employee.id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get()
   getFilteredAttendance(
@@ -99,7 +99,7 @@ export class AttendanceController {
     return this.attendanceDashboardService.getEmployeeDashboard(employee.id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('today')
   getTodayAttendance(
@@ -110,7 +110,7 @@ export class AttendanceController {
     return this.attendanceQueryService.getTodayAttendance(query, employee);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('calendar')
   getAttendanceCalendar(

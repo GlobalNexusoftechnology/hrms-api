@@ -94,7 +94,7 @@ export class EmployeesController {
     return this.employeesService.update(id, dto);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  
   @Permissions('role.assign')
   @Patch(':id/role')
   assignRole(
@@ -156,7 +156,7 @@ export class EmployeesController {
     return this.employeesService.uploadProfilePhoto(id, file);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   remove(

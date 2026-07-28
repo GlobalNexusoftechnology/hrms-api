@@ -14,6 +14,8 @@ import { NotificationPreferenceService } from './notification-preference.service
 import { UpdateNotificationPreferenceDto } from './dto/update-notification-preference.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PermissionEnum } from 'src/common/enums/permission.enum';
 
 @UseGuards(JwtAuthGuard)
 @Controller('notification-preference')
@@ -22,6 +24,7 @@ export class NotificationPreferenceController {
     private readonly notificationPreferenceService: NotificationPreferenceService,
   ) {}
 
+  @Permissions(PermissionEnum.NOTIFICATION_SETTINGS_READ)
   @Get('preferences')
   getPreferences(
     @CurrentUser() employee: any,
@@ -29,6 +32,7 @@ export class NotificationPreferenceController {
     return this.notificationPreferenceService.getPreferences(employee);
   }
 
+  @Permissions(PermissionEnum.NOTIFICATION_SETTINGS_UPDATE)
   @Put('preferences')
   updatePreferences(
     @CurrentUser() employee: any,

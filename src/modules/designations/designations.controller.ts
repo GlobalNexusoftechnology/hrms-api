@@ -24,7 +24,7 @@ import { PermissionEnum } from '../../common/enums/permission.enum';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 
 @Controller('designations')
-@Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+// @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
 export class DesignationsController {
   constructor(private readonly designationsService: DesignationsService) {}
 

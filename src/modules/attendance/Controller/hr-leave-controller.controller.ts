@@ -15,7 +15,7 @@ import { PermissionEnum } from '../../../common/enums/permission.enum';
 import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
 import { LeaveService } from '../Service/leave.service';
 
-@Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+// @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
 @Controller('hr/leave')
 export class HrLeaveController {
   constructor(private readonly leaveService: LeaveService) {}

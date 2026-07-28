@@ -7,6 +7,7 @@ import { UpdateShiftDto } from './dto/update-shift.dto';
 export class ShiftController {
   constructor(private readonly shiftService: ShiftService) {}
 
+  
   @Post()
   create(@Body() createShiftDto: CreateShiftDto) {
     return this.shiftService.create(createShiftDto);

@@ -20,13 +20,17 @@ import { extname } from 'path';
 import { EmployeeDocumentsService } from './employee-documents.service';
 
 import { UploadEmployeeDocumentDto } from './dto/upload-employee-document.dto';
+import { Permissions, PERMISSIONS_KEY } from '../auth/decorators/permissions.decorator';
+import { PermissionEnum } from 'src/common/enums/permission.enum';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Controller('employees/:id/documents')
 export class EmployeeDocumentsController {
   constructor(
     private readonly employeeDocumentsService: EmployeeDocumentsService,
-  ) {}
+  ) { }
 
+  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
   @UseInterceptors(
     FileInterceptor('file', {
@@ -83,6 +87,7 @@ export class EmployeeDocumentsController {
     );
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   getDocuments(
     @Param('id', ParseUUIDPipe)
@@ -91,6 +96,7 @@ export class EmployeeDocumentsController {
     return this.employeeDocumentsService.getEmployeeDocuments(employeeId);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':documentId')
   deleteDocument(
     @Param('documentId', ParseUUIDPipe)

@@ -16,6 +16,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
 import { Public } from '../auth/decorators/public.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PermissionEnum } from 'src/common/enums/permission.enum';
 
 @Controller('interview')
 export class InterviewController {
@@ -61,7 +63,8 @@ export class InterviewController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR, RoleEnum.EMPLOYEE)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR, RoleEnum.EMPLOYEE)
+  @Permissions(PermissionEnum.INTERVIEW_CREATE)
   @Post(':id/feedback')
   addFeedback(
     @Param('id', ParseUUIDPipe)

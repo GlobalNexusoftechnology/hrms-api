@@ -5,6 +5,8 @@ import { CreateEmployeeEducationDto } from './dto/create-employee-education.dto'
 import { UpdateEmployeeEducationDto } from './dto/update-employee-education.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PermissionEnum } from 'src/common/enums/permission.enum';
 
 @ApiTags('Employee Education')
 @ApiBearerAuth()
@@ -13,6 +15,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 export class EmployeeEducationController {
   constructor(private readonly educationService: EmployeeEducationService) {}
 
+  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
   @ApiOperation({ summary: 'Add a new educational qualification for an employee' })
   create(
@@ -22,18 +25,21 @@ export class EmployeeEducationController {
     return this.educationService.create(employeeId, createDto);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   @ApiOperation({ summary: 'Get all educational qualifications for an employee' })
   findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
     return this.educationService.findAllByEmployee(employeeId);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific educational qualification' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.educationService.findOne(id);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id')
   @ApiOperation({ summary: 'Update an educational qualification' })
   update(
@@ -43,6 +49,7 @@ export class EmployeeEducationController {
     return this.educationService.update(id, updateDto);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an educational qualification' })
   remove(@Param('id', ParseUUIDPipe) id: string) {

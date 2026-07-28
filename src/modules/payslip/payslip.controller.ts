@@ -7,19 +7,12 @@ import {
   UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
-
 import type { Response } from 'express';
-
 import { JwtAuthGuard } from './../auth/guards/jwt-auth.guard';
-
 import { RolesGuard } from './../../common/guards/roles.guard';
-
 import { Permissions } from './../auth/decorators/permissions.decorator';
-
 import { PermissionEnum } from './../../common/enums/permission.enum';
-
 import { CurrentUser } from './../auth/decorators/current-user.decorator';
-
 import { PayslipService } from './payslip.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
@@ -29,7 +22,7 @@ import { RoleEnum } from '../../common/enums/role.enum';
 export class PayslipController {
   constructor(private readonly payslipService: PayslipService) {}
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.PAYROLL_READ)
   @Get('hr/payroll/:id/payslip')
   downloadByHr(

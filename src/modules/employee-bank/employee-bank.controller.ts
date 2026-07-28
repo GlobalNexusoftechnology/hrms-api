@@ -5,14 +5,17 @@ import { CreateEmployeeBankDto } from './dto/create-employee-bank.dto';
 import { UpdateEmployeeBankDto } from './dto/update-employee-bank.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PermissionEnum } from 'src/common/enums/permission.enum';
 
 @ApiTags('Employee Bank Details')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('employees/:employeeId/banks')
 export class EmployeeBankController {
-  constructor(private readonly bankService: EmployeeBankService) {}
+  constructor(private readonly bankService: EmployeeBankService) { }
 
+  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
   @ApiOperation({ summary: 'Add a new bank account for an employee' })
   create(
@@ -22,18 +25,22 @@ export class EmployeeBankController {
     return this.bankService.create(employeeId, createDto);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   @ApiOperation({ summary: 'Get all bank accounts for an employee' })
   findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
     return this.bankService.findAllByEmployee(employeeId);
   }
 
+
+  @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific bank account' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.bankService.findOne(id);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a bank account' })
   update(
@@ -43,6 +50,7 @@ export class EmployeeBankController {
     return this.bankService.update(id, updateDto);
   }
 
+  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a bank account' })
   remove(@Param('id', ParseUUIDPipe) id: string) {

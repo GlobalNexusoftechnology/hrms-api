@@ -42,7 +42,7 @@ export class TeamController {
     return this.teamService.createTeam(dto, employee);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.TEAM_READ)
   @Post('assign-members')
   async assignMembers(
@@ -59,7 +59,7 @@ export class TeamController {
     return this.teamService.getMyTeam(req.user.id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.TEAM_READ)
   @Get()
   async findAll(
@@ -70,7 +70,7 @@ export class TeamController {
     return this.teamService.findAll(query, employee);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.TEAM_READ)
   @Get(':id')
   async findOne(

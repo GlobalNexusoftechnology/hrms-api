@@ -77,6 +77,31 @@ export const RBAC_CONFIG = {
     PermissionEnum.RESIGNATION_READ,
     PermissionEnum.RESIGNATION_APPROVE,
     PermissionEnum.RESIGNATION_EXECUTE,
+
+    PermissionEnum.LEAVE_LEDGER_READ,
+
+    PermissionEnum.LEAVE_POLICY_CREATE,
+    PermissionEnum.LEAVE_POLICY_READ,
+    PermissionEnum.LEAVE_POLICY_UPDATE,
+    PermissionEnum.LEAVE_POLICY_DELETE,
+
+    PermissionEnum.LEAVE_TYPE_CREATE,
+    PermissionEnum.LEAVE_TYPE_READ,
+    PermissionEnum.LEAVE_TYPE_UPDATE,
+    PermissionEnum.LEAVE_TYPE_DELETE,
+
+    PermissionEnum.NOTIFICATION_READ,
+    PermissionEnum.NOTIFICATION_UPDATE,
+    PermissionEnum.NOTIFICATION_DELETE,
+
+    PermissionEnum.NOTIFICATION_SETTINGS_READ,
+    PermissionEnum.NOTIFICATION_SETTINGS_UPDATE,
+
+    PermissionEnum.SHIFT_CREATE,
+    PermissionEnum.SHIFT_READ,
+    PermissionEnum.SHIFT_UPDATE,
+    PermissionEnum.SHIFT_DELETE,
+
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],
@@ -105,5 +130,19 @@ export const RBAC_CONFIG = {
 
     PermissionEnum.RESIGNATION_CREATE,
     PermissionEnum.RESIGNATION_READ,
+
+    PermissionEnum.LEAVE_LEDGER_READ,
+
+    PermissionEnum.LEAVE_POLICY_READ,
+
+    PermissionEnum.LEAVE_TYPE_READ,
+
+    PermissionEnum.NOTIFICATION_READ,
+    PermissionEnum.NOTIFICATION_UPDATE,
+
+    PermissionEnum.NOTIFICATION_SETTINGS_READ,
+
+    PermissionEnum.SHIFT_READ,
+
   ],
 };

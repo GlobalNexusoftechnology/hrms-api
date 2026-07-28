@@ -34,7 +34,7 @@ export class SalaryStructureController {
     return this.salaryService.getMySalaryStructure(employee.id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.SALARY_CREATE)
   @Post('hr/salary-structure')
   create(
@@ -45,7 +45,7 @@ export class SalaryStructureController {
     return this.salaryService.create(dto, currentUser);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.SALARY_UPDATE)
   @Patch('hr/salary-structure/:id')
   update(
@@ -59,7 +59,7 @@ export class SalaryStructureController {
     return this.salaryService.update(id, dto, currentUser);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.SALARY_READ)
   @Get('hr/salary-structure')
   findAll(
@@ -69,7 +69,7 @@ export class SalaryStructureController {
     return this.salaryService.findAll(query);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.SALARY_READ)
   @Get('hr/salary-structure/:id')
   findOne(

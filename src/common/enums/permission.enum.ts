@@ -116,4 +116,28 @@ export enum PermissionEnum {
   RESIGNATION_CREATE = 'resignation.create',
   RESIGNATION_APPROVE = 'resignation.approve',
   RESIGNATION_EXECUTE = 'resignation.execute',
+
+  LEAVE_LEDGER_READ = 'leave_ledger.read',
+
+  LEAVE_POLICY_CREATE = 'leave_policy.create',
+  LEAVE_POLICY_READ = 'leave_policy.read',
+  LEAVE_POLICY_UPDATE = 'leave_policy.update',
+  LEAVE_POLICY_DELETE = 'leave_policy.delete',
+
+  LEAVE_TYPE_CREATE = 'leave_type.create',
+  LEAVE_TYPE_READ = 'leave_type.read',
+  LEAVE_TYPE_UPDATE = 'leave_type.update',
+  LEAVE_TYPE_DELETE = 'leave_type.delete',
+
+  NOTIFICATION_READ = 'notification.read',
+  NOTIFICATION_UPDATE = 'notification.update',
+  NOTIFICATION_DELETE = 'notification.delete',
+
+  NOTIFICATION_SETTINGS_UPDATE = 'notification_settings.update',
+  NOTIFICATION_SETTINGS_READ = 'notification_settings.read',
+
+  SHIFT_CREATE = 'shift.create',
+  SHIFT_READ = 'shift.read',
+  SHIFT_UPDATE = 'shift.update',
+  SHIFT_DELETE = 'shift.delete',
 }

@@ -16,7 +16,7 @@ import { AttendanceQueryService } from '../Service/attendance-query.service';
 import { AttendanceDashboardService } from '../Service/attendance-dashboard.service';
 import { CorrectionService } from '../Service/correction.service';
 
-@Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+// @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
 @Controller('hr/attendance')
 export class HrAttendanceController {
   constructor(
