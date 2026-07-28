@@ -40,6 +40,9 @@ export class PayslipService {
           department: true,
           designation: true,
           salaryStructures: true,
+          branch: {
+            organization: true,
+          },
         },
       },
     });
@@ -59,6 +62,13 @@ export class PayslipService {
 
     const employee = payroll.employee;
     const activeSalary = employee.salaryStructures?.find(s => s.isActive);
+    const branch = employee.branch;
+    const org = branch?.organization;
+
+    const companyName = org?.name || branch?.name || 'GigaNexus Technologies';
+    const companyAddress = [branch?.line1, branch?.line2, branch?.city, branch?.state].filter(Boolean).join(', ') || '123 Tech Park, Cyber City';
+    const companyEmail = branch?.email || 'hr@giganexus.com';
+    const companyPhone = branch?.phone || '+1 234 567 8900';
 
     const doc = new PDFDocument({
       margin: 50,
@@ -73,39 +83,48 @@ export class PayslipService {
     doc.pipe(res);
 
     // ==========================================
-    // 1. CORPORATE HEADER
+    // 1. CORPORATE HEADER (BEAUTIFUL UI)
     // ==========================================
-    doc.fontSize(24).font('Helvetica-Bold').text('GigaNexus Technologies', 50, 50);
-    doc.fontSize(10).font('Helvetica').text('123 Tech Park, Cyber City', 50, 75);
-    doc.fontSize(10).text('Email: hr@giganexus.com | Phone: +1 234 567 8900', 50, 90);
-
-    doc.fontSize(22).font('Helvetica-Bold').text('PAYSLIP', 0, 50, { align: 'right', width: 545 });
-    doc.fontSize(12).font('Helvetica').text(`For the month of ${getMonthName(payroll.month)} ${payroll.year}`, 0, 75, { align: 'right', width: 545 });
+    // Top colored banner
+    doc.rect(0, 0, 595, 100).fillColor('#003366').fill();
     
-    // Draw horizontal line
-    doc.moveTo(50, 115).lineTo(545, 115).lineWidth(1).strokeColor('#dddddd').stroke();
+    doc.fillColor('#ffffff').fontSize(26).font('Helvetica-Bold').text(companyName, 50, 30);
+    
+    doc.fontSize(10).font('Helvetica').text(companyAddress, 50, 60);
+    doc.fontSize(10).text(`Email: ${companyEmail} | Phone: ${companyPhone}`, 50, 75);
+
+    doc.fillColor('#ffffff').fontSize(22).font('Helvetica-Bold').text('PAYSLIP', 0, 30, { align: 'right', width: 545 });
+    doc.fontSize(12).font('Helvetica').text(`For the month of ${getMonthName(payroll.month)} ${payroll.year}`, 0, 60, { align: 'right', width: 545 });
+    
+    // Reset colors for body
+    doc.fillColor('#000000');
 
     // ==========================================
     // 2. EMPLOYEE DETAILS GRID
     // ==========================================
-    const topY = 135;
-    doc.fillColor('#000000').fontSize(10).font('Helvetica-Bold').text('Employee Code:', 50, topY);
+    const topY = 125;
+    
+    // Section Background
+    doc.rect(45, topY - 10, 505, 75).fillColor('#f8f9fa').fill();
+    doc.rect(45, topY - 10, 505, 75).lineWidth(1).strokeColor('#e9ecef').stroke();
+    
+    doc.fillColor('#333333').fontSize(10).font('Helvetica-Bold').text('Employee Code:', 55, topY);
     doc.font('Helvetica').text(employee.employeeCode, 150, topY);
     
     doc.font('Helvetica-Bold').text('Department:', 300, topY);
     doc.font('Helvetica').text(employee.department?.name || 'N/A', 400, topY);
     
-    doc.font('Helvetica-Bold').text('Name:', 50, topY + 20);
+    doc.font('Helvetica-Bold').text('Name:', 55, topY + 20);
     doc.font('Helvetica').text(`${employee.firstName} ${employee.lastName}`, 150, topY + 20);
     
     doc.font('Helvetica-Bold').text('Designation:', 300, topY + 20);
     doc.font('Helvetica').text(employee.designation?.name || 'N/A', 400, topY + 20);
     
-    doc.font('Helvetica-Bold').text('Email:', 50, topY + 50);
-    doc.font('Helvetica').text(employee.email, 150, topY + 50);
+    doc.font('Helvetica-Bold').text('Email:', 55, topY + 40);
+    doc.font('Helvetica').text(employee.email, 150, topY + 40);
     
-    doc.font('Helvetica-Bold').text('Date of Joining:', 300, topY + 50);
-    doc.font('Helvetica').text(employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A', 400, topY + 50);
+    doc.font('Helvetica-Bold').text('Date of Joining:', 300, topY + 40);
+    doc.font('Helvetica').text(employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A', 400, topY + 40);
 
     // ==========================================
     // 3. ATTENDANCE SUMMARY
@@ -174,7 +193,9 @@ export class PayslipService {
     drawEarning('Basic Pay', Number(payroll.baseBasicSalary) || Number(activeSalary?.basicSalary || 0), true);
     drawEarning('House Rent Allowance', Number(payroll.baseHra) || Number(activeSalary?.hra || 0), true);
     drawEarning('Special Allowance', Number(payroll.baseAllowance) || Number(activeSalary?.allowance || 0), true);
+    drawEarning('Fixed Bonus', Number(payroll.baseBonus) || Number(activeSalary?.bonus || 0));
     drawEarning('Overtime', Number(payroll.overtimeAmount));
+    drawEarning('Leave Encashment', Number(payroll.encashmentAmount));
     if (Number(payroll.bonusAmount) > 0) drawEarning(`Bonus ${payroll.bonusReason ? `(${payroll.bonusReason})` : ''}`, Number(payroll.bonusAmount));
     
     // --- DEDUCTIONS ---
@@ -199,9 +220,26 @@ export class PayslipService {
     doc.moveTo(50, totalY).lineTo(545, totalY).stroke();
     doc.font('Helvetica-Bold');
     doc.text('Total Gross Earnings', leftColX + 10, totalY + 8);
-    doc.text(formatCurrency(payroll.grossSalary), leftColX + 145, totalY + 8, { width: 90, align: 'right' });
+
+    const totalEarnings = Number(payroll.baseBasicSalary || activeSalary?.basicSalary || 0)
+      + Number(payroll.baseHra || activeSalary?.hra || 0)
+      + Number(payroll.baseAllowance || activeSalary?.allowance || 0)
+      + Number(payroll.baseBonus || activeSalary?.bonus || 0)
+      + Number(payroll.overtimeAmount || 0)
+      + Number(payroll.bonusAmount || 0)
+      + Number(payroll.encashmentAmount || 0);
+
+    doc.text(formatCurrency(totalEarnings), leftColX + 145, totalY + 8, { width: 90, align: 'right' });
     
-    const totalDeductions = Number(payroll.grossSalary) - Number(payroll.finalSalary);
+    const totalDeductions = Number(payroll.basePf || activeSalary?.pf || 0)
+      + Number(payroll.baseEsic || activeSalary?.esic || 0)
+      + Number(payroll.baseProfessionalTax || activeSalary?.professionalTax || 0)
+      + Number(payroll.absentDeduction || 0)
+      + Number(payroll.halfDayDeduction || 0)
+      + Number(payroll.leaveDeduction || 0)
+      + Number(payroll.lateDeduction || 0)
+      + Number(payroll.deductionAmount || 0);
+
     doc.text('Total Deductions', rightColX + 10, totalY + 8);
     doc.text(formatCurrency(totalDeductions), rightColX + 145, totalY + 8, { width: 90, align: 'right' });
 
@@ -210,31 +248,34 @@ export class PayslipService {
     // ==========================================
     const netY = tableTop + 220;
     
-    // Highlight Box
-    doc.rect(345, netY, 200, 40).fillColor('#e6f2ff').fill();
-    doc.rect(345, netY, 200, 40).lineWidth(1).strokeColor('#99ccff').stroke();
+    // Highlight Box (More modern look)
+    doc.rect(345, netY, 200, 45).fillColor('#003366').fill();
+    doc.rect(345, netY, 200, 45).lineWidth(1).strokeColor('#002244').stroke();
     
-    doc.fillColor('#003366').fontSize(14).font('Helvetica-Bold');
-    doc.text('NET PAY:', 355, netY + 12);
-    doc.fontSize(16).text(formatCurrency(payroll.finalSalary), 430, netY + 10, { width: 105, align: 'right' });
+    doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold');
+    doc.text('NET PAY:', 355, netY + 15);
+    doc.fontSize(16).text(formatCurrency(payroll.finalSalary), 430, netY + 14, { width: 105, align: 'right' });
 
     // Payment Status Text
-    doc.fillColor('#000000').fontSize(10).font('Helvetica');
+    doc.fillColor('#333333').fontSize(10).font('Helvetica');
     const isPaidText = payroll.isPaid ? 'PAID' : 'UNPAID';
-    doc.font('Helvetica-Bold').text(`Payment Status: `, 50, netY + 5);
-    doc.font('Helvetica').text(isPaidText, 135, netY + 5);
+    doc.font('Helvetica-Bold').text(`Payment Status: `, 50, netY + 8);
+    doc.fillColor(payroll.isPaid ? '#28a745' : '#dc3545').font('Helvetica-Bold').text(isPaidText, 135, netY + 8);
     
+    doc.fillColor('#333333');
     const formattedDate = payroll.paidAt 
       ? payroll.paidAt.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) 
       : 'N/A';
-    doc.font('Helvetica-Bold').text(`Processed On: `, 50, netY + 20);
-    doc.font('Helvetica').text(formattedDate, 135, netY + 20);
+    doc.font('Helvetica-Bold').text(`Processed On: `, 50, netY + 23);
+    doc.font('Helvetica').text(formattedDate, 135, netY + 23);
 
     // Footer signature line
-    doc.moveTo(400, netY + 100).lineTo(545, netY + 100).strokeColor('#000000').stroke();
-    doc.fontSize(10).text('Authorized Signature', 400, netY + 105, { width: 145, align: 'center' });
+    doc.moveTo(400, netY + 110).lineTo(545, netY + 110).lineWidth(1).strokeColor('#999999').stroke();
+    doc.fontSize(10).font('Helvetica-Oblique').text('Authorized Signature', 400, netY + 115, { width: 145, align: 'center' });
 
-    doc.fontSize(9).fillColor('#666666').text('This is a system-generated payslip and does not require a physical signature.', 50, 750, { align: 'center' });
+    // Bottom decorative bar
+    doc.rect(0, 810, 595, 32).fillColor('#003366').fill();
+    doc.fontSize(9).font('Helvetica').fillColor('#ffffff').text('This is a system-generated payslip and does not require a physical signature.', 0, 820, { align: 'center', width: 595 });
 
     doc.end();
   }

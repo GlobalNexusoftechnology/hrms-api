@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import dayjs from 'dayjs';
 
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -20,6 +21,7 @@ import { SalaryStructure } from './../salary-structure/entities/salary-structure
 import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
 import { LeaveLedger, LeaveTransactionType } from '../leave-ledger/entities/leave-ledger.entity';
 import { WeekendSetting } from '../weekend_settings/entities/weekend_setting.entity';
+import { Holiday } from '../holiday/entities/holiday.entity';
 import { AttendanceStatus } from './../../common/enums/AttendanceStatus.enum';
 import { DataScopeService } from './../../common/services/data-scope.service';
 import { NotificationService } from '../notification/notification.service';
@@ -52,9 +54,12 @@ export class PayrollService {
     @InjectRepository(WeekendSetting)
     private readonly weekendRepo: Repository<WeekendSetting>,
 
+    @InjectRepository(Holiday)
+    private readonly holidayRepo: Repository<Holiday>,
+
     private readonly dataScopeService: DataScopeService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   // =====================
   // GENERATE PAYROLL
@@ -65,8 +70,8 @@ export class PayrollService {
   }
 
   async generatePayroll(
-    employeeId: string, 
-    month: number, 
+    employeeId: string,
+    month: number,
     year: number,
     options?: { bonusAmount?: number; bonusReason?: string; deductionAmount?: number; deductionReason?: string },
     precalculatedWeekends?: WeekendSetting[]
@@ -126,17 +131,35 @@ export class PayrollService {
       (item) => item.status === AttendanceStatus.HALF_DAY,
     ).length;
 
-    const absentDays = attendances.filter(
-      (item) => item.status === AttendanceStatus.ABSENT,
-    ).length;
-    
-    const leaveDays = attendances.filter(
-      (item) => item.status === AttendanceStatus.LEAVE,
-    ).length;
+    const absentDays = attendances.filter((item) => {
+      if (item.status !== AttendanceStatus.ABSENT) return false;
+      const date = new Date(item.date);
+      const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+      const occurrence = Math.ceil(date.getDate() / 7);
+      const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
+      const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
+      return !isWeekend;
+    }).length;
+
+    const leaveDays = attendances.filter((item) => {
+      if (item.status !== AttendanceStatus.LEAVE) return false;
+      const date = new Date(item.date);
+      const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+      const occurrence = Math.ceil(date.getDate() / 7);
+      const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
+      const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
+      return !isWeekend;
+    }).length;
 
     // LEAVE RECONCILIATION
     let paidLeaves = 0;
     let unpaidLeaves = 0;
+
+    const holidays = await this.holidayRepo.find({
+      where: { date: Between(startDate, endDate) }
+    });
+    const holidayDates = holidays.map(h => h.date);
+    const weekendDays = weekends.map(w => w.day.toLowerCase());
 
     const approvedLeaves = await this.leaveRequestRepo.createQueryBuilder('leave')
       .leftJoinAndSelect('leave.leaveType', 'leaveType')
@@ -147,15 +170,29 @@ export class PayrollService {
 
     for (const req of approvedLeaves) {
       // Find overlap days in this month
-      const startOverlap = new Date(Math.max(new Date(req.startDate).getTime(), new Date(startDate).getTime()));
-      const endOverlap = new Date(Math.min(new Date(req.endDate).getTime(), new Date(endDate).getTime()));
-      
-      const overlapDays = Math.max(0, (endOverlap.getTime() - startOverlap.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const startOverlap = dayjs(Math.max(new Date(req.startDate).getTime(), new Date(startDate).getTime()));
+      const endOverlap = dayjs(Math.min(new Date(req.endDate).getTime(), new Date(endDate).getTime()));
 
-      // Get policy for isPaid
       const policy = await this.leavePolicyRepo.findOne({
         where: { leaveTypeId: req.leaveTypeId, isActive: true }
       });
+
+      let overlapDays = 0;
+      if (policy) {
+        for (let current = startOverlap.clone(); current.isBefore(endOverlap) || current.isSame(endOverlap, 'day'); current = current.add(1, 'day')) {
+          const dateStr = current.format('YYYY-MM-DD');
+          const dayName = current.format('dddd').toLowerCase();
+
+          // NOTE: for advanced week occurrence logic this could be improved, but this matches leave.service logic
+          const isWeekend = weekendDays.includes(dayName);
+          const isHoliday = holidayDates.includes(dateStr);
+
+          if (isWeekend && !policy.countWeekend) continue;
+          if (isHoliday && !policy.countHoliday) continue;
+
+          overlapDays++;
+        }
+      }
 
       if (policy && policy.isPaid) {
         paidLeaves += overlapDays;
@@ -170,7 +207,7 @@ export class PayrollService {
     const unapprovedMissingDays = Math.max(0, totalAttendanceMissing - totalApprovedLeaves);
 
     const perDaySalary = this.roundCurrency(Number(salary.netSalary) / effectiveWorkingDays);
-    const perHourSalary = this.roundCurrency(perDaySalary / 8); 
+    const perHourSalary = this.roundCurrency(perDaySalary / 8);
 
     // ENCASHMENT RECONCILIATION
     const encashments = await this.leaveLedgerRepo.find({
@@ -186,11 +223,11 @@ export class PayrollService {
 
     // Allocate deductions gracefully
     let remainingUnapproved = unapprovedMissingDays;
-    
+
     const allocatedHalfDays = Math.min(remainingUnapproved, halfDays * 0.5);
     const halfDayDeduction = this.roundCurrency(allocatedHalfDays * perDaySalary);
     remainingUnapproved -= allocatedHalfDays;
-    
+
     const absentDeduction = this.roundCurrency(remainingUnapproved * perDaySalary);
     const leaveDeduction = this.roundCurrency(unpaidLeaves * perDaySalary);
 
@@ -238,6 +275,7 @@ export class PayrollService {
       baseBasicSalary: salary.basicSalary ? Number(salary.basicSalary) : 0,
       baseHra: salary.hra ? Number(salary.hra) : 0,
       baseAllowance: salary.allowance ? Number(salary.allowance) : 0,
+      baseBonus: salary.bonus ? Number(salary.bonus) : 0,
       basePf: salary.pf ? Number(salary.pf) : 0,
       baseEsic: salary.esic ? Number(salary.esic) : 0,
       baseProfessionalTax: salary.professionalTax ? Number(salary.professionalTax) : 0,
@@ -436,7 +474,7 @@ export class PayrollService {
     const batchSize = 50;
     for (let i = 0; i < employees.length; i += batchSize) {
       const batch = employees.slice(i, i + batchSize);
-      
+
       const promises = batch.map(async (employee) => {
         try {
           await this.generatePayroll(employee.id, month, year, undefined, weekends);
@@ -470,7 +508,7 @@ export class PayrollService {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    
+
     // If tomorrow is the 1st, then today is the last day of the month
     if (tomorrow.getDate() === 1) {
       const month = today.getMonth() + 1;
@@ -482,33 +520,33 @@ export class PayrollService {
 
   private calculateWorkingDays(year: number, month: number, weekends: WeekendSetting[], joiningDate?: Date | null) {
     const lastDay = new Date(year, month, 0).getDate();
-    
+
     let startDay = 1;
     if (joiningDate) {
-       const jDate = new Date(joiningDate);
-       if (jDate.getFullYear() === year && (jDate.getMonth() + 1) === month) {
-         startDay = jDate.getDate();
-       } else if (jDate.getFullYear() > year || (jDate.getFullYear() === year && (jDate.getMonth() + 1) > month)) {
-         return 0; // Joined after this month
-       }
+      const jDate = new Date(joiningDate);
+      if (jDate.getFullYear() === year && (jDate.getMonth() + 1) === month) {
+        startDay = jDate.getDate();
+      } else if (jDate.getFullYear() > year || (jDate.getFullYear() === year && (jDate.getMonth() + 1) > month)) {
+        return 0; // Joined after this month
+      }
     }
 
     let workingDays = 0;
-    
+
     for (let day = startDay; day <= lastDay; day++) {
       const date = new Date(year, month - 1, day);
       const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-      
+
       const occurrence = Math.ceil(day / 7);
       const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
 
       const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
-      
+
       if (!isWeekend) {
         workingDays++;
       }
     }
-    
+
     return workingDays;
   }
 }

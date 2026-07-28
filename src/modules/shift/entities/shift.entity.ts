@@ -26,6 +26,12 @@ export class Shift {
   @Column({ type: 'time', name: 'end_time' })
   endTime!: string;
 
+  @Column({ type: 'time', name: 'break_start_time', nullable: true })
+  breakStartTime!: string | null;
+
+  @Column({ type: 'time', name: 'break_end_time', nullable: true })
+  breakEndTime!: string | null;
+
   @Column({ type: 'boolean', default: false, name: 'cross_midnight' })
   crossMidnight!: boolean;
 

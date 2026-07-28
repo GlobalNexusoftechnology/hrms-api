@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import dayjs from 'dayjs';
 import { Shift } from './entities/shift.entity';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
@@ -12,6 +13,20 @@ export class ShiftService {
     private readonly shiftRepo: Repository<Shift>,
   ) {}
 
+  private calculateBreakMinutes(start?: string | null, end?: string | null): number | undefined {
+    if (start && end) {
+      const [startHour, startMin] = start.split(':').map(Number);
+      const [endHour, endMin] = end.split(':').map(Number);
+      let startDate = dayjs().hour(startHour).minute(startMin).second(0);
+      let endDate = dayjs().hour(endHour).minute(endMin).second(0);
+      if (endDate.isBefore(startDate)) {
+        endDate = endDate.add(1, 'day');
+      }
+      return endDate.diff(startDate, 'minute');
+    }
+    return undefined;
+  }
+
   async create(createShiftDto: CreateShiftDto) {
     const existing = await this.shiftRepo.findOne({
       where: [{ name: createShiftDto.name }, { code: createShiftDto.code }],
@@ -19,6 +34,11 @@ export class ShiftService {
 
     if (existing) {
       throw new ConflictException('Shift with this name or code already exists');
+    }
+
+    const calculatedBreak = this.calculateBreakMinutes(createShiftDto.breakStartTime, createShiftDto.breakEndTime);
+    if (calculatedBreak !== undefined) {
+      createShiftDto.totalBreakMinutes = calculatedBreak;
     }
 
     const shift = this.shiftRepo.create(createShiftDto);
@@ -37,7 +57,14 @@ export class ShiftService {
 
   async update(id: string, updateShiftDto: UpdateShiftDto) {
     const shift = await this.findOne(id);
+    
     Object.assign(shift, updateShiftDto);
+    
+    const calculatedBreak = this.calculateBreakMinutes(shift.breakStartTime, shift.breakEndTime);
+    if (calculatedBreak !== undefined) {
+      shift.totalBreakMinutes = calculatedBreak;
+    }
+
     return this.shiftRepo.save(shift);
   }
 

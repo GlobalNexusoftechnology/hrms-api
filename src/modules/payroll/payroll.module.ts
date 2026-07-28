@@ -16,6 +16,7 @@ import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
 import { LeaveLedger } from '../leave-ledger/entities/leave-ledger.entity';
 import { AttendanceModule } from '../attendance/attendance.module';
 import { WeekendSetting } from '../weekend_settings/entities/weekend_setting.entity';
+import { Holiday } from '../holiday/entities/holiday.entity';
 
 import { PayrollController } from './payroll.controller';
 
@@ -34,6 +35,7 @@ import { NotificationModule } from '../notification/notification.module';
       LeavePolicy,
       LeaveLedger,
       WeekendSetting,
+      Holiday,
     ]),
     NotificationModule,
   ],

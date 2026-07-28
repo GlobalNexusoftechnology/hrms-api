@@ -5,7 +5,7 @@
 
 ---
 
-## 📅 Last Updated: 2026-07-20
+## 📅 Last Updated: 2026-07-28
 
 ---
 
@@ -425,6 +425,13 @@
 | 2026-07-27 | Team | Implemented: Leave Encashment API (`POST /leave/encash`) with strict balance and policy constraints |
 | 2026-07-27 | Team | Implemented: Leave Encashment integration directly into the Payroll Generation engine (`encashmentAmount`) |
 | 2026-07-27 | Team | Confirmed: Employee Self-Service routes (`/me`) for Dashboard, Leave, Attendance, Payslips, and Team |
+| 2026-07-28 | Team | Fixed: Payslip PDF math for Total Gross Earnings and Total Deductions |
+| 2026-07-28 | Team | Fixed: Payroll Engine "double-penalty" issue; weekends/holidays are now safely excluded from unpaid leave penalties |
+| 2026-07-28 | Team | Added: Holiday repository injected into PayrollService for dynamic weekend/holiday math |
+| 2026-07-28 | Team | Added: `breakStartTime` and `breakEndTime` to Shift entity for strict break window tracking |
+| 2026-07-28 | Team | Added: `base_bonus` to Payroll snapshot to permanently capture structural bonuses |
+| 2026-07-28 | Team | Updated: `PayrollController` and `CreatePayrollDto` to accept one-off `bonusAmount` and `deductionAmount` overrides |
+| 2026-07-28 | Team | UI/UX: Modernized Payslip PDF layout with dynamic Branch & Organization mapping for corporate header/footer |
 
 ---
 

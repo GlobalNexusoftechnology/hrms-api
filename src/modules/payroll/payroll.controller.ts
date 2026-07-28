@@ -18,6 +18,8 @@ import { PermissionEnum } from './../../common/enums/permission.enum';
 import { RoleEnum } from './../../common/enums/role.enum';
 import { PayrollService } from './payroll.service';
 
+import { CreatePayrollDto } from './dto/create-payroll.dto';
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class PayrollController {
@@ -37,18 +39,18 @@ export class PayrollController {
   @Post('hr/payroll/generate')
   generate(
     @Body()
-    body: {
-      employeeId: string;
-      month: number;
-      year: number;
-    },
+    body: CreatePayrollDto,
   ) {
     return this.payrollService.generatePayroll(
       body.employeeId,
-
       body.month,
-
       body.year,
+      {
+        bonusAmount: body.bonusAmount,
+        bonusReason: body.bonusReason,
+        deductionAmount: body.deductionAmount,
+        deductionReason: body.deductionReason,
+      }
     );
   }
 

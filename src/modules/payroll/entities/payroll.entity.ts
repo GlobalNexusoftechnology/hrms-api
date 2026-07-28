@@ -77,6 +77,9 @@ export class Payroll {
   @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_allowance', default: 0 })
   baseAllowance!: number;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_bonus', default: 0 })
+  baseBonus!: number;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_pf', default: 0 })
   basePf!: number;
 

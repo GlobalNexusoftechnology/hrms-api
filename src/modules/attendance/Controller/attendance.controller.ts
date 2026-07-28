@@ -20,7 +20,7 @@ import { CorrectionService } from '../Service/correction.service';
 import { CheckInDto } from '../dto/check-In.dto';
 
 import { CheckOutDto } from '../dto/check-out.dto';
-import { Roles } from 'src/common/decorators/roles.decorator';
+import { Roles } from '../../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../../common/enums/role.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)

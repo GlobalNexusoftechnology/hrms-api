@@ -2,7 +2,7 @@ import { Attendance } from '../entities/attendance.entity';
 
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 
-import { formatIST } from 'src/utils/time.util';
+import { formatIST } from '../../../utils/time.util';
 
 export function buildAttendanceCalendar(
   records: Attendance[],

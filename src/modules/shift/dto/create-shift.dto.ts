@@ -27,10 +27,25 @@ export class CreateShiftDto {
   startTime!: string;
 
   @IsNotEmpty()
-  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/, {
-    message: 'endTime must be a valid time in HH:mm or HH:mm:ss format',
+  @IsString()
+  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
+    message: 'endTime must be in HH:mm format',
   })
   endTime!: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
+    message: 'breakStartTime must be in HH:mm format',
+  })
+  breakStartTime?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
+    message: 'breakEndTime must be in HH:mm format',
+  })
+  breakEndTime?: string;
 
   @IsOptional()
   @IsBoolean()

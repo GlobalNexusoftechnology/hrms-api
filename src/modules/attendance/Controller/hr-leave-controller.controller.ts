@@ -21,6 +21,15 @@ export class HrLeaveController {
   constructor(private readonly leaveService: LeaveService) {}
 
   @Permissions(PermissionEnum.LEAVE_READ)
+  @Get('report')
+  getReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.leaveService.getLeaveReport(startDate, endDate);
+  }
+
+  @Permissions(PermissionEnum.LEAVE_READ)
   @Get()
   findAll(
     @Query()
