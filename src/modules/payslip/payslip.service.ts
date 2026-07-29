@@ -118,8 +118,8 @@ export class PayslipService {
     const topY = 125;
     
     // Section Background
-    doc.rect(45, topY - 10, 505, 75).fillColor('#f8f9fa').fill();
-    doc.rect(45, topY - 10, 505, 75).lineWidth(1).strokeColor('#e9ecef').stroke();
+    doc.rect(45, topY - 10, 505, 95).fillColor('#f8f9fa').fill();
+    doc.rect(45, topY - 10, 505, 95).lineWidth(1).strokeColor('#e9ecef').stroke();
     
     doc.fillColor('#333333').fontSize(10).font('Helvetica-Bold').text('Employee Code:', 55, topY);
     doc.font('Helvetica').text(employee.employeeCode, 150, topY);
@@ -139,10 +139,16 @@ export class PayslipService {
     doc.font('Helvetica-Bold').text('Date of Joining:', 300, topY + 40);
     doc.font('Helvetica').text(employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A', 400, topY + 40);
 
+    doc.font('Helvetica-Bold').text('Actual Basic Pay:', 55, topY + 60);
+    doc.font('Helvetica').text(formatCurrency(Number(payroll.baseBasicSalary) || Number(activeSalary?.basicSalary || 0)), 150, topY + 60);
+    
+    doc.font('Helvetica-Bold').text('Actual Gross Pay:', 300, topY + 60);
+    doc.font('Helvetica').text(formatCurrency(Number(activeSalary?.grossSalary || 0)), 400, topY + 60);
+
     // ==========================================
     // 3. ATTENDANCE SUMMARY
     // ==========================================
-    const attY = topY + 90;
+    const attY = topY + 110;
     doc.rect(50, attY - 10, 495, 40).fillColor('#f7f7f7').fill();
     doc.fillColor('#000000');
     
@@ -204,9 +210,14 @@ export class PayslipService {
         }
     };
     
-    drawEarning('Basic Pay', Number(payroll.baseBasicSalary) || Number(activeSalary?.basicSalary || 0), true);
-    
     const earningComponents = payroll.componentsData?.filter(c => c.type === 'EARNING') || [];
+    const totalDynamicEarnings = earningComponents.reduce((sum, c) => sum + Number(c.amount), 0);
+    
+    // Prorated Basic is mathematically derived from the saved grossSalary
+    const proratedBasic = Number(payroll.grossSalary) - totalDynamicEarnings;
+
+    drawEarning('Basic Pay', proratedBasic, true);
+    
     earningComponents.forEach(c => drawEarning(c.componentName, Number(c.amount)));
 
     drawEarning('Overtime', Number(payroll.overtimeAmount));
@@ -225,9 +236,8 @@ export class PayslipService {
     const deductionComponents = payroll.componentsData?.filter(c => c.type === 'DEDUCTION') || [];
     deductionComponents.forEach(c => drawDeduction(c.componentName, Number(c.amount)));
 
-    drawDeduction('Absent Penalty', Number(payroll.absentDeduction));
-    drawDeduction('Half Day Penalty', Number(payroll.halfDayDeduction));
-    drawDeduction('Leave Penalty', Number(payroll.leaveDeduction));
+    // Audit deductions (absent, pre-join, leave, half-day) are intentionally omitted from payslip display per V2 spec.
+    // We only display active penalties applied after proration:
     drawDeduction('Late Penalty', Number(payroll.lateDeduction));
     if (Number(payroll.deductionAmount) > 0) drawDeduction(`Other ${payroll.deductionReason ? `(${payroll.deductionReason})` : ''}`, Number(payroll.deductionAmount));
 
@@ -237,9 +247,7 @@ export class PayslipService {
     doc.font('Helvetica-Bold');
     doc.text('Total Gross Earnings', leftColX + 10, totalY + 8);
 
-    const totalDynamicEarnings = earningComponents.reduce((sum, c) => sum + Number(c.amount), 0);
-    const totalEarnings = Number(payroll.baseBasicSalary || activeSalary?.basicSalary || 0)
-      + totalDynamicEarnings
+    const totalEarnings = Number(payroll.grossSalary)
       + Number(payroll.overtimeAmount || 0)
       + Number(payroll.bonusAmount || 0)
       + Number(payroll.encashmentAmount || 0);
@@ -248,9 +256,6 @@ export class PayslipService {
     
     const totalDynamicDeductions = deductionComponents.reduce((sum, c) => sum + Number(c.amount), 0);
     const totalDeductions = totalDynamicDeductions
-      + Number(payroll.absentDeduction || 0)
-      + Number(payroll.halfDayDeduction || 0)
-      + Number(payroll.leaveDeduction || 0)
       + Number(payroll.lateDeduction || 0)
       + Number(payroll.deductionAmount || 0);
 

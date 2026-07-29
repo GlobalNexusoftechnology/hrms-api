@@ -398,6 +398,11 @@ export class PayrollService {
       employeeId: payroll.employeeId,
       month: payroll.month,
       year: payroll.year,
+      
+      basicSalary: Number(proratedBasic),
+      totalEarnings: Number(proratedGross),
+      totalDeductions: Number(proratedDeductions),
+      
       grossSalary: Number(payroll.grossSalary),
       finalSalary: Number(payroll.finalSalary),
       
