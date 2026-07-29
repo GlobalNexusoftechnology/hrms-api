@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 
 import { Employee } from '../../employees/entities/employee.entity';
+import { SalaryStructureComponent } from './salary-structure-component.entity';
 
 @Entity('salary_structures')
 export class SalaryStructure {
@@ -41,93 +43,18 @@ export class SalaryStructure {
 
   @Column({
     type: 'decimal',
-
     precision: 12,
-
     scale: 2,
-
-    default: 0,
-  })
-  hra!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-  })
-  allowance!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-  })
-  bonus!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-  })
-  pf!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-  })
-  esic!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-
-    name: 'professional_tax',
-  })
-  professionalTax!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
     name: 'gross_salary',
   })
   grossSalary!: number;
 
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    name: 'net_salary',
-  })
-  netSalary!: number;
+  @OneToMany(
+    () => SalaryStructureComponent,
+    (component) => component.salaryStructure,
+    { cascade: true }
+  )
+  components!: SalaryStructureComponent[];
 
   @Column({
     type: 'date',
@@ -135,6 +62,13 @@ export class SalaryStructure {
     name: 'effective_from',
   })
   effectiveFrom!: string;
+
+  @Column({
+    type: 'date',
+    name: 'effective_to',
+    nullable: true,
+  })
+  effectiveTo?: string | null;
 
   @Column({
     default: true,

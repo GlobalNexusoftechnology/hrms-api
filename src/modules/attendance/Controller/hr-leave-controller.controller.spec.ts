@@ -34,9 +34,10 @@ describe('HrLeaveController', () => {
   describe('findAll', () => {
     it('should call leaveService.findAll', async () => {
       const query = { page: '1' };
-      const result = await controller.findAll(query);
+      const user = { id: 'hr-123' };
+      const result = await controller.findAll(query, user);
       expect(result).toEqual([]);
-      expect(mockLeaveService.findAll).toHaveBeenCalledWith(query);
+      expect(mockLeaveService.findAll).toHaveBeenCalledWith(query, user);
     });
   });
 

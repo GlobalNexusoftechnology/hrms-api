@@ -11,6 +11,16 @@ import {
 
 import { Employee } from '../../employees/entities/employee.entity';
 
+export interface PayrollComponentSnapshot {
+  componentId: string;
+  componentCode: string | null;
+  componentName: string;
+  type: string;
+  calculationType: string;
+  percentageValue: number | null;
+  amount: number;
+}
+
 @Entity('payrolls')
 @Index(['employeeId', 'month', 'year'], {
   unique: true,
@@ -49,6 +59,9 @@ export class Payroll {
   // =====================
   // SALARY SNAPSHOT
   // =====================
+
+  @Column({ type: 'jsonb', nullable: true, name: 'components_data' })
+  componentsData!: PayrollComponentSnapshot[];
 
   @Column({
     type: 'decimal',

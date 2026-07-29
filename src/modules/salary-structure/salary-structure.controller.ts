@@ -19,6 +19,8 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
 import { CreateSalaryStructureDto } from './dto/create-salary-structure.dto';
 import { UpdateSalaryStructureDto } from './dto/update-salary-structure.dto';
+import { CreateSalaryComponentDto } from './dto/create-salary-component.dto';
+import { UpdateSalaryComponentDto } from './dto/update-salary-component.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
@@ -33,6 +35,43 @@ export class SalaryStructureController {
   ) {
     return this.salaryService.getMySalaryStructure(employee.id);
   }
+
+  // =====================
+  // SALARY COMPONENTS
+  // =====================
+
+  @Permissions(PermissionEnum.SALARY_CREATE)
+  @Post('hr/salary-components')
+  createComponent(
+    @Body()
+    dto: CreateSalaryComponentDto,
+  ) {
+    return this.salaryService.createComponent(dto);
+  }
+
+  @Permissions(PermissionEnum.SALARY_UPDATE)
+  @Patch('hr/salary-components/:id')
+  updateComponent(
+    @Param('id', ParseUUIDPipe)
+    id: string,
+    @Body()
+    dto: UpdateSalaryComponentDto,
+  ) {
+    return this.salaryService.updateComponent(id, dto);
+  }
+
+  @Permissions(PermissionEnum.SALARY_READ)
+  @Get('hr/salary-components')
+  getComponents(
+    @Query('organizationId', ParseUUIDPipe)
+    organizationId: string,
+  ) {
+    return this.salaryService.getComponents(organizationId);
+  }
+
+  // =====================
+  // SALARY STRUCTURE
+  // =====================
 
   // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.SALARY_CREATE)

@@ -1,10 +1,23 @@
 import {
   IsUUID,
   IsNumber,
-  IsOptional,
   IsDateString,
   Min,
+  IsArray,
+  ValidateNested,
+  IsOptional,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class ComponentOverrideDto {
+  @IsUUID()
+  componentId!: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  overrideAmount?: number;
+}
 
 export class CreateSalaryStructureDto {
   @IsUUID()
@@ -14,36 +27,11 @@ export class CreateSalaryStructureDto {
   @Min(0)
   basicSalary!: number;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  hra?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  allowance?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  bonus?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  pf?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  esic?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  professionalTax?: number;
-
   @IsDateString()
   effectiveFrom!: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ComponentOverrideDto)
+  components!: ComponentOverrideDto[];
 }

@@ -23,6 +23,9 @@ import { LeaveLedger, LeaveTransactionType } from '../leave-ledger/entities/leav
 import { WeekendSetting } from '../weekend_settings/entities/weekend_setting.entity';
 import { Holiday } from '../holiday/entities/holiday.entity';
 import { AttendanceStatus } from './../../common/enums/AttendanceStatus.enum';
+import { SalaryComponentTypeEnum } from '../../common/enums/salary-component-type.enum';
+import { CalculationTypeEnum } from '../../common/enums/calculation-type.enum';
+import { PercentageBaseEnum } from '../../common/enums/percentage-base.enum';
 import { DataScopeService } from './../../common/services/data-scope.service';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../../common/enums/NotificationType.enum';
@@ -69,6 +72,15 @@ export class PayrollService {
     return Math.round(value * 100) / 100;
   }
 
+  private getComponentAmount(salary: SalaryStructure, possibleNames: string[]): number {
+    if (!salary.components) return 0;
+    const match = salary.components.find(c =>
+      possibleNames.some(name => c.componentName.toLowerCase().includes(name.toLowerCase())) ||
+      possibleNames.some(name => c.salaryComponent?.code?.toLowerCase() === name.toLowerCase())
+    );
+    return match ? Number(match.calculatedAmount) : 0;
+  }
+
   async generatePayroll(
     employeeId: string,
     month: number,
@@ -90,12 +102,14 @@ export class PayrollService {
 
     const employee = await this.employeeRepo.findOne({
       where: { id: employeeId },
+      relations: { shift: true }
     });
 
     if (!employee) throw new NotFoundException('Employee not found');
 
     const salary = await this.salaryRepo.findOne({
       where: { employeeId, isActive: true },
+      relations: { components: { salaryComponent: true } },
     });
 
     if (!salary) throw new NotFoundException('Salary structure not found');
@@ -106,60 +120,19 @@ export class PayrollService {
 
     // WORKING DAYS CALCULATION
     const weekends = precalculatedWeekends ?? await this.weekendRepo.find({ where: { isOff: true } });
-    const workingDays = this.calculateWorkingDays(year, month, weekends, employee.joiningDate);
-    // Fallback just in case working days evaluates to 0
-    const effectiveWorkingDays = workingDays > 0 ? workingDays : lastDay;
-
-    // ATTENDANCE
-    const attendances = await this.attendanceRepo.find({
-      where: {
-        employeeId,
-
-        date: Between(startDate, endDate),
-      },
-    });
-
-    const presentDays = attendances.filter(
-      (item) => item.status === AttendanceStatus.PRESENT,
-    ).length;
-
-    const lateDays = attendances.filter(
-      (item) => item.status === AttendanceStatus.LATE,
-    ).length;
-
-    const halfDays = attendances.filter(
-      (item) => item.status === AttendanceStatus.HALF_DAY,
-    ).length;
-
-    const absentDays = attendances.filter((item) => {
-      if (item.status !== AttendanceStatus.ABSENT) return false;
-      const date = new Date(item.date);
-      const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-      const occurrence = Math.ceil(date.getDate() / 7);
-      const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
-      const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
-      return !isWeekend;
-    }).length;
-
-    const leaveDays = attendances.filter((item) => {
-      if (item.status !== AttendanceStatus.LEAVE) return false;
-      const date = new Date(item.date);
-      const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-      const occurrence = Math.ceil(date.getDate() / 7);
-      const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
-      const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
-      return !isWeekend;
-    }).length;
-
-    // LEAVE RECONCILIATION
-    let paidLeaves = 0;
-    let unpaidLeaves = 0;
-
+    
+    // HOLIDAYS & LEAVES
     const holidays = await this.holidayRepo.find({
       where: { date: Between(startDate, endDate) }
     });
     const holidayDates = holidays.map(h => h.date);
     const weekendDays = weekends.map(w => w.day.toLowerCase());
+
+    // Calculate for FULL month to get accurate perDaySalary
+    const fullMonthWorkingDays = this.calculateWorkingDays(year, month, weekends, holidayDates, null);
+    const actualWorkingDays = this.calculateWorkingDays(year, month, weekends, holidayDates, employee.joiningDate);
+    const preJoinMissedDays = Math.max(0, fullMonthWorkingDays - actualWorkingDays);
+    const effectiveWorkingDays = fullMonthWorkingDays > 0 ? fullMonthWorkingDays : lastDay;
 
     const approvedLeaves = await this.leaveRequestRepo.createQueryBuilder('leave')
       .leftJoinAndSelect('leave.leaveType', 'leaveType')
@@ -167,6 +140,62 @@ export class PayrollService {
       .andWhere('leave.status = :status', { status: 'APPROVED' })
       .andWhere('(leave.startDate <= :endDate AND leave.endDate >= :startDate)', { startDate, endDate })
       .getMany();
+
+    // ATTENDANCE
+    const attendances = await this.attendanceRepo.find({
+      where: {
+        employeeId,
+        date: Between(startDate, endDate),
+      },
+    });
+
+    const presentDays = attendances.filter(item => item.status === AttendanceStatus.PRESENT).length;
+    const lateDays = attendances.filter(item => item.status === AttendanceStatus.LATE).length;
+    const halfDays = attendances.filter(item => item.status === AttendanceStatus.HALF_DAY).length;
+
+    const absentDays = attendances.filter((item) => {
+      if (item.status !== AttendanceStatus.ABSENT) return false;
+      const date = new Date(item.date);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+      const occurrence = Math.ceil(date.getDate() / 7);
+      const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
+      const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
+      if (isWeekend) return false;
+      
+      const isHoliday = holidayDates.includes(dateStr);
+      if (isHoliday) return false;
+
+      const hasApprovedLeave = approvedLeaves.some(l => {
+         const t = date.getTime();
+         return t >= new Date(l.startDate).getTime() && t <= new Date(l.endDate).getTime();
+      });
+      if (hasApprovedLeave) return false;
+
+      return true;
+    }).length;
+
+    const leaveDays = attendances.filter((item) => {
+      if (item.status !== AttendanceStatus.LEAVE) return false;
+      const date = new Date(item.date);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+      const occurrence = Math.ceil(date.getDate() / 7);
+      const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
+      const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
+      if (isWeekend) return false;
+
+      const isHoliday = holidayDates.includes(dateStr);
+      if (isHoliday) return false;
+
+      return true;
+    }).length;
+
+    // LEAVE RECONCILIATION
+    let paidLeaves = 0;
+    let unpaidLeaves = 0;
+
+    // Variables are declared at the top already
 
     for (const req of approvedLeaves) {
       // Find overlap days in this month
@@ -206,8 +235,64 @@ export class PayrollService {
     const totalApprovedLeaves = paidLeaves + unpaidLeaves;
     const unapprovedMissingDays = Math.max(0, totalAttendanceMissing - totalApprovedLeaves);
 
-    const perDaySalary = this.roundCurrency(Number(salary.netSalary) / effectiveWorkingDays);
-    const perHourSalary = this.roundCurrency(perDaySalary / 8);
+    // DYNAMIC PRORATION LOGIC
+    const earnedDays = Math.max(0, effectiveWorkingDays - preJoinMissedDays - unapprovedMissingDays - unpaidLeaves);
+    const prorationFactor = effectiveWorkingDays > 0 ? (earnedDays / effectiveWorkingDays) : 0;
+
+    const proratedBasic = this.roundCurrency(Number(salary.basicSalary) * prorationFactor);
+    let proratedGross = proratedBasic;
+
+    const componentsData: any[] = [];
+    
+    // Process Earnings
+    const earningComps = salary.components?.filter(c => c.salaryComponent?.type === SalaryComponentTypeEnum.EARNING) || [];
+    for (const c of earningComps) {
+      let amount = Number(c.calculatedAmount);
+      if (c.calculationType === CalculationTypeEnum.FIXED_AMOUNT && c.salaryComponent?.isProratable) {
+         amount = this.roundCurrency(amount * prorationFactor);
+      }
+      proratedGross += amount;
+      componentsData.push({
+         componentId: c.salaryComponentId,
+         componentCode: c.salaryComponent?.code || null,
+         componentName: c.componentName,
+         type: SalaryComponentTypeEnum.EARNING,
+         calculationType: c.calculationType,
+         percentageValue: c.percentageValue ? Number(c.percentageValue) : null,
+         amount
+      });
+    }
+
+    // Process Deductions
+    let proratedDeductions = 0;
+    const deductionComps = salary.components?.filter(c => c.salaryComponent?.type === SalaryComponentTypeEnum.DEDUCTION) || [];
+    for (const c of deductionComps) {
+      let amount = Number(c.calculatedAmount);
+      if (c.calculationType === CalculationTypeEnum.PERCENTAGE) {
+         const baseAmount = c.salaryComponent?.percentageBase === PercentageBaseEnum.GROSS ? proratedGross : proratedBasic;
+         amount = this.roundCurrency(baseAmount * (Number(c.percentageValue) / 100));
+      } else if (c.calculationType === CalculationTypeEnum.FIXED_AMOUNT && c.salaryComponent?.isProratable) {
+         amount = this.roundCurrency(amount * prorationFactor);
+      }
+      proratedDeductions += amount;
+      componentsData.push({
+         componentId: c.salaryComponentId,
+         componentCode: c.salaryComponent?.code || null,
+         componentName: c.componentName,
+         type: SalaryComponentTypeEnum.DEDUCTION,
+         calculationType: c.calculationType,
+         percentageValue: c.percentageValue ? Number(c.percentageValue) : null,
+         amount
+      });
+    }
+
+    // Per day calculations based on FULL Basic Salary (used for overtime/late rate)
+    const perDaySalary = this.roundCurrency(Number(salary.basicSalary) / effectiveWorkingDays);
+    const shiftMinutes = employee.shift?.standardWorkingMinutes || 480;
+    const perHourSalary = this.roundCurrency(perDaySalary / (shiftMinutes / 60));
+
+    // Audit metrics (tracking the "missing" amounts)
+    const preJoinDeduction = this.roundCurrency(preJoinMissedDays * perDaySalary);
 
     // ENCASHMENT RECONCILIATION
     const encashments = await this.leaveLedgerRepo.find({
@@ -221,7 +306,7 @@ export class PayrollService {
     const encashedDays = encashments.reduce((sum, e) => sum + Number(e.days), 0);
     const encashmentAmount = this.roundCurrency(encashedDays * perDaySalary);
 
-    // Allocate deductions gracefully
+    // Allocate deductions gracefully for audit
     let remainingUnapproved = unapprovedMissingDays;
 
     const allocatedHalfDays = Math.min(remainingUnapproved, halfDays * 0.5);
@@ -250,15 +335,13 @@ export class PayrollService {
     const deductionReason = options?.deductionReason || null;
 
     const finalSalary = this.roundCurrency(
-      Number(salary.netSalary) -
-      absentDeduction -
-      halfDayDeduction -
-      leaveDeduction -
-      lateDeduction +
+      proratedGross -
+      proratedDeductions +
       overtimeAmount +
       bonusAmount -
       deductionAmount +
-      encashmentAmount
+      encashmentAmount -
+      lateDeduction
     );
 
     // SAVE
@@ -269,16 +352,16 @@ export class PayrollService {
 
       year,
 
-      grossSalary: salary.grossSalary,
-      netSalary: salary.netSalary,
+      grossSalary: proratedGross,
+      netSalary: this.roundCurrency(proratedGross - proratedDeductions),
 
       baseBasicSalary: salary.basicSalary ? Number(salary.basicSalary) : 0,
-      baseHra: salary.hra ? Number(salary.hra) : 0,
-      baseAllowance: salary.allowance ? Number(salary.allowance) : 0,
-      baseBonus: salary.bonus ? Number(salary.bonus) : 0,
-      basePf: salary.pf ? Number(salary.pf) : 0,
-      baseEsic: salary.esic ? Number(salary.esic) : 0,
-      baseProfessionalTax: salary.professionalTax ? Number(salary.professionalTax) : 0,
+      baseHra: this.getComponentAmount(salary, ['HRA', 'House Rent Allowance']),
+      baseAllowance: this.getComponentAmount(salary, ['Allowance', 'Special Allowance']),
+      baseBonus: this.getComponentAmount(salary, ['Bonus', 'Fixed Bonus']),
+      basePf: this.getComponentAmount(salary, ['PF', 'Provident Fund']),
+      baseEsic: this.getComponentAmount(salary, ['ESIC', 'ESI']),
+      baseProfessionalTax: this.getComponentAmount(salary, ['Professional Tax', 'PT']),
 
       presentDays,
 
@@ -298,6 +381,7 @@ export class PayrollService {
       deductionReason,
       encashmentAmount,
       finalSalary,
+      componentsData,
     });
 
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -309,7 +393,43 @@ export class PayrollService {
       referenceId: payroll.id,
     });
 
-    return payroll;
+    return {
+      id: payroll.id,
+      employeeId: payroll.employeeId,
+      month: payroll.month,
+      year: payroll.year,
+      grossSalary: Number(payroll.grossSalary),
+      finalSalary: Number(payroll.finalSalary),
+      
+      attendance: {
+         presentDays: payroll.presentDays,
+         absentDays: payroll.absentDays,
+         halfDays: payroll.halfDays,
+         lateDays: payroll.lateDays,
+         paidLeaves: payroll.paidLeaves,
+         unpaidLeaves: payroll.unpaidLeaves,
+      },
+
+      deductions: {
+         absent: Number(payroll.absentDeduction),
+         halfDay: Number(payroll.halfDayDeduction),
+         leave: Number(payroll.leaveDeduction),
+         late: Number(payroll.lateDeduction),
+         other: Number(payroll.deductionAmount),
+      },
+
+      additions: {
+         overtime: Number(payroll.overtimeAmount),
+         bonus: Number(payroll.bonusAmount),
+         encashment: Number(payroll.encashmentAmount),
+      },
+
+      components: payroll.componentsData || [],
+      
+      isPaid: payroll.isPaid,
+      paidAt: payroll.paidAt,
+      createdAt: payroll.createdAt
+    };
   }
 
   async getMyPayroll(employeeId: string) {
@@ -518,7 +638,7 @@ export class PayrollService {
     }
   }
 
-  private calculateWorkingDays(year: number, month: number, weekends: WeekendSetting[], joiningDate?: Date | null) {
+  private calculateWorkingDays(year: number, month: number, weekends: WeekendSetting[], holidayDates: string[], joiningDate?: Date | null) {
     const lastDay = new Date(year, month, 0).getDate();
 
     let startDay = 1;
@@ -536,13 +656,15 @@ export class PayrollService {
     for (let day = startDay; day <= lastDay; day++) {
       const date = new Date(year, month - 1, day);
       const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+      const dateStr = date.toISOString().split('T')[0];
 
       const occurrence = Math.ceil(day / 7);
       const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
 
       const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
+      const isHoliday = holidayDates.includes(dateStr);
 
-      if (!isWeekend) {
+      if (!isWeekend && !isHoliday) {
         workingDays++;
       }
     }

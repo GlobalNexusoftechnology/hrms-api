@@ -25,6 +25,15 @@ export class PayslipService {
   // DOWNLOAD PAYSLIP
   // =====================
 
+  private getComponentAmount(salary: any, possibleNames: string[]): number {
+    if (!salary || !salary.components) return 0;
+    const match = salary.components.find((c: any) =>
+      possibleNames.some(name => c.componentName.toLowerCase().includes(name.toLowerCase())) ||
+      possibleNames.some(name => c.salaryComponent?.code?.toLowerCase() === name.toLowerCase())
+    );
+    return match ? Number(match.calculatedAmount) : 0;
+  }
+
   async downloadPayslip(
     payrollId: string,
     res: Response,
@@ -39,7 +48,11 @@ export class PayslipService {
         employee: {
           department: true,
           designation: true,
-          salaryStructures: true,
+          salaryStructures: {
+            components: {
+              salaryComponent: true,
+            },
+          },
           branch: {
             organization: true,
           },
@@ -190,10 +203,12 @@ export class PayslipService {
             earnY += rowHeight;
         }
     };
+    
     drawEarning('Basic Pay', Number(payroll.baseBasicSalary) || Number(activeSalary?.basicSalary || 0), true);
-    drawEarning('House Rent Allowance', Number(payroll.baseHra) || Number(activeSalary?.hra || 0), true);
-    drawEarning('Special Allowance', Number(payroll.baseAllowance) || Number(activeSalary?.allowance || 0), true);
-    drawEarning('Fixed Bonus', Number(payroll.baseBonus) || Number(activeSalary?.bonus || 0));
+    
+    const earningComponents = payroll.componentsData?.filter(c => c.type === 'EARNING') || [];
+    earningComponents.forEach(c => drawEarning(c.componentName, Number(c.amount)));
+
     drawEarning('Overtime', Number(payroll.overtimeAmount));
     drawEarning('Leave Encashment', Number(payroll.encashmentAmount));
     if (Number(payroll.bonusAmount) > 0) drawEarning(`Bonus ${payroll.bonusReason ? `(${payroll.bonusReason})` : ''}`, Number(payroll.bonusAmount));
@@ -206,9 +221,10 @@ export class PayslipService {
             dedY += rowHeight;
         }
     };
-    drawDeduction('Provident Fund (PF)', Number(payroll.basePf) || Number(activeSalary?.pf || 0), true);
-    drawDeduction('ESIC', Number(payroll.baseEsic) || Number(activeSalary?.esic || 0), true);
-    drawDeduction('Professional Tax', Number(payroll.baseProfessionalTax) || Number(activeSalary?.professionalTax || 0), true);
+
+    const deductionComponents = payroll.componentsData?.filter(c => c.type === 'DEDUCTION') || [];
+    deductionComponents.forEach(c => drawDeduction(c.componentName, Number(c.amount)));
+
     drawDeduction('Absent Penalty', Number(payroll.absentDeduction));
     drawDeduction('Half Day Penalty', Number(payroll.halfDayDeduction));
     drawDeduction('Leave Penalty', Number(payroll.leaveDeduction));
@@ -221,19 +237,17 @@ export class PayslipService {
     doc.font('Helvetica-Bold');
     doc.text('Total Gross Earnings', leftColX + 10, totalY + 8);
 
+    const totalDynamicEarnings = earningComponents.reduce((sum, c) => sum + Number(c.amount), 0);
     const totalEarnings = Number(payroll.baseBasicSalary || activeSalary?.basicSalary || 0)
-      + Number(payroll.baseHra || activeSalary?.hra || 0)
-      + Number(payroll.baseAllowance || activeSalary?.allowance || 0)
-      + Number(payroll.baseBonus || activeSalary?.bonus || 0)
+      + totalDynamicEarnings
       + Number(payroll.overtimeAmount || 0)
       + Number(payroll.bonusAmount || 0)
       + Number(payroll.encashmentAmount || 0);
 
     doc.text(formatCurrency(totalEarnings), leftColX + 145, totalY + 8, { width: 90, align: 'right' });
     
-    const totalDeductions = Number(payroll.basePf || activeSalary?.pf || 0)
-      + Number(payroll.baseEsic || activeSalary?.esic || 0)
-      + Number(payroll.baseProfessionalTax || activeSalary?.professionalTax || 0)
+    const totalDynamicDeductions = deductionComponents.reduce((sum, c) => sum + Number(c.amount), 0);
+    const totalDeductions = totalDynamicDeductions
       + Number(payroll.absentDeduction || 0)
       + Number(payroll.halfDayDeduction || 0)
       + Number(payroll.leaveDeduction || 0)
