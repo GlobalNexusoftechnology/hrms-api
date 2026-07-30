@@ -39,8 +39,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = 'Validation Error';
       } else {
         message = responseObj.message || message;
-        
-        if (typeof message === 'string' && (message.includes('JSON at position') || message.includes('Unexpected token'))) {
+
+        if (
+          typeof message === 'string' &&
+          (message.includes('JSON at position') ||
+            message.includes('Unexpected token'))
+        ) {
           errors = [{ field: 'payload', message: 'Invalid JSON format' }];
           message = 'Validation Error';
         }

@@ -41,7 +41,11 @@ export class Shift {
   @Column({ type: 'int', default: 60, name: 'total_break_minutes' })
   totalBreakMinutes!: number;
 
-  @Column({ type: 'boolean', default: false, name: 'include_break_in_working_hours' })
+  @Column({
+    type: 'boolean',
+    default: false,
+    name: 'include_break_in_working_hours',
+  })
   includeBreakInWorkingHours!: boolean;
 
   @Column({ type: 'int', default: 15, name: 'late_grace_minutes' })

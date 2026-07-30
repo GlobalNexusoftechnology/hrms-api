@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OrganizationSettings } from '../entities/organization-settings.entity';
@@ -16,8 +20,10 @@ export class OrganizationSettingsService {
 
   async create(createDto: CreateOrganizationSettingsDto, userId?: string) {
     const org = await this.organizationService.get();
-    
-    const count = await this.settingsRepo.count({ where: { organizationId: org.id } });
+
+    const count = await this.settingsRepo.count({
+      where: { organizationId: org.id },
+    });
     if (count > 0) {
       throw new BadRequestException('Organization settings already exist.');
     }
@@ -25,21 +31,31 @@ export class OrganizationSettingsService {
     const settings = this.settingsRepo.create({
       ...createDto,
       organizationId: org.id,
-        createdByUserId: userId
+      createdByUserId: userId,
     });
     return this.settingsRepo.save(settings);
   }
 
   async update(updateDto: UpdateOrganizationSettingsDto, userId?: string) {
     const org = await this.organizationService.get();
-    const settings = await this.settingsRepo.findOne({ where: { organizationId: org.id } });
-    
+    const settings = await this.settingsRepo.findOne({
+      where: { organizationId: org.id },
+    });
+
     if (!settings) throw new NotFoundException('Settings not found');
 
-    Object.assign(settings, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
+    Object.assign(
+      settings,
+      updateDto,
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+    );
     return this.settingsRepo.save(settings);
   }
-  
+
   async get() {
     const org = await this.organizationService.get();
     return this.settingsRepo.findOne({ where: { organizationId: org.id } });

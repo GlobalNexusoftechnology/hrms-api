@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, IsEnum, IsDateString, IsInt, Min } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsEnum,
+  IsDateString,
+  IsInt,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ActivityAction } from '../enums/activity-action.enum';
 
@@ -24,12 +32,17 @@ export class SearchActivityLogDto {
   @IsUUID()
   entityId?: string;
 
-  @ApiPropertyOptional({ description: 'Action performed', enum: ActivityAction })
+  @ApiPropertyOptional({
+    description: 'Action performed',
+    enum: ActivityAction,
+  })
   @IsOptional()
   @IsEnum(ActivityAction)
   action?: ActivityAction;
 
-  @ApiPropertyOptional({ description: 'Status of the action (e.g., SUCCESS, FAILED)' })
+  @ApiPropertyOptional({
+    description: 'Status of the action (e.g., SUCCESS, FAILED)',
+  })
   @IsOptional()
   @IsString()
   status?: string;
@@ -54,7 +67,10 @@ export class SearchActivityLogDto {
   @IsDateString()
   endDate?: string;
 
-  @ApiPropertyOptional({ description: 'Page number for pagination', default: 1 })
+  @ApiPropertyOptional({
+    description: 'Page number for pagination',
+    default: 1,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -68,12 +84,19 @@ export class SearchActivityLogDto {
   @Min(1)
   limit: number = 10;
 
-  @ApiPropertyOptional({ description: 'Field to sort by', default: 'createdAt' })
+  @ApiPropertyOptional({
+    description: 'Field to sort by',
+    default: 'createdAt',
+  })
   @IsOptional()
   @IsString()
   sortBy: string = 'createdAt';
 
-  @ApiPropertyOptional({ description: 'Sort order', enum: ['ASC', 'DESC'], default: 'DESC' })
+  @ApiPropertyOptional({
+    description: 'Sort order',
+    enum: ['ASC', 'DESC'],
+    default: 'DESC',
+  })
   @IsOptional()
   @IsString()
   sortOrder: 'ASC' | 'DESC' = 'DESC';

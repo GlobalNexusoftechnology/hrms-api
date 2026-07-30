@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Employee } from '../../employees/entities/employee.entity';
 
 @Entity('employee_emergency_contacts')
@@ -22,7 +30,12 @@ export class EmployeeEmergencyContact {
   @Column({ type: 'varchar', length: 50 })
   phone!: string;
 
-  @Column({ type: 'varchar', length: 50, name: 'alternate_phone', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    name: 'alternate_phone',
+    nullable: true,
+  })
   alternatePhone: string | null = null;
 
   @Column({ type: 'varchar', length: 150, nullable: true })

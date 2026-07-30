@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, MaxLength, IsEnum, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsInt,
+  MaxLength,
+  IsEnum,
+  Min,
+  Max,
+} from 'class-validator';
 import { ProficiencyLevelEnum } from '../../../common/enums/proficiency-level.enum';
 
 export class CreateEmployeeSkillDto {

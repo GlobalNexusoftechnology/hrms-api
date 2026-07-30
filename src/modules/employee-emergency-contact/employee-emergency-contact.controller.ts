@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { EmployeeEmergencyContactService } from './employee-emergency-contact.service';
 import { CreateEmployeeEmergencyContactDto } from './dto/create-employee-emergency-contact.dto';
@@ -14,7 +24,9 @@ import { PermissionEnum } from 'src/common/enums/permission.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('employees/:employeeId/emergency-contacts')
 export class EmployeeEmergencyContactController {
-  constructor(private readonly contactService: EmployeeEmergencyContactService) {}
+  constructor(
+    private readonly contactService: EmployeeEmergencyContactService,
+  ) {}
 
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
@@ -40,7 +52,6 @@ export class EmployeeEmergencyContactController {
     return this.contactService.findOne(id);
   }
 
-  
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Patch(':id')
   @ApiOperation({ summary: 'Update an emergency contact' })

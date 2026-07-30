@@ -38,7 +38,11 @@ export class LeaveLedger {
   @JoinColumn({ name: 'leave_type_id' })
   leaveType!: LeaveType;
 
-  @Column({ type: 'enum', enum: LeaveTransactionType, name: 'transaction_type' })
+  @Column({
+    type: 'enum',
+    enum: LeaveTransactionType,
+    name: 'transaction_type',
+  })
   transactionType!: LeaveTransactionType;
 
   @Column({ type: 'decimal', precision: 5, scale: 2 })

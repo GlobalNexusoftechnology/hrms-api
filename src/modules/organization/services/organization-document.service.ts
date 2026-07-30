@@ -19,14 +19,14 @@ export class OrganizationDocumentService {
     const document = this.documentRepo.create({
       ...createDto,
       organizationId: org.id,
-        createdByUserId: userId
+      createdByUserId: userId,
     });
     return this.documentRepo.save(document);
   }
 
   async uploadDocument(body: any, file: Express.Multer.File, userId?: string) {
     const org = await this.organizationService.get();
-    
+
     // Fallbacks if body parsing failed
     const docType = body.documentType || 'OTHER';
     const title = body.title || file.originalname;
@@ -41,18 +41,30 @@ export class OrganizationDocumentService {
       expiryDate: expiry,
       fileUrl: `/uploads/organization/documents/${file.filename}`,
     });
-    
+
     return this.documentRepo.save(document);
   }
 
-  async update(id: string, updateDto: UpdateOrganizationDocumentDto, userId?: string) {
+  async update(
+    id: string,
+    updateDto: UpdateOrganizationDocumentDto,
+    userId?: string,
+  ) {
     const document = await this.documentRepo.findOne({ where: { id } });
     if (!document) throw new NotFoundException('Document not found');
 
-    Object.assign(document, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
+    Object.assign(
+      document,
+      updateDto,
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+    );
     return this.documentRepo.save(document);
   }
-  
+
   async findAll() {
     const org = await this.organizationService.get();
     return this.documentRepo.find({ where: { organizationId: org.id } });

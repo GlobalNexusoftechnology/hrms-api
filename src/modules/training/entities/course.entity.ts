@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Department } from '../../departments/entities/department.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 import { CourseModule } from './course-module.entity';
@@ -29,10 +38,10 @@ export class Course {
   @JoinColumn({ name: 'created_by' })
   creator!: Employee;
 
-  @OneToMany(() => CourseModule, module => module.course)
+  @OneToMany(() => CourseModule, (module) => module.course)
   modules!: CourseModule[];
 
-  @OneToMany(() => CourseAssignment, assignment => assignment.course)
+  @OneToMany(() => CourseAssignment, (assignment) => assignment.course)
   assignments!: CourseAssignment[];
 
   @Column({ default: true, name: 'is_active' })

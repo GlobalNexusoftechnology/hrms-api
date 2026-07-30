@@ -40,16 +40,43 @@ describe('TrainingService', () => {
       providers: [
         TrainingService,
         { provide: getRepositoryToken(Course), useFactory: mockRepository },
-        { provide: getRepositoryToken(CourseModule), useFactory: mockRepository },
-        { provide: getRepositoryToken(CourseTopic), useFactory: mockRepository },
-        { provide: getRepositoryToken(CourseMaterial), useFactory: mockRepository },
+        {
+          provide: getRepositoryToken(CourseModule),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(CourseTopic),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(CourseMaterial),
+          useFactory: mockRepository,
+        },
         { provide: getRepositoryToken(Assessment), useFactory: mockRepository },
-        { provide: getRepositoryToken(AssessmentQuestion), useFactory: mockRepository },
-        { provide: getRepositoryToken(AssessmentOption), useFactory: mockRepository },
-        { provide: getRepositoryToken(CourseAssignment), useFactory: mockRepository },
-        { provide: getRepositoryToken(TopicProgress), useFactory: mockRepository },
-        { provide: getRepositoryToken(ModuleProgress), useFactory: mockRepository },
-        { provide: getRepositoryToken(AssessmentAttempt), useFactory: mockRepository },
+        {
+          provide: getRepositoryToken(AssessmentQuestion),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(AssessmentOption),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(CourseAssignment),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(TopicProgress),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(ModuleProgress),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(AssessmentAttempt),
+          useFactory: mockRepository,
+        },
         { provide: getRepositoryToken(Employee), useFactory: mockRepository },
         { provide: getRepositoryToken(Department), useFactory: mockRepository },
       ],

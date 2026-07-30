@@ -10,7 +10,9 @@ export class OrganizationDocument extends BaseEntity {
   @Index()
   organizationId!: string;
 
-  @ManyToOne(() => Organization, (org) => org.documents, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Organization, (org) => org.documents, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'organization_id' })
   organization!: Organization;
 
@@ -18,11 +20,18 @@ export class OrganizationDocument extends BaseEntity {
   @Index()
   branchId: string | null = null;
 
-  @ManyToOne(() => Branch, (branch) => branch.documents, { nullable: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Branch, (branch) => branch.documents, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'branch_id' })
   branch: Branch | null = null;
 
-  @Column({ name: 'document_type', type: 'enum', enum: OrganizationDocumentTypeEnum })
+  @Column({
+    name: 'document_type',
+    type: 'enum',
+    enum: OrganizationDocumentTypeEnum,
+  })
   documentType!: OrganizationDocumentTypeEnum;
 
   @Column()

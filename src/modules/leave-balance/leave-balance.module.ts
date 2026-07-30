@@ -17,4 +17,3 @@ import { LeaveEngineModule } from '../leave-engine/leave-engine.module';
   exports: [LeaveBalanceService],
 })
 export class LeaveBalanceModule {}
-

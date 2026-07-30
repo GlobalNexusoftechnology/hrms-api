@@ -5,7 +5,7 @@
 
 ---
 
-## 📅 Last Updated: 2026-07-28
+## 📅 Last Updated: 2026-07-29
 
 ---
 
@@ -432,6 +432,10 @@
 | 2026-07-28 | Team | Added: `base_bonus` to Payroll snapshot to permanently capture structural bonuses |
 | 2026-07-28 | Team | Updated: `PayrollController` and `CreatePayrollDto` to accept one-off `bonusAmount` and `deductionAmount` overrides |
 | 2026-07-28 | Team | UI/UX: Modernized Payslip PDF layout with dynamic Branch & Organization mapping for corporate header/footer |
+| 2026-07-29 | Team | Refactored: Added `isProratable` and `percentageBase` to `SalaryComponent` entity for robust enterprise calculation modeling |
+| 2026-07-29 | Team | Refactored: Payroll Engine mathematically prorates eligible earnings and dynamically recalculates percentage deductions against configurable bases |
+| 2026-07-29 | Team | Updated: Clean Payslip architecture — PDF and API strictly render mathematically prorated earnings, safely omitting artificial "Absent" deductions from the presentation layer |
+| 2026-07-29 | Team | UI/UX: Added full Structural Basic & Gross Pay transparency to the header of the Payslip PDF |
 
 ---
 

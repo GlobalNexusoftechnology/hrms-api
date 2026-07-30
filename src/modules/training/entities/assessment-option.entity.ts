@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { AssessmentQuestion } from './assessment-question.entity';
 
 @Entity('assessment_options')
@@ -9,7 +17,9 @@ export class AssessmentOption {
   @Column({ name: 'question_id' })
   questionId!: string;
 
-  @ManyToOne(() => AssessmentQuestion, q => q.options, { onDelete: 'CASCADE' })
+  @ManyToOne(() => AssessmentQuestion, (q) => q.options, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'question_id' })
   question!: AssessmentQuestion;
 

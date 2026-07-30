@@ -12,13 +12,19 @@ export class EmployeeEducationService {
     private readonly educationRepository: Repository<EmployeeEducation>,
   ) {}
 
-  async create(employeeId: string, dto: CreateEmployeeEducationDto): Promise<EmployeeEducation> {
+  async create(
+    employeeId: string,
+    dto: CreateEmployeeEducationDto,
+  ): Promise<EmployeeEducation> {
     const education = this.educationRepository.create({ ...dto, employeeId });
     return this.educationRepository.save(education);
   }
 
   async findAllByEmployee(employeeId: string): Promise<EmployeeEducation[]> {
-    return this.educationRepository.find({ where: { employeeId }, order: { passingYear: 'DESC' } });
+    return this.educationRepository.find({
+      where: { employeeId },
+      order: { passingYear: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<EmployeeEducation> {
@@ -29,7 +35,10 @@ export class EmployeeEducationService {
     return education;
   }
 
-  async update(id: string, dto: UpdateEmployeeEducationDto): Promise<EmployeeEducation> {
+  async update(
+    id: string,
+    dto: UpdateEmployeeEducationDto,
+  ): Promise<EmployeeEducation> {
     const education = await this.findOne(id);
     Object.assign(education, dto);
     return this.educationRepository.save(education);

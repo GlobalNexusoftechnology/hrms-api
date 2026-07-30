@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import dayjs from 'dayjs';
@@ -13,11 +17,14 @@ export class ShiftService {
     private readonly shiftRepo: Repository<Shift>,
   ) {}
 
-  private calculateBreakMinutes(start?: string | null, end?: string | null): number | undefined {
+  private calculateBreakMinutes(
+    start?: string | null,
+    end?: string | null,
+  ): number | undefined {
     if (start && end) {
       const [startHour, startMin] = start.split(':').map(Number);
       const [endHour, endMin] = end.split(':').map(Number);
-      let startDate = dayjs().hour(startHour).minute(startMin).second(0);
+      const startDate = dayjs().hour(startHour).minute(startMin).second(0);
       let endDate = dayjs().hour(endHour).minute(endMin).second(0);
       if (endDate.isBefore(startDate)) {
         endDate = endDate.add(1, 'day');
@@ -33,10 +40,15 @@ export class ShiftService {
     });
 
     if (existing) {
-      throw new ConflictException('Shift with this name or code already exists');
+      throw new ConflictException(
+        'Shift with this name or code already exists',
+      );
     }
 
-    const calculatedBreak = this.calculateBreakMinutes(createShiftDto.breakStartTime, createShiftDto.breakEndTime);
+    const calculatedBreak = this.calculateBreakMinutes(
+      createShiftDto.breakStartTime,
+      createShiftDto.breakEndTime,
+    );
     if (calculatedBreak !== undefined) {
       createShiftDto.totalBreakMinutes = calculatedBreak;
     }
@@ -57,10 +69,13 @@ export class ShiftService {
 
   async update(id: string, updateShiftDto: UpdateShiftDto) {
     const shift = await this.findOne(id);
-    
+
     Object.assign(shift, updateShiftDto);
-    
-    const calculatedBreak = this.calculateBreakMinutes(shift.breakStartTime, shift.breakEndTime);
+
+    const calculatedBreak = this.calculateBreakMinutes(
+      shift.breakStartTime,
+      shift.breakEndTime,
+    );
     if (calculatedBreak !== undefined) {
       shift.totalBreakMinutes = calculatedBreak;
     }

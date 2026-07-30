@@ -13,9 +13,6 @@ import {
 } from 'typeorm';
 import { TeamMember } from './team-member.entity';
 
-
-
-
 @Entity('teams')
 export class Team {
   @PrimaryGeneratedColumn('uuid')

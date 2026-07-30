@@ -44,10 +44,15 @@ export class DepartmentsController {
 
     @Query('search')
     search?: string,
-    
+
     @CurrentUser() employee?: any,
   ) {
-    return this.departmentsService.findAll(Number(page), Number(limit), search, employee);
+    return this.departmentsService.findAll(
+      Number(page),
+      Number(limit),
+      search,
+      employee,
+    );
   }
 
   @Permissions(PermissionEnum.DEPARTMENT_READ)

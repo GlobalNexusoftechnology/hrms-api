@@ -11,7 +11,14 @@ import { SalaryStructureController } from './salary-structure.controller';
 import { SalaryStructureService } from './salary-structure.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SalaryStructure, SalaryStructureComponent, SalaryComponent, Employee])],
+  imports: [
+    TypeOrmModule.forFeature([
+      SalaryStructure,
+      SalaryStructureComponent,
+      SalaryComponent,
+      Employee,
+    ]),
+  ],
 
   controllers: [SalaryStructureController],
 

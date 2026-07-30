@@ -34,9 +34,7 @@ export class InterviewController {
 
   @Public()
   @Get('public/jobs/:id')
-  getPublicJob(
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  getPublicJob(@Param('id', ParseUUIDPipe) id: string) {
     return this.interviewService.getJobPosting(id);
   }
 
@@ -57,7 +55,7 @@ export class InterviewController {
   @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR, RoleEnum.EMPLOYEE)
   @Get('my-interviews')
   getMyInterviews(@CurrentUser() user: any) {
-    // In a real app we'd filter by user.id in the service, but we'll return all for now 
+    // In a real app we'd filter by user.id in the service, but we'll return all for now
     // or you can add a method `getInterviewsByInterviewer(user.id)` to `InterviewService`.
     return this.interviewService.getInterviews();
   }

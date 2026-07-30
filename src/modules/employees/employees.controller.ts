@@ -32,14 +32,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('employees')
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) { }
+  constructor(private readonly employeesService: EmployeesService) {}
 
-
-  @Permissions('employee.create')
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
   create(@Body() dto: CreateEmployeeDto) {
@@ -86,7 +83,7 @@ export class EmployeesController {
     @CurrentUser() user: any, // 👈 1. Get the logged-in user
   ) {
     // 2 & 3. If the user is a regular employee, verify the IDs match
-    if (user.role === RoleEnum.EMPLOYEE && user.id !== id) {
+    if (user.role?.name === RoleEnum.EMPLOYEE && user.id !== id) {
       // 4. Deny access
       throw new ForbiddenException('You can only update your own details.');
     }
@@ -94,7 +91,6 @@ export class EmployeesController {
     return this.employeesService.update(id, dto);
   }
 
-  
   @Permissions('role.assign')
   @Patch(':id/role')
   assignRole(
@@ -150,8 +146,10 @@ export class EmployeesController {
     file: Express.Multer.File,
     @CurrentUser() user: any,
   ) {
-    if (user.role === RoleEnum.EMPLOYEE && user.id !== id) {
-      throw new ForbiddenException('You can only update your own profile photo.');
+    if (user.role?.name === RoleEnum.EMPLOYEE && user.id !== id) {
+      throw new ForbiddenException(
+        'You can only update your own profile photo.',
+      );
     }
     return this.employeesService.uploadProfilePhoto(id, file);
   }

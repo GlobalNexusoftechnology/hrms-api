@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Branch } from '../entities/branch.entity';
@@ -16,14 +21,16 @@ export class BranchService {
 
   async create(createDto: CreateBranchDto, userId?: string) {
     const org = await this.organizationService.get();
-    
+
     // Validate single head office
     if (createDto.isHeadOffice) {
       const existingHeadOffice = await this.branchRepo.findOne({
         where: { organizationId: org.id, isHeadOffice: true },
       });
       if (existingHeadOffice) {
-        throw new BadRequestException('A Head Office already exists for this organization. Only one Head Office is allowed.');
+        throw new BadRequestException(
+          'A Head Office already exists for this organization. Only one Head Office is allowed.',
+        );
       }
     }
 
@@ -37,13 +44,15 @@ export class BranchService {
     const branch = this.branchRepo.create({
       ...createDto,
       organizationId: org.id,
-      createdByUserId: userId
+      createdByUserId: userId,
     });
     try {
       return await this.branchRepo.save(branch);
     } catch (error: any) {
       if (error.code === '23505') {
-        throw new ConflictException(`A branch with this code or email already exists.`);
+        throw new ConflictException(
+          `A branch with this code or email already exists.`,
+        );
       }
       throw error;
     }
@@ -59,7 +68,9 @@ export class BranchService {
         where: { organizationId: branch.organizationId, isHeadOffice: true },
       });
       if (existingHeadOffice && existingHeadOffice.id !== branch.id) {
-        throw new BadRequestException('Another Head Office already exists for this organization. Only one Head Office is allowed.');
+        throw new BadRequestException(
+          'Another Head Office already exists for this organization. Only one Head Office is allowed.',
+        );
       }
     }
 
@@ -68,12 +79,14 @@ export class BranchService {
       return await this.branchRepo.save(branch);
     } catch (error: any) {
       if (error.code === '23505') {
-        throw new ConflictException(`A branch with this code or email already exists.`);
+        throw new ConflictException(
+          `A branch with this code or email already exists.`,
+        );
       }
       throw error;
     }
   }
-  
+
   async findAll() {
     const org = await this.organizationService.get();
     return this.branchRepo.find({ where: { organizationId: org.id } });

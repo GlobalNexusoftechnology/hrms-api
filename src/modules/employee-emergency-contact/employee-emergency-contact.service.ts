@@ -12,7 +12,10 @@ export class EmployeeEmergencyContactService {
     private readonly contactRepository: Repository<EmployeeEmergencyContact>,
   ) {}
 
-  async create(employeeId: string, dto: CreateEmployeeEmergencyContactDto): Promise<EmployeeEmergencyContact> {
+  async create(
+    employeeId: string,
+    dto: CreateEmployeeEmergencyContactDto,
+  ): Promise<EmployeeEmergencyContact> {
     if (dto.isPrimary) {
       await this.resetPrimaryStatus(employeeId);
     }
@@ -20,8 +23,13 @@ export class EmployeeEmergencyContactService {
     return this.contactRepository.save(contact);
   }
 
-  async findAllByEmployee(employeeId: string): Promise<EmployeeEmergencyContact[]> {
-    return this.contactRepository.find({ where: { employeeId }, order: { createdAt: 'DESC' } });
+  async findAllByEmployee(
+    employeeId: string,
+  ): Promise<EmployeeEmergencyContact[]> {
+    return this.contactRepository.find({
+      where: { employeeId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<EmployeeEmergencyContact> {
@@ -32,9 +40,12 @@ export class EmployeeEmergencyContactService {
     return contact;
   }
 
-  async update(id: string, dto: UpdateEmployeeEmergencyContactDto): Promise<EmployeeEmergencyContact> {
+  async update(
+    id: string,
+    dto: UpdateEmployeeEmergencyContactDto,
+  ): Promise<EmployeeEmergencyContact> {
     const contact = await this.findOne(id);
-    
+
     if (dto.isPrimary && !contact.isPrimary) {
       await this.resetPrimaryStatus(contact.employeeId);
     }
@@ -51,7 +62,7 @@ export class EmployeeEmergencyContactService {
   private async resetPrimaryStatus(employeeId: string): Promise<void> {
     await this.contactRepository.update(
       { employeeId, isPrimary: true },
-      { isPrimary: false }
+      { isPrimary: false },
     );
   }
 }

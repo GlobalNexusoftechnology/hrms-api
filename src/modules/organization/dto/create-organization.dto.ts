@@ -1,4 +1,11 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsNotEmpty, Matches } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  IsEnum,
+  IsNotEmpty,
+  Matches,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrganizationStatus } from '../../../common/enums/organization-status.enum';
 
@@ -26,7 +33,10 @@ export class CreateOrganizationDto {
   @ApiProperty({ example: '+91 8850248290' })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+\d{1,4}\s?\d{6,14}$/, { message: 'Phone number must include a valid country code (e.g., +91 8850248290)' })
+  @Matches(/^\+\d{1,4}\s?\d{6,14}$/, {
+    message:
+      'Phone number must include a valid country code (e.g., +91 8850248290)',
+  })
   phone!: string;
 
   @ApiPropertyOptional({ example: 'https://acme.com' })
@@ -39,7 +49,10 @@ export class CreateOrganizationDto {
   @IsString()
   logoUrl?: string;
 
-  @ApiPropertyOptional({ enum: OrganizationStatus, default: OrganizationStatus.PENDING })
+  @ApiPropertyOptional({
+    enum: OrganizationStatus,
+    default: OrganizationStatus.PENDING,
+  })
   @IsOptional()
   @IsEnum(OrganizationStatus)
   status?: OrganizationStatus;

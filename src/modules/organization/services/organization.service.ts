@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Organization } from '../entities/organization.entity';
@@ -12,11 +16,18 @@ export class OrganizationService {
     private readonly organizationRepo: Repository<Organization>,
   ) {}
 
-  async create(createDto: CreateOrganizationDto, userId?: string): Promise<Organization> {
-    const tenant = await this.organizationRepo.manager.findOne('Tenant', { where: {} }) as any;
-    
+  async create(
+    createDto: CreateOrganizationDto,
+    userId?: string,
+  ): Promise<Organization> {
+    const tenant = (await this.organizationRepo.manager.findOne('Tenant', {
+      where: {},
+    })) as any;
+
     if (!tenant) {
-      throw new BadRequestException('System is not bootstrapped. Tenant not found.');
+      throw new BadRequestException(
+        'System is not bootstrapped. Tenant not found.',
+      );
     }
 
     const count = await this.organizationRepo.count({
@@ -24,20 +35,22 @@ export class OrganizationService {
     });
 
     if (count > 0) {
-      throw new BadRequestException('Organization already exists for this tenant. Only one organization is allowed.');
+      throw new BadRequestException(
+        'Organization already exists for this tenant. Only one organization is allowed.',
+      );
     }
 
-    const org = this.organizationRepo.create({ 
-      ...createDto, 
+    const org = this.organizationRepo.create({
+      ...createDto,
       tenantId: tenant.id,
-      createdByUserId: userId 
+      createdByUserId: userId,
     });
     return this.organizationRepo.save(org);
   }
 
   async get(): Promise<Organization> {
     const org = await this.organizationRepo.findOne({
-      where: {}, 
+      where: {},
       relations: { addresses: true, tax: true, settings: true },
     });
     if (!org) {
@@ -46,13 +59,27 @@ export class OrganizationService {
     return org;
   }
 
-  async update(updateDto: UpdateOrganizationDto, userId?: string): Promise<Organization> {
+  async update(
+    updateDto: UpdateOrganizationDto,
+    userId?: string,
+  ): Promise<Organization> {
     const org = await this.get();
-    Object.assign(org, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
+    Object.assign(
+      org,
+      updateDto,
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+    );
     return this.organizationRepo.save(org);
   }
 
-  async uploadLogo(file: Express.Multer.File, userId?: string): Promise<Organization> {
+  async uploadLogo(
+    file: Express.Multer.File,
+    userId?: string,
+  ): Promise<Organization> {
     const org = await this.get();
     org.logoUrl = `/uploads/organization/${file.filename}`;
     return this.organizationRepo.save(org);

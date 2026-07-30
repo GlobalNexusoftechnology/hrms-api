@@ -1,9 +1,18 @@
-import { IsString, IsEnum, IsOptional, IsNotEmpty, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsNotEmpty,
+  IsDateString,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrganizationDocumentTypeEnum } from '../../../common/enums/organization-document-type.enum';
 
 export class CreateOrganizationDocumentDto {
-  @ApiProperty({ enum: OrganizationDocumentTypeEnum, example: OrganizationDocumentTypeEnum.INCORPORATION })
+  @ApiProperty({
+    enum: OrganizationDocumentTypeEnum,
+    example: OrganizationDocumentTypeEnum.INCORPORATION,
+  })
   @IsEnum(OrganizationDocumentTypeEnum)
   @IsNotEmpty()
   documentType!: OrganizationDocumentTypeEnum;

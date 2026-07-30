@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Employee } from '../../employees/entities/employee.entity';
 import { ProficiencyLevelEnum } from '../../../common/enums/proficiency-level.enum';
 
@@ -17,10 +25,19 @@ export class EmployeeSkill {
   @Column({ type: 'varchar', length: 150, name: 'skill_name' })
   skillName!: string;
 
-  @Column({ type: 'enum', enum: ProficiencyLevelEnum, name: 'proficiency_level' })
+  @Column({
+    type: 'enum',
+    enum: ProficiencyLevelEnum,
+    name: 'proficiency_level',
+  })
   proficiencyLevel!: ProficiencyLevelEnum;
 
-  @Column({ type: 'varchar', length: 255, name: 'certification_details', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    name: 'certification_details',
+    nullable: true,
+  })
   certificationDetails: string | null = null;
 
   @Column({ type: 'int', nullable: true })

@@ -1,8 +1,4 @@
-import {
-  ArrayNotEmpty,
-  IsArray,
-  IsUUID,
-} from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsUUID } from 'class-validator';
 
 export class AssignTeamMemberDto {
   @IsUUID()

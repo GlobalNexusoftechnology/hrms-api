@@ -71,15 +71,22 @@ export class AttendanceValidationService {
   getEffectiveShift(employee: Employee) {
     if (employee.shift) return employee.shift;
     if (employee.branch?.defaultShift) return employee.branch.defaultShift;
-    if (employee.branch?.organization?.defaultShift) return employee.branch.organization.defaultShift;
-    throw new BadRequestException('No shift assigned to employee, branch, or organization');
+    if (employee.branch?.organization?.defaultShift)
+      return employee.branch.organization.defaultShift;
+    throw new BadRequestException(
+      'No shift assigned to employee, branch, or organization',
+    );
   }
 
   // =====================
   // CHECK-IN VALIDATION
   // =====================
 
-  validateCheckIn(attendance: Attendance | null | undefined, employee: Employee, nowDate: Date) {
+  validateCheckIn(
+    attendance: Attendance | null | undefined,
+    employee: Employee,
+    nowDate: Date,
+  ) {
     // ALREADY CHECKED IN
     if (attendance?.checkIn) {
       throw new BadRequestException('Already checked in');
@@ -100,18 +107,32 @@ export class AttendanceValidationService {
     const shift = this.getEffectiveShift(employee);
     if (!shift.isFlexible) {
       const [startHour, startMinute] = shift.startTime.split(':').map(Number);
-      const shiftStartTime = dayjs(nowDate).hour(startHour).minute(startMinute).second(0).millisecond(0);
+      const shiftStartTime = dayjs(nowDate)
+        .hour(startHour)
+        .minute(startMinute)
+        .second(0)
+        .millisecond(0);
       const now = dayjs(nowDate);
-      
-      const earliestTime = shiftStartTime.subtract(shift.earliestCheckInMinutes, 'minute');
-      const latestTime = shiftStartTime.add(shift.latestCheckInMinutes, 'minute');
+
+      const earliestTime = shiftStartTime.subtract(
+        shift.earliestCheckInMinutes,
+        'minute',
+      );
+      const latestTime = shiftStartTime.add(
+        shift.latestCheckInMinutes,
+        'minute',
+      );
 
       if (now.isBefore(earliestTime)) {
-        throw new BadRequestException(`Too early to check-in. Earliest check-in time is ${earliestTime.format('HH:mm')}`);
+        throw new BadRequestException(
+          `Too early to check-in. Earliest check-in time is ${earliestTime.format('HH:mm')}`,
+        );
       }
 
       if (now.isAfter(latestTime)) {
-        throw new BadRequestException(`Too late to check-in. Latest check-in time was ${latestTime.format('HH:mm')}`);
+        throw new BadRequestException(
+          `Too late to check-in. Latest check-in time was ${latestTime.format('HH:mm')}`,
+        );
       }
     }
   }
@@ -136,7 +157,12 @@ export class AttendanceValidationService {
   // EARLY CHECKOUT
   // =====================
 
-  validateEarlyCheckout(shift: Shift, workedMinutes: number, nowDate: Date, reason?: string) {
+  validateEarlyCheckout(
+    shift: Shift,
+    workedMinutes: number,
+    nowDate: Date,
+    reason?: string,
+  ) {
     const cleanedReason = reason?.trim();
 
     let isEarly = false;
@@ -147,13 +173,29 @@ export class AttendanceValidationService {
       }
     } else {
       const [endHour, endMinute] = shift.endTime.split(':').map(Number);
-      let shiftEndTime = dayjs(nowDate).hour(endHour).minute(endMinute).second(0).millisecond(0);
+      const [startHour] = shift.startTime.split(':').map(Number);
       
-      // If it's a cross-midnight shift and now is past midnight but before end time, the shift end time was probably 'today' while start was 'yesterday'. 
+      let shiftEndTime = dayjs(nowDate)
+        .hour(endHour)
+        .minute(endMinute)
+        .second(0)
+        .millisecond(0);
+
+      const isCrossMidnight = endHour < startHour;
+      if (isCrossMidnight) {
+        if (dayjs(nowDate).hour() >= startHour) {
+          shiftEndTime = shiftEndTime.add(1, 'day');
+        }
+      }
+
+      // If it's a cross-midnight shift and now is past midnight but before end time, the shift end time was probably 'today' while start was 'yesterday'.
       // This is simplified. Proper cross midnight will be handled in service.
-      
-      const earlyLeaveThreshold = shiftEndTime.subtract(shift.earlyLeaveGraceMinutes, 'minute');
-      
+
+      const earlyLeaveThreshold = shiftEndTime.subtract(
+        shift.earlyLeaveGraceMinutes,
+        'minute',
+      );
+
       if (dayjs(nowDate).isBefore(earlyLeaveThreshold)) {
         isEarly = true;
       }

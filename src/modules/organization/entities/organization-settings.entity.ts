@@ -24,7 +24,12 @@ export class OrganizationSettings extends BaseEntity {
   @Column({ name: 'time_format' })
   timeFormat!: string;
 
-  @Column({ name: 'week_start_day', type: 'enum', enum: WeekDayEnum, default: WeekDayEnum.MONDAY })
+  @Column({
+    name: 'week_start_day',
+    type: 'enum',
+    enum: WeekDayEnum,
+    default: WeekDayEnum.MONDAY,
+  })
   weekStartDay!: WeekDayEnum;
 
   @Column({ name: 'financial_year_start_month', type: 'int' })

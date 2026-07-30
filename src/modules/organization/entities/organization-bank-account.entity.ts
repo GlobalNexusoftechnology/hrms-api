@@ -9,7 +9,9 @@ export class OrganizationBankAccount extends BaseEntity {
   @Index()
   organizationId!: string;
 
-  @ManyToOne(() => Organization, (org) => org.bankAccounts, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Organization, (org) => org.bankAccounts, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'organization_id' })
   organization!: Organization;
 
@@ -17,7 +19,10 @@ export class OrganizationBankAccount extends BaseEntity {
   @Index()
   branchId: string | null = null;
 
-  @ManyToOne(() => Branch, (branch) => branch.bankAccounts, { nullable: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Branch, (branch) => branch.bankAccounts, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'branch_id' })
   branch: Branch | null = null;
 

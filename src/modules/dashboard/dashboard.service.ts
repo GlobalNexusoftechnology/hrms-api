@@ -122,9 +122,13 @@ export class DashboardService {
         },
       }),
 
-      this.getWeeklyAttendance({ role: { dataScope: DataScopeEnum.ORGANIZATION } }),
+      this.getWeeklyAttendance({
+        role: { dataScope: DataScopeEnum.ORGANIZATION },
+      }),
 
-      this.getMonthlyAttendance({ role: { dataScope: DataScopeEnum.ORGANIZATION } }),
+      this.getMonthlyAttendance({
+        role: { dataScope: DataScopeEnum.ORGANIZATION },
+      }),
 
       this.leaveRepo.count(),
 
@@ -151,7 +155,10 @@ export class DashboardService {
       }),
     ]);
 
-    const totalPayrollCost = currentMonthPayrolls.reduce((sum, p) => sum + Number(p.netSalary), 0);
+    const totalPayrollCost = currentMonthPayrolls.reduce(
+      (sum, p) => sum + Number(p.netSalary),
+      0,
+    );
 
     const todayAttendanceStats = this.calculateAttendanceStats(todayAttendance);
 
@@ -218,7 +225,8 @@ export class DashboardService {
 
     // 2. Application Counts
     const getAppCount = (status: CandidateStatusEnum) => {
-      const qb = this.applicationRepo.createQueryBuilder('application')
+      const qb = this.applicationRepo
+        .createQueryBuilder('application')
         .innerJoin('application.job', 'job')
         .where('application.status = :status', { status });
       this.dataScopeService.applyScope(qb, currentUser, {
@@ -231,10 +239,13 @@ export class DashboardService {
     const pendingCandidatesPromise = getAppCount(CandidateStatusEnum.APPLIED);
     const selectedCandidatesPromise = getAppCount(CandidateStatusEnum.SELECTED);
     const rejectedCandidatesPromise = getAppCount(CandidateStatusEnum.REJECTED);
-    const scheduledInterviewsPromise = getAppCount(CandidateStatusEnum.INTERVIEW_SCHEDULED);
+    const scheduledInterviewsPromise = getAppCount(
+      CandidateStatusEnum.INTERVIEW_SCHEDULED,
+    );
 
     // 3. Today Attendance
-    const todayAttendanceQb = this.attendanceRepo.createQueryBuilder('attendance')
+    const todayAttendanceQb = this.attendanceRepo
+      .createQueryBuilder('attendance')
       .leftJoinAndSelect('attendance.employee', 'employee')
       .leftJoinAndSelect('employee.department', 'department')
       .where('attendance.date = :today', { today: todayIST() });
@@ -245,7 +256,8 @@ export class DashboardService {
     const todayAttendancePromise = todayAttendanceQb.getMany();
 
     // 4. Payrolls
-    const payrollQb = this.payrollRepo.createQueryBuilder('payroll')
+    const payrollQb = this.payrollRepo
+      .createQueryBuilder('payroll')
       .innerJoin('payroll.employee', 'employee')
       .where('payroll.month = :month', { month: dayjs().month() + 1 })
       .andWhere('payroll.year = :year', { year: dayjs().year() });
@@ -287,7 +299,10 @@ export class DashboardService {
       currentMonthPayrollsPromise,
     ]);
 
-    const totalPayrollCost = currentMonthPayrolls.reduce((sum, p) => sum + Number(p.netSalary), 0);
+    const totalPayrollCost = currentMonthPayrolls.reduce(
+      (sum, p) => sum + Number(p.netSalary),
+      0,
+    );
 
     const todayAttendanceStats = this.calculateAttendanceStats(todayAttendance);
 
@@ -492,13 +507,17 @@ export class DashboardService {
     const startOfWeek = dayjs().startOf('week').format('YYYY-MM-DD');
     const endOfWeek = dayjs().endOf('week').format('YYYY-MM-DD');
 
-    const qb = this.attendanceRepo.createQueryBuilder('attendance')
+    const qb = this.attendanceRepo
+      .createQueryBuilder('attendance')
       .select('attendance.status', 'status')
       .addSelect('COUNT(attendance.id)', 'count')
       .leftJoin('attendance.employee', 'employee')
-      .where('attendance.date BETWEEN :start AND :end', { start: startOfWeek, end: endOfWeek })
+      .where('attendance.date BETWEEN :start AND :end', {
+        start: startOfWeek,
+        end: endOfWeek,
+      })
       .groupBy('attendance.status');
-    
+
     this.dataScopeService.applyScope(qb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
@@ -508,19 +527,40 @@ export class DashboardService {
 
     // Map raw SQL results to the expected stats format
     const stats = {
-      total: 0, present: 0, late: 0, halfDay: 0, leave: 0, absent: 0, holiday: 0, weekend: 0
+      total: 0,
+      present: 0,
+      late: 0,
+      halfDay: 0,
+      leave: 0,
+      absent: 0,
+      holiday: 0,
+      weekend: 0,
     };
-    rawStats.forEach(row => {
+    rawStats.forEach((row) => {
       const count = Number(row.count);
       stats.total += count;
       switch (row.status) {
-        case AttendanceStatus.PRESENT: stats.present = count; break;
-        case AttendanceStatus.LATE: stats.late = count; break;
-        case AttendanceStatus.HALF_DAY: stats.halfDay = count; break;
-        case AttendanceStatus.LEAVE: stats.leave = count; break;
-        case AttendanceStatus.ABSENT: stats.absent = count; break;
-        case AttendanceStatus.HOLIDAY: stats.holiday = count; break;
-        case AttendanceStatus.WEEKEND: stats.weekend = count; break;
+        case AttendanceStatus.PRESENT:
+          stats.present = count;
+          break;
+        case AttendanceStatus.LATE:
+          stats.late = count;
+          break;
+        case AttendanceStatus.HALF_DAY:
+          stats.halfDay = count;
+          break;
+        case AttendanceStatus.LEAVE:
+          stats.leave = count;
+          break;
+        case AttendanceStatus.ABSENT:
+          stats.absent = count;
+          break;
+        case AttendanceStatus.HOLIDAY:
+          stats.holiday = count;
+          break;
+        case AttendanceStatus.WEEKEND:
+          stats.weekend = count;
+          break;
       }
     });
 
@@ -534,11 +574,15 @@ export class DashboardService {
     const startOfMonth = dayjs().startOf('month').format('YYYY-MM-DD');
     const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
 
-    const qb = this.attendanceRepo.createQueryBuilder('attendance')
+    const qb = this.attendanceRepo
+      .createQueryBuilder('attendance')
       .select('attendance.status', 'status')
       .addSelect('COUNT(attendance.id)', 'count')
       .leftJoin('attendance.employee', 'employee')
-      .where('attendance.date BETWEEN :start AND :end', { start: startOfMonth, end: endOfMonth })
+      .where('attendance.date BETWEEN :start AND :end', {
+        start: startOfMonth,
+        end: endOfMonth,
+      })
       .groupBy('attendance.status');
 
     this.dataScopeService.applyScope(qb, currentUser, {
@@ -549,19 +593,40 @@ export class DashboardService {
     const rawStats = await qb.getRawMany();
 
     const stats = {
-      total: 0, present: 0, late: 0, halfDay: 0, leave: 0, absent: 0, holiday: 0, weekend: 0
+      total: 0,
+      present: 0,
+      late: 0,
+      halfDay: 0,
+      leave: 0,
+      absent: 0,
+      holiday: 0,
+      weekend: 0,
     };
-    rawStats.forEach(row => {
+    rawStats.forEach((row) => {
       const count = Number(row.count);
       stats.total += count;
       switch (row.status) {
-        case AttendanceStatus.PRESENT: stats.present = count; break;
-        case AttendanceStatus.LATE: stats.late = count; break;
-        case AttendanceStatus.HALF_DAY: stats.halfDay = count; break;
-        case AttendanceStatus.LEAVE: stats.leave = count; break;
-        case AttendanceStatus.ABSENT: stats.absent = count; break;
-        case AttendanceStatus.HOLIDAY: stats.holiday = count; break;
-        case AttendanceStatus.WEEKEND: stats.weekend = count; break;
+        case AttendanceStatus.PRESENT:
+          stats.present = count;
+          break;
+        case AttendanceStatus.LATE:
+          stats.late = count;
+          break;
+        case AttendanceStatus.HALF_DAY:
+          stats.halfDay = count;
+          break;
+        case AttendanceStatus.LEAVE:
+          stats.leave = count;
+          break;
+        case AttendanceStatus.ABSENT:
+          stats.absent = count;
+          break;
+        case AttendanceStatus.HOLIDAY:
+          stats.holiday = count;
+          break;
+        case AttendanceStatus.WEEKEND:
+          stats.weekend = count;
+          break;
       }
     });
 
@@ -575,54 +640,79 @@ export class DashboardService {
     const today = todayIST();
     const departments = await this.departmentRepo.find();
 
-    const departmentStats = await Promise.all(
-      departments.map(async (dept) => {
-        const qb = this.attendanceRepo.createQueryBuilder('attendance')
-          .select('attendance.status', 'status')
-          .addSelect('COUNT(attendance.id)', 'count')
-          .leftJoin('attendance.employee', 'employee')
-          .where('attendance.date = :today', { today })
-          .andWhere('employee.departmentId = :deptId', { deptId: dept.id })
-          .groupBy('attendance.status');
+    const qb = this.attendanceRepo
+      .createQueryBuilder('attendance')
+      .select('employee.departmentId', 'departmentId')
+      .addSelect('attendance.status', 'status')
+      .addSelect('COUNT(attendance.id)', 'count')
+      .leftJoin('attendance.employee', 'employee')
+      .where('attendance.date = :today', { today })
+      .groupBy('employee.departmentId')
+      .addGroupBy('attendance.status');
 
-        this.dataScopeService.applyScope(qb, currentUser, {
-          branch: 'employee.branchId',
-          department: 'employee.departmentId',
-        });
+    this.dataScopeService.applyScope(qb, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+    });
 
-        const rawStats = await qb.getRawMany();
+    const rawStats = await qb.getRawMany();
 
-        const stats = {
-          total: 0, present: 0, late: 0, halfDay: 0, leave: 0, absent: 0, holiday: 0, weekend: 0
-        };
-        rawStats.forEach(row => {
-          const count = Number(row.count);
-          stats.total += count;
-          switch (row.status) {
-            case AttendanceStatus.PRESENT: stats.present = count; break;
-            case AttendanceStatus.LATE: stats.late = count; break;
-            case AttendanceStatus.HALF_DAY: stats.halfDay = count; break;
-            case AttendanceStatus.LEAVE: stats.leave = count; break;
-            case AttendanceStatus.ABSENT: stats.absent = count; break;
-            case AttendanceStatus.HOLIDAY: stats.holiday = count; break;
-            case AttendanceStatus.WEEKEND: stats.weekend = count; break;
-          }
-        });
+    const departmentStats = departments.map((dept) => {
+      const deptStats = rawStats.filter((r) => r.departmentId === dept.id);
 
-        return {
-          departmentId: dept.id,
-          departmentName: dept.name,
-          ...stats,
-        };
-      }),
-    );
+      const stats = {
+        total: 0,
+        present: 0,
+        late: 0,
+        halfDay: 0,
+        leave: 0,
+        absent: 0,
+        holiday: 0,
+        weekend: 0,
+      };
+
+      deptStats.forEach((row) => {
+        const count = Number(row.count);
+        stats.total += count;
+        switch (row.status) {
+          case AttendanceStatus.PRESENT:
+            stats.present = count;
+            break;
+          case AttendanceStatus.LATE:
+            stats.late = count;
+            break;
+          case AttendanceStatus.HALF_DAY:
+            stats.halfDay = count;
+            break;
+          case AttendanceStatus.LEAVE:
+            stats.leave = count;
+            break;
+          case AttendanceStatus.ABSENT:
+            stats.absent = count;
+            break;
+          case AttendanceStatus.HOLIDAY:
+            stats.holiday = count;
+            break;
+          case AttendanceStatus.WEEKEND:
+            stats.weekend = count;
+            break;
+        }
+      });
+
+      return {
+        departmentId: dept.id,
+        departmentName: dept.name,
+        ...stats,
+      };
+    });
 
     return departmentStats;
   }
 
   private async getLeaveStats(currentUser: any) {
     const getCount = (status: LeaveStatusEnum) => {
-      const qb = this.leaveRepo.createQueryBuilder('leave')
+      const qb = this.leaveRepo
+        .createQueryBuilder('leave')
         .leftJoin('leave.employee', 'employee')
         .where('leave.status = :status', { status });
       this.dataScopeService.applyScope(qb, currentUser, {
@@ -640,11 +730,14 @@ export class DashboardService {
     ]);
 
     const today = todayIST();
-    const upcomingQb = this.leaveRepo.createQueryBuilder('leave')
+    const upcomingQb = this.leaveRepo
+      .createQueryBuilder('leave')
       .leftJoin('leave.employee', 'employee')
       .where('leave.status = :status', { status: LeaveStatusEnum.APPROVED })
-      .andWhere('leave.startDate = :date', { date: dayjs(today).add(1, 'day').format('YYYY-MM-DD') });
-    
+      .andWhere('leave.startDate = :date', {
+        date: dayjs(today).add(1, 'day').format('YYYY-MM-DD'),
+      });
+
     this.dataScopeService.applyScope(upcomingQb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',

@@ -91,10 +91,19 @@ describe('LeaveService', () => {
         { provide: getRepositoryToken(Leave), useFactory: mockRepository },
         { provide: getRepositoryToken(Employee), useFactory: mockRepository },
         { provide: getRepositoryToken(Attendance), useFactory: mockRepository },
-        { provide: getRepositoryToken(LeavePolicy), useFactory: mockRepository },
-        { provide: getRepositoryToken(LeaveBalance), useFactory: mockRepository },
+        {
+          provide: getRepositoryToken(LeavePolicy),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(LeaveBalance),
+          useFactory: mockRepository,
+        },
         { provide: getRepositoryToken(Holiday), useFactory: mockRepository },
-        { provide: getRepositoryToken(WeekendSetting), useFactory: mockRepository },
+        {
+          provide: getRepositoryToken(WeekendSetting),
+          useFactory: mockRepository,
+        },
         { provide: LeaveEngineService, useValue: mockLeaveEngineService },
         { provide: DataScopeService, useValue: mockDataScopeService },
         { provide: NotificationService, useValue: mockNotificationService },
@@ -138,12 +147,20 @@ describe('LeaveService', () => {
       };
       leaveRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       leavePolicyRepo.findOne.mockResolvedValue(mockPolicy);
-      employeeRepo.findOne.mockResolvedValue({ id: 'emp-123', gender: 'ALL', joiningDate: '2025-01-01' });
-      leaveBalanceRepo.findOne.mockResolvedValue({ accrued: 10, carriedForward: 0, used: 0 });
+      employeeRepo.findOne.mockResolvedValue({
+        id: 'emp-123',
+        gender: 'ALL',
+        joiningDate: '2025-01-01',
+      });
+      leaveBalanceRepo.findOne.mockResolvedValue({
+        accrued: 10,
+        carriedForward: 0,
+        used: 0,
+      });
       weekendRepo.find.mockResolvedValue([]);
       holidayRepo.find.mockResolvedValue([]);
 
-      const result = await service.requestLeave('emp-123', createDto as any);
+      const result = await service.requestLeave('emp-123', createDto);
       expect(result.employeeId).toBe('emp-123');
     });
 

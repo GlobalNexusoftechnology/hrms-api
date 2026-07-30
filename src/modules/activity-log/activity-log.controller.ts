@@ -8,18 +8,17 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionEnum } from '../../common/enums/permission.enum';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
-
 @ApiTags('Activity Logs')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('activity-log')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ActivityLogController {
-  constructor(private readonly activityLogService: ActivityLogService) { }
+  constructor(private readonly activityLogService: ActivityLogService) {}
 
-  @Permissions(PermissionEnum.ACTIVITY_LOG_READ,)
+  @Permissions(PermissionEnum.ACTIVITY_LOG_READ)
   @Get()
-  @Permissions(PermissionEnum.ACTIVITY_LOG_READ,)
+  @Permissions(PermissionEnum.ACTIVITY_LOG_READ)
   @ApiOperation({ summary: 'Search and filter activity logs' })
   async search(@Query() searchDto: SearchActivityLogDto) {
     return this.activityLogService.searchLogs(searchDto);

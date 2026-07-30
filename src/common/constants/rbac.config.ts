@@ -1,7 +1,6 @@
 import { RoleEnum } from '../enums/role.enum';
 import { PermissionEnum } from '../enums/permission.enum';
 
-
 export const RBAC_CONFIG = {
   [RoleEnum.SUPER_ADMIN]: [...Object.values(PermissionEnum)],
 
@@ -101,7 +100,6 @@ export const RBAC_CONFIG = {
     PermissionEnum.SHIFT_READ,
     PermissionEnum.SHIFT_UPDATE,
     PermissionEnum.SHIFT_DELETE,
-
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],
@@ -143,6 +141,5 @@ export const RBAC_CONFIG = {
     PermissionEnum.NOTIFICATION_SETTINGS_READ,
 
     PermissionEnum.SHIFT_READ,
-
   ],
 };

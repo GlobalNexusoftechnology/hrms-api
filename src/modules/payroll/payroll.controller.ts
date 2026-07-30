@@ -50,7 +50,7 @@ export class PayrollController {
         bonusReason: body.bonusReason,
         deductionAmount: body.deductionAmount,
         deductionReason: body.deductionReason,
-      }
+      },
     );
   }
 

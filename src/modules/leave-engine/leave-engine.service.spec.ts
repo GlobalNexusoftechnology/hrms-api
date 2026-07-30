@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LeaveEngineService } from './leave-engine.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { LeaveLedger, LeaveTransactionType } from '../leave-ledger/entities/leave-ledger.entity';
+import {
+  LeaveLedger,
+  LeaveTransactionType,
+} from '../leave-ledger/entities/leave-ledger.entity';
 import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
 import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
 import { Employee } from '../employees/entities/employee.entity';
@@ -25,9 +28,18 @@ describe('LeaveEngineService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LeaveEngineService,
-        { provide: getRepositoryToken(LeaveLedger), useFactory: mockRepository },
-        { provide: getRepositoryToken(LeaveBalance), useFactory: mockRepository },
-        { provide: getRepositoryToken(LeavePolicy), useFactory: mockRepository },
+        {
+          provide: getRepositoryToken(LeaveLedger),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(LeaveBalance),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(LeavePolicy),
+          useFactory: mockRepository,
+        },
         { provide: getRepositoryToken(Employee), useFactory: mockRepository },
       ],
     }).compile();
@@ -91,7 +103,11 @@ describe('LeaveEngineService', () => {
     });
 
     it('should process transaction for valid adjustment days', async () => {
-      leaveBalanceRepo.findOne.mockResolvedValue({ accrued: 10, used: 0, carriedForward: 0 });
+      leaveBalanceRepo.findOne.mockResolvedValue({
+        accrued: 10,
+        used: 0,
+        carriedForward: 0,
+      });
 
       const result = await service.manualAdjustment(
         'emp-123',

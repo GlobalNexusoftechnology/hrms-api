@@ -20,7 +20,10 @@ import { extname } from 'path';
 import { EmployeeDocumentsService } from './employee-documents.service';
 
 import { UploadEmployeeDocumentDto } from './dto/upload-employee-document.dto';
-import { Permissions, PERMISSIONS_KEY } from '../auth/decorators/permissions.decorator';
+import {
+  Permissions,
+  PERMISSIONS_KEY,
+} from '../auth/decorators/permissions.decorator';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 import { PermissionsService } from '../permissions/permissions.service';
 
@@ -28,7 +31,7 @@ import { PermissionsService } from '../permissions/permissions.service';
 export class EmployeeDocumentsController {
   constructor(
     private readonly employeeDocumentsService: EmployeeDocumentsService,
-  ) { }
+  ) {}
 
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()

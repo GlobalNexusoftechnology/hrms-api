@@ -19,22 +19,28 @@ export class OrganizationContactService {
     const contact = this.contactRepo.create({
       ...createDto,
       organizationId: org.id,
-        createdByUserId: userId
+      createdByUserId: userId,
     });
     return this.contactRepo.save(contact);
   }
 
-  async update(id: string, updateDto: UpdateOrganizationContactDto, userId?: string) {
+  async update(
+    id: string,
+    updateDto: UpdateOrganizationContactDto,
+    userId?: string,
+  ) {
     const contact = await this.contactRepo.findOne({ where: { id } });
     if (!contact) throw new NotFoundException('Contact not found');
 
     Object.assign(contact, updateDto, { updatedByUserId: userId });
     return this.contactRepo.save(contact);
   }
-  
+
   async findOrgLevel() {
     const org = await this.organizationService.get();
-    return this.contactRepo.find({ where: { organizationId: org.id, branchId: IsNull() } });
+    return this.contactRepo.find({
+      where: { organizationId: org.id, branchId: IsNull() },
+    });
   }
 
   async findByBranch(branchId: string) {

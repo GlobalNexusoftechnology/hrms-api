@@ -41,7 +41,13 @@ export class LeaveBalance {
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
   used!: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'carried_forward', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'carried_forward',
+    default: 0,
+  })
   carriedForward!: number;
 
   @CreateDateColumn({ name: 'created_at' })

@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Patch, Body, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { TrainingService } from './training.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -15,12 +24,18 @@ export class TrainingController {
   }
 
   @Get('course/:id')
-  getCourseDetails(@Param('id', ParseUUIDPipe) courseId: string, @CurrentUser() user: any) {
+  getCourseDetails(
+    @Param('id', ParseUUIDPipe) courseId: string,
+    @CurrentUser() user: any,
+  ) {
     return this.trainingService.getCourseDetails(courseId, user.id);
   }
 
   @Patch('topic/:id/complete')
-  completeTopic(@Param('id', ParseUUIDPipe) topicId: string, @CurrentUser() user: any) {
+  completeTopic(
+    @Param('id', ParseUUIDPipe) topicId: string,
+    @CurrentUser() user: any,
+  ) {
     return this.trainingService.completeTopic(topicId, user.id);
   }
 

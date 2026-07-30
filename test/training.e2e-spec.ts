@@ -30,17 +30,13 @@ describe('TrainingController (Integration)', () => {
 
   describe('/api/training/me (GET)', () => {
     it('should return 401 Unauthorized when requesting without token', async () => {
-      await request(app.getHttpServer())
-        .get('/api/training/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/training/me').expect(401);
     });
   });
 
   describe('/api/hr/training (POST)', () => {
     it('should return 401 Unauthorized when requesting without token', async () => {
-      await request(app.getHttpServer())
-        .post('/api/hr/training')
-        .expect(401);
+      await request(app.getHttpServer()).post('/api/hr/training').expect(401);
     });
   });
 });

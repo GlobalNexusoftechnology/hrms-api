@@ -19,10 +19,7 @@ export class LeaveLedgerController {
 
   @Permissions(PermissionEnum.LEAVE_LEDGER_READ)
   @Get('my-ledger')
-  findMyLedger(
-    @CurrentUser() employee: any,
-    @Query('year') year?: number,
-  ) {
+  findMyLedger(@CurrentUser() employee: any, @Query('year') year?: number) {
     return this.leaveLedgerService.findAllByEmployee(employee.id, year);
   }
 

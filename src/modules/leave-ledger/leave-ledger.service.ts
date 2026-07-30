@@ -17,7 +17,8 @@ export class LeaveLedgerService {
   }
 
   findAllByEmployee(employeeId: string, year?: number) {
-    const qb = this.leaveLedgerRepo.createQueryBuilder('ledger')
+    const qb = this.leaveLedgerRepo
+      .createQueryBuilder('ledger')
       .where('ledger.employee_id = :employeeId', { employeeId })
       .leftJoinAndSelect('ledger.leaveType', 'leaveType')
       .orderBy('ledger.createdAt', 'DESC');

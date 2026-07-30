@@ -12,7 +12,10 @@ export class EmployeeAddressService {
     private readonly addressRepository: Repository<EmployeeAddress>,
   ) {}
 
-  async create(employeeId: string, dto: CreateEmployeeAddressDto): Promise<EmployeeAddress> {
+  async create(
+    employeeId: string,
+    dto: CreateEmployeeAddressDto,
+  ): Promise<EmployeeAddress> {
     if (dto.isPrimary) {
       await this.resetPrimaryStatus(employeeId);
     }
@@ -21,7 +24,10 @@ export class EmployeeAddressService {
   }
 
   async findAllByEmployee(employeeId: string): Promise<EmployeeAddress[]> {
-    return this.addressRepository.find({ where: { employeeId }, order: { createdAt: 'DESC' } });
+    return this.addressRepository.find({
+      where: { employeeId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<EmployeeAddress> {
@@ -32,9 +38,12 @@ export class EmployeeAddressService {
     return address;
   }
 
-  async update(id: string, dto: UpdateEmployeeAddressDto): Promise<EmployeeAddress> {
+  async update(
+    id: string,
+    dto: UpdateEmployeeAddressDto,
+  ): Promise<EmployeeAddress> {
     const address = await this.findOne(id);
-    
+
     if (dto.isPrimary && !address.isPrimary) {
       await this.resetPrimaryStatus(address.employeeId);
     }
@@ -51,7 +60,7 @@ export class EmployeeAddressService {
   private async resetPrimaryStatus(employeeId: string): Promise<void> {
     await this.addressRepository.update(
       { employeeId, isPrimary: true },
-      { isPrimary: false }
+      { isPrimary: false },
     );
   }
 }

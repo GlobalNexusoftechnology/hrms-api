@@ -85,9 +85,7 @@ export class HrAttendanceController {
 
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('dashboard')
-  getDashboard(
-    @CurrentUser() employee: any,
-  ) {
+  getDashboard(@CurrentUser() employee: any) {
     return this.attendanceDashboardService.getHrDashboard(employee);
   }
 

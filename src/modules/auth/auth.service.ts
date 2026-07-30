@@ -47,11 +47,16 @@ export class AuthService {
     const value = parseInt(match[1], 10);
     const unit = match[2];
     switch (unit) {
-      case 's': return value * 1000;
-      case 'm': return value * 60 * 1000;
-      case 'h': return value * 60 * 60 * 1000;
-      case 'd': return value * 24 * 60 * 60 * 1000;
-      default: return 7 * 24 * 60 * 60 * 1000;
+      case 's':
+        return value * 1000;
+      case 'm':
+        return value * 60 * 1000;
+      case 'h':
+        return value * 60 * 60 * 1000;
+      case 'd':
+        return value * 24 * 60 * 60 * 1000;
+      default:
+        return 7 * 24 * 60 * 60 * 1000;
     }
   }
 
@@ -135,7 +140,9 @@ export class AuthService {
     await this.refreshTokenRepository.save({
       employeeId: employee.id,
       tokenHash: hashedRefreshToken,
-      expiresAt: new Date(Date.now() + this.parseDurationToMs(refreshExpiresIn)),
+      expiresAt: new Date(
+        Date.now() + this.parseDurationToMs(refreshExpiresIn),
+      ),
       isRevoked: false,
     });
 
@@ -229,18 +236,21 @@ export class AuthService {
       // Save new token
       const hashedRefreshToken = await bcrypt.hash(newRefreshToken, 10);
 
-      const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
+      const refreshExpiresIn =
+        this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
 
       await this.refreshTokenRepository.save({
         employeeId: employee.id,
         tokenHash: hashedRefreshToken,
-        expiresAt: new Date(Date.now() + this.parseDurationToMs(refreshExpiresIn)),
+        expiresAt: new Date(
+          Date.now() + this.parseDurationToMs(refreshExpiresIn),
+        ),
         isRevoked: false,
       });
 
       return {
         accessToken,
-        // refreshToken: newRefreshToken,
+        refreshToken: newRefreshToken,
       };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');

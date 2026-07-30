@@ -18,10 +18,7 @@ export class LeaveBalanceController {
 
   @Permissions(PermissionEnum.LEAVE_READ)
   @Get('leave-balance/me')
-  getMyBalance(
-    @CurrentUser() employee: any,
-    @Query('year') year?: number,
-  ) {
+  getMyBalance(@CurrentUser() employee: any, @Query('year') year?: number) {
     return this.leaveBalanceService.getEmployeeBalance(employee.id, year);
   }
 
@@ -49,4 +46,3 @@ export class LeaveBalanceController {
     );
   }
 }
-

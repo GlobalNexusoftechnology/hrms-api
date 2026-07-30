@@ -90,17 +90,26 @@ export class AttendanceCronService {
       for (const attendance of records) {
         if (!attendance.employee) continue;
 
-        const shift = this.validationService.getEffectiveShift(attendance.employee);
-        
+        const shift = this.validationService.getEffectiveShift(
+          attendance.employee,
+        );
+
         let absoluteMaxTime: dayjs.Dayjs;
         let officialShiftEndTime: dayjs.Dayjs;
-        
+
         if (shift.isFlexible) {
-          officialShiftEndTime = dayjs(attendance.checkIn).add(shift.standardWorkingMinutes, 'minute');
+          officialShiftEndTime = dayjs(attendance.checkIn).add(
+            shift.standardWorkingMinutes,
+            'minute',
+          );
         } else {
           const [endHour, endMinute] = shift.endTime.split(':').map(Number);
-          officialShiftEndTime = dayjs(attendance.date).hour(endHour).minute(endMinute).second(0).millisecond(0);
-          
+          officialShiftEndTime = dayjs(attendance.date)
+            .hour(endHour)
+            .minute(endMinute)
+            .second(0)
+            .millisecond(0);
+
           if (shift.crossMidnight) {
             // Simplified handling for cross-midnight. If checkin was before midnight and now is after midnight
             // The shift end time belongs to 'tomorrow' relative to the start date.
@@ -110,7 +119,10 @@ export class AttendanceCronService {
           }
         }
 
-        absoluteMaxTime = officialShiftEndTime.add(shift.maxAllowedOvertimeMinutes || 240, 'minute');
+        absoluteMaxTime = officialShiftEndTime.add(
+          shift.maxAllowedOvertimeMinutes || 240,
+          'minute',
+        );
 
         // Check if the current time has exceeded their Absolute Max Time
         if (now.isAfter(absoluteMaxTime)) {
@@ -123,7 +135,8 @@ export class AttendanceCronService {
           attendance.isAutoCheckout = true;
 
           if (!attendance.earlyCheckoutReason) {
-            attendance.earlyCheckoutReason = 'Auto checkout (exceeded max allowed time)';
+            attendance.earlyCheckoutReason =
+              'Auto checkout (exceeded max allowed time)';
           }
 
           let breakMinutes = 0;
@@ -131,9 +144,12 @@ export class AttendanceCronService {
             breakMinutes = shift.totalBreakMinutes || 0;
           }
 
-          const workedMinutes = Math.floor(officialShiftEndTime.diff(dayjs(attendance.checkIn), 'minute')) - breakMinutes;
+          const workedMinutes =
+            Math.floor(
+              officialShiftEndTime.diff(dayjs(attendance.checkIn), 'minute'),
+            ) - breakMinutes;
           attendance.workedMinutes = workedMinutes > 0 ? workedMinutes : 0;
-          
+
           // Overtime is forfeited when forced to auto-checkout
           attendance.overtimeMinutes = 0;
 
@@ -412,13 +428,22 @@ export class AttendanceCronService {
       try {
         shift = this.validationService.getEffectiveShift(employee);
       } catch (e) {
-        console.error(`Skipping absent check for employee ${employee.id}: No shift assigned.`);
+        console.error(
+          `Skipping absent check for employee ${employee.id}: No shift assigned.`,
+        );
         continue;
       }
 
       const [startHour, startMinute] = shift.startTime.split(':').map(Number);
-      const shiftStartTime = dayjs(today).hour(startHour).minute(startMinute).second(0).millisecond(0);
-      const absoluteLatestCheckIn = shiftStartTime.add(shift.latestCheckInMinutes, 'minute');
+      const shiftStartTime = dayjs(today)
+        .hour(startHour)
+        .minute(startMinute)
+        .second(0)
+        .millisecond(0);
+      const absoluteLatestCheckIn = shiftStartTime.add(
+        shift.latestCheckInMinutes,
+        'minute',
+      );
 
       // If they still have time to check in, skip them for now
       if (now.isBefore(absoluteLatestCheckIn)) {
@@ -565,13 +590,20 @@ export class AttendanceCronService {
       }
 
       let officialShiftEndTime: dayjs.Dayjs;
-      
+
       if (shift.isFlexible) {
-        officialShiftEndTime = dayjs(attendance.checkIn).add(shift.standardWorkingMinutes, 'minute');
+        officialShiftEndTime = dayjs(attendance.checkIn).add(
+          shift.standardWorkingMinutes,
+          'minute',
+        );
       } else {
         const [endHour, endMinute] = shift.endTime.split(':').map(Number);
-        officialShiftEndTime = dayjs(attendance.date).hour(endHour).minute(endMinute).second(0).millisecond(0);
-        
+        officialShiftEndTime = dayjs(attendance.date)
+          .hour(endHour)
+          .minute(endMinute)
+          .second(0)
+          .millisecond(0);
+
         if (shift.crossMidnight && endHour < 12) {
           officialShiftEndTime = officialShiftEndTime.add(1, 'day');
         }
@@ -579,7 +611,10 @@ export class AttendanceCronService {
 
       // Check if shift end time just passed within the last 15 minutes window
       // The 16-minute upper bound ensures that a 15-minute cron job will catch it exactly once
-      if (now.isAfter(officialShiftEndTime) && now.isBefore(officialShiftEndTime.add(16, 'minute'))) {
+      if (
+        now.isAfter(officialShiftEndTime) &&
+        now.isBefore(officialShiftEndTime.add(16, 'minute'))
+      ) {
         await this.notificationService.createNotification({
           employeeId: attendance.employee.id,
           type: NotificationType.ATTENDANCE,

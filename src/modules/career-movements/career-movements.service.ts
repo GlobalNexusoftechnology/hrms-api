@@ -1,12 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { EmployeeCareerMovement } from './entities/career-movement.entity';
 import { CreateCareerMovementDto } from './dto/create-career-movement.dto';
 import { Employee } from '../employees/entities/employee.entity';
 import { CareerMovementStatusEnum } from '../../common/enums/career-movement-status.enum';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { ActivityAction } from '../activity-log/enums/activity-action.enum';
+import { SalaryStructure } from '../salary-structure/entities/salary-structure.entity';
 
 @Injectable()
 export class CareerMovementsService {
@@ -16,33 +21,47 @@ export class CareerMovementsService {
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
     private readonly activityLogService: ActivityLogService,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async create(employeeId: string, dto: CreateCareerMovementDto, currentUserId?: string, correlationId?: string) {
+  async create(
+    employeeId: string,
+    dto: CreateCareerMovementDto,
+    currentUserId?: string,
+    correlationId?: string,
+  ) {
     const employee = await this.employeeRepository.findOne({
       where: { id: employeeId },
       relations: { salaryStructures: true },
     });
 
     if (dto.impactPayroll && !dto.newSalaryStructureId) {
-      throw new BadRequestException('If impactPayroll is true, newSalaryStructureId must be provided.');
+      throw new BadRequestException(
+        'If impactPayroll is true, newSalaryStructureId must be provided.',
+      );
     }
     if (dto.newSalaryStructureId && !dto.impactPayroll) {
-      throw new BadRequestException('If newSalaryStructureId is provided, impactPayroll must be true.');
+      throw new BadRequestException(
+        'If newSalaryStructureId is provided, impactPayroll must be true.',
+      );
     }
-    
+
     if (dto.impactPermissions && !dto.newRoleId) {
-      throw new BadRequestException('If impactPermissions is true, newRoleId must be provided.');
+      throw new BadRequestException(
+        'If impactPermissions is true, newRoleId must be provided.',
+      );
     }
     if (dto.newRoleId && !dto.impactPermissions) {
-      throw new BadRequestException('If newRoleId is provided, impactPermissions must be true.');
+      throw new BadRequestException(
+        'If newRoleId is provided, impactPermissions must be true.',
+      );
     }
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
     }
 
-    const activeSalary = employee.salaryStructures?.find(s => s.isActive);
+    const activeSalary = employee.salaryStructures?.find((s) => s.isActive);
 
     const movement = this.movementRepository.create({
       employeeId,
@@ -55,7 +74,7 @@ export class CareerMovementsService {
       impactPayroll: dto.impactPayroll ?? false,
       impactPermissions: dto.impactPermissions ?? false,
       status: CareerMovementStatusEnum.PENDING,
-      
+
       // OLD VALUES
       oldBranchId: employee.branchId,
       oldDepartmentId: employee.departmentId,
@@ -71,7 +90,7 @@ export class CareerMovementsService {
       newRoleId: dto.newRoleId,
       newShiftId: dto.newShiftId,
       newSalaryStructureId: dto.newSalaryStructureId,
-      
+
       requestedBy: currentUserId,
       requestedAt: new Date(),
     });
@@ -86,7 +105,7 @@ export class CareerMovementsService {
         description: `Requested ${dto.movementType} for Employee ID ${employeeId}`,
         entityType: 'EmployeeCareerMovement',
         entityId: savedMovement.id,
-        newValue: savedMovement as unknown as Record<string, any>,
+        newValue: savedMovement,
         correlationId,
       });
     }
@@ -130,7 +149,7 @@ export class CareerMovementsService {
         description: `Approved ${movement.movementType} for Employee ID ${movement.employeeId}`,
         entityType: 'EmployeeCareerMovement',
         entityId: savedMovement.id,
-        newValue: savedMovement as unknown as Record<string, any>,
+        newValue: savedMovement,
       });
     }
 
@@ -141,13 +160,15 @@ export class CareerMovementsService {
     const movement = await this.findOne(id);
 
     if (movement.status !== CareerMovementStatusEnum.APPROVED) {
-      throw new BadRequestException('Movement must be APPROVED before execution');
+      throw new BadRequestException(
+        'Movement must be APPROVED before execution',
+      );
     }
 
     // Validate Effective Date
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Start of today
-    
+
     const effectiveDate = new Date(movement.effectiveDate);
     effectiveDate.setHours(0, 0, 0, 0);
 
@@ -164,46 +185,65 @@ export class CareerMovementsService {
       throw new NotFoundException('Employee not found');
     }
 
-    // Apply New Values (if present)
-    if (movement.newBranchId) employee.branchId = movement.newBranchId;
-    if (movement.newDepartmentId) employee.departmentId = movement.newDepartmentId;
-    if (movement.newDesignationId) employee.designationId = movement.newDesignationId;
-    if (movement.newRoleId) employee.roleId = movement.newRoleId;
-    if (movement.newShiftId) employee.shiftId = movement.newShiftId;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Handle Salary Structure Swap
-    if (movement.newSalaryStructureId) {
-      if (employee.salaryStructures) {
-        for (const salary of employee.salaryStructures) {
-          salary.isActive = false;
+    try {
+      // Apply New Values (if present)
+      if (movement.newBranchId) employee.branchId = movement.newBranchId;
+      if (movement.newDepartmentId)
+        employee.departmentId = movement.newDepartmentId;
+      if (movement.newDesignationId)
+        employee.designationId = movement.newDesignationId;
+      if (movement.newRoleId) employee.roleId = movement.newRoleId;
+      if (movement.newShiftId) employee.shiftId = movement.newShiftId;
+
+      // Handle Salary Structure Swap transactionally
+      if (movement.newSalaryStructureId) {
+        if (employee.salaryStructures && employee.salaryStructures.length > 0) {
+          for (const salary of employee.salaryStructures) {
+            salary.isActive = false;
+            await queryRunner.manager.save(SalaryStructure, salary);
+          }
         }
+        
+        // Note: For V1, we assume the new structure is already active or handled 
+        // separately during its creation phase in the salary-structure module.
       }
-      // Note: Setting isActive back to true on the new structure requires updating the SalaryStructure entity itself.
-      // For V1, we assume the new structure is already active or handled. 
-      // We are just un-activating the old ones.
+
+      await queryRunner.manager.save(Employee, employee);
+
+      // Update Movement Status
+      movement.status = CareerMovementStatusEnum.EXECUTED;
+      movement.executedBy = currentUserId || null;
+      movement.executedAt = new Date();
+
+      const savedMovement = await queryRunner.manager.save(
+        EmployeeCareerMovement,
+        movement,
+      );
+
+      await queryRunner.commitTransaction();
+
+      if (currentUserId) {
+        await this.activityLogService.logAction({
+          userId: currentUserId,
+          module: 'Career Movements',
+          action: ActivityAction.UPDATE,
+          description: `Executed ${movement.movementType} for Employee ID ${movement.employeeId}`,
+          entityType: 'EmployeeCareerMovement',
+          entityId: savedMovement.id,
+          newValue: savedMovement,
+        });
+      }
+
+      return savedMovement;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    await this.employeeRepository.save(employee);
-
-    // Update Movement Status
-    movement.status = CareerMovementStatusEnum.EXECUTED;
-    movement.executedBy = currentUserId || null;
-    movement.executedAt = new Date();
-
-    const savedMovement = await this.movementRepository.save(movement);
-
-    if (currentUserId) {
-      await this.activityLogService.logAction({
-        userId: currentUserId,
-        module: 'Career Movements',
-        action: ActivityAction.UPDATE,
-        description: `Executed ${movement.movementType} for Employee ID ${movement.employeeId}`,
-        entityType: 'EmployeeCareerMovement',
-        entityId: savedMovement.id,
-        newValue: savedMovement as unknown as Record<string, any>,
-      });
-    }
-
-    return savedMovement;
   }
 }

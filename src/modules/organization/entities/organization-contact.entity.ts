@@ -18,11 +18,18 @@ export class OrganizationContact extends BaseEntity {
   @Index()
   branchId: string | null = null;
 
-  @ManyToOne(() => Branch, (branch) => branch.contacts, { nullable: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Branch, (branch) => branch.contacts, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'branch_id' })
   branch: Branch | null = null;
 
-  @Column({ name: 'contact_type', type: 'enum', enum: OrganizationContactTypeEnum })
+  @Column({
+    name: 'contact_type',
+    type: 'enum',
+    enum: OrganizationContactTypeEnum,
+  })
   contactType!: OrganizationContactTypeEnum;
 
   @Column()

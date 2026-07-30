@@ -24,7 +24,9 @@ export class ActivityLogService {
         const newLog = this.activityLogRepository.create(sanitizedData);
         await this.activityLogRepository.save(newLog);
       } catch (error) {
-        this.logger.error(`Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(
+          `Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     });
   }
@@ -50,7 +52,8 @@ export class ActivityLogService {
       sortOrder,
     } = searchDto;
 
-    const queryBuilder: SelectQueryBuilder<ActivityLog> = this.activityLogRepository.createQueryBuilder('log');
+    const queryBuilder: SelectQueryBuilder<ActivityLog> =
+      this.activityLogRepository.createQueryBuilder('log');
 
     if (userId) {
       queryBuilder.andWhere('log.userId = :userId', { userId });
@@ -71,7 +74,9 @@ export class ActivityLogService {
       queryBuilder.andWhere('log.status = :status', { status });
     }
     if (requestMethod) {
-      queryBuilder.andWhere('log.requestMethod = :requestMethod', { requestMethod });
+      queryBuilder.andWhere('log.requestMethod = :requestMethod', {
+        requestMethod,
+      });
     }
     if (ipAddress) {
       queryBuilder.andWhere('log.ipAddress = :ipAddress', { ipAddress });
@@ -106,19 +111,31 @@ export class ActivityLogService {
   /**
    * Sanitizes sensitive data before logging.
    */
-  private sanitizeSensitiveData(data: Partial<ActivityLog>): Partial<ActivityLog> {
+  private sanitizeSensitiveData(
+    data: Partial<ActivityLog>,
+  ): Partial<ActivityLog> {
     const sanitized = { ...data };
-    
+
     // Helper to mask properties in JSON objects
     const maskJson = (obj: any) => {
       if (!obj || typeof obj !== 'object') return obj;
       const maskedObj = { ...obj };
-      const sensitiveKeys = ['password', 'token', 'otp', 'refreshToken', 'accessToken', 'secret'];
-      
+      const sensitiveKeys = [
+        'password',
+        'token',
+        'otp',
+        'refreshToken',
+        'accessToken',
+        'secret',
+      ];
+
       for (const key of Object.keys(maskedObj)) {
-        if (sensitiveKeys.some(sk => key.toLowerCase().includes(sk))) {
+        if (sensitiveKeys.some((sk) => key.toLowerCase().includes(sk))) {
           maskedObj[key] = '********';
-        } else if (typeof maskedObj[key] === 'object' && maskedObj[key] !== null) {
+        } else if (
+          typeof maskedObj[key] === 'object' &&
+          maskedObj[key] !== null
+        ) {
           maskedObj[key] = maskJson(maskedObj[key]);
         }
       }

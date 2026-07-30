@@ -10,13 +10,8 @@ import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Team,
-      TeamMember,
-      Department,
-      Employee
-    ]),
-    NotificationModule , 
+    TypeOrmModule.forFeature([Team, TeamMember, Department, Employee]),
+    NotificationModule,
   ],
 
   controllers: [TeamController],

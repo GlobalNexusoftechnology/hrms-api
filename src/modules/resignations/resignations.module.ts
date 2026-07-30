@@ -13,6 +13,6 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     ActivityLogModule,
   ],
   controllers: [ResignationsController],
-  providers: [ResignationsService]
+  providers: [ResignationsService],
 })
 export class ResignationsModule {}

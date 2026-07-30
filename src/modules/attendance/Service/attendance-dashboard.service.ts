@@ -167,24 +167,26 @@ export class AttendanceDashboardService {
 
     const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
 
-    const qbEmployee = this.employeeRepo.createQueryBuilder('employee')
+    const qbEmployee = this.employeeRepo
+      .createQueryBuilder('employee')
       .where('employee.is_active = :isActive', { isActive: true })
       .andWhere('employee.deleted_at IS NULL');
     this.dataScopeService.applyScope(qbEmployee, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
-      employee: 'employee.id'
+      employee: 'employee.id',
     });
     const totalEmployees = await qbEmployee.getCount();
 
-    const qbToday = this.attendanceRepo.createQueryBuilder('attendance')
+    const qbToday = this.attendanceRepo
+      .createQueryBuilder('attendance')
       .leftJoinAndSelect('attendance.employee', 'employee')
       .leftJoinAndSelect('employee.department', 'department')
       .where('attendance.date = :today', { today });
     this.dataScopeService.applyScope(qbToday, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
-      employee: 'employee.id'
+      employee: 'employee.id',
     });
     const todayAttendance = await qbToday.getMany();
 
@@ -219,7 +221,7 @@ export class AttendanceDashboardService {
     this.dataScopeService.applyScope(qbWeekly, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
-      employee: 'employee.id'
+      employee: 'employee.id',
     });
     const weeklyAttendance = await qbWeekly.getMany();
 
@@ -234,7 +236,7 @@ export class AttendanceDashboardService {
     this.dataScopeService.applyScope(qbMonthly, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
-      employee: 'employee.id'
+      employee: 'employee.id',
     });
     const monthlyAttendance = await qbMonthly.getMany();
 

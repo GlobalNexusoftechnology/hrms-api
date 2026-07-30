@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsEnum, IsNumber, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  IsNotEmpty,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrganizationAddressType } from '../../../common/enums/organization-address-type.enum';
 

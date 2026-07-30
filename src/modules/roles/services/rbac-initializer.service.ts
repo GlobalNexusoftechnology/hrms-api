@@ -31,7 +31,9 @@ export class RBACInitializerService {
       }
     }
 
-    this.logger.log(`RBAC Initialization: ${allPermissionNames.length} permissions seeded.`);
+    this.logger.log(
+      `RBAC Initialization: ${allPermissionNames.length} permissions seeded.`,
+    );
 
     // ── Step 2: Find or create SUPER_ADMIN role (idempotent) ──
     let superAdminRole = await queryRunner.manager.findOne(Role, {
@@ -72,7 +74,9 @@ export class RBACInitializerService {
       if (needsSave) {
         await queryRunner.manager.save(Role, superAdminRole);
       }
-      this.logger.log('RBAC Initialization: SUPER_ADMIN role exists, verified constraints.');
+      this.logger.log(
+        'RBAC Initialization: SUPER_ADMIN role exists, verified constraints.',
+      );
     }
 
     // ── Step 3: Assign ALL permissions to SUPER_ADMIN (idempotent) ──

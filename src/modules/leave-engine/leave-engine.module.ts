@@ -9,7 +9,12 @@ import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([LeaveLedger, LeaveBalance, LeavePolicy, Employee]),
+    TypeOrmModule.forFeature([
+      LeaveLedger,
+      LeaveBalance,
+      LeavePolicy,
+      Employee,
+    ]),
     ScheduleModule.forRoot(),
   ],
   providers: [LeaveEngineService],

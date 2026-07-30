@@ -41,7 +41,10 @@ export class DataScopeService {
       case DataScopeEnum.BRANCH:
         if (!currentUser.branchId || !paths.branch) {
           // If the user has no branch or path doesn't specify one, fallback to self if possible
-          if (paths.employee) return qb.andWhere(`${paths.employee} = :userId_${pId}`, { [`userId_${pId}`]: currentUser.id });
+          if (paths.employee)
+            return qb.andWhere(`${paths.employee} = :userId_${pId}`, {
+              [`userId_${pId}`]: currentUser.id,
+            });
           return qb.andWhere('1 = 0');
         }
         return qb.andWhere(`${paths.branch} = :branchId_${pId}`, {
@@ -51,7 +54,10 @@ export class DataScopeService {
       case DataScopeEnum.DEPARTMENT:
         if (!currentUser.departmentId || !paths.department) {
           // Fallback to self if possible
-          if (paths.employee) return qb.andWhere(`${paths.employee} = :userId_${pId}`, { [`userId_${pId}`]: currentUser.id });
+          if (paths.employee)
+            return qb.andWhere(`${paths.employee} = :userId_${pId}`, {
+              [`userId_${pId}`]: currentUser.id,
+            });
           return qb.andWhere('1 = 0');
         }
         return qb.andWhere(`${paths.department} = :departmentId_${pId}`, {
@@ -62,14 +68,16 @@ export class DataScopeService {
         if (!paths.employee) {
           return qb.andWhere('1 = 0'); // TEAM scope requires an employee relationship
         }
-        
+
         // Access to employees sharing at least one team membership with the current user
         // Using TypeORM's query builder to leverage metadata instead of hardcoded table names
-        const teamSubQuery = qb.connection.createQueryBuilder(TeamMember, `tm1_${pId}`)
+        const teamSubQuery = qb.connection
+          .createQueryBuilder(TeamMember, `tm1_${pId}`)
           .select(`tm1_${pId}.teamId`)
           .where(`tm1_${pId}.employeeId = :userId_${pId}`);
 
-        const employeeSubQuery = qb.connection.createQueryBuilder(TeamMember, `tm2_${pId}`)
+        const employeeSubQuery = qb.connection
+          .createQueryBuilder(TeamMember, `tm2_${pId}`)
           .select(`tm2_${pId}.employeeId`)
           .where(`tm2_${pId}.teamId IN (${teamSubQuery.getQuery()})`);
 
@@ -84,7 +92,9 @@ export class DataScopeService {
           return qb.andWhere('1 = 0'); // SELF scope requires an employee relationship
         }
         // Only their own record
-        return qb.andWhere(`${paths.employee} = :userId_${pId}`, { [`userId_${pId}`]: currentUser.id });
+        return qb.andWhere(`${paths.employee} = :userId_${pId}`, {
+          [`userId_${pId}`]: currentUser.id,
+        });
     }
   }
 }

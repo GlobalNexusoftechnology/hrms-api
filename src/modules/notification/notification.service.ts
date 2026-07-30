@@ -6,7 +6,6 @@ import { Repository } from 'typeorm';
 
 import { Notification } from './entities/notification.entity';
 
-
 import { CreateNotificationDto } from './dto/create-notification.dto';
 
 import { NotificationQueryDto } from './dto/notification-query.dto';

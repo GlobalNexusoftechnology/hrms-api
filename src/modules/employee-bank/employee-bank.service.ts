@@ -12,7 +12,10 @@ export class EmployeeBankService {
     private readonly bankRepository: Repository<EmployeeBank>,
   ) {}
 
-  async create(employeeId: string, dto: CreateEmployeeBankDto): Promise<EmployeeBank> {
+  async create(
+    employeeId: string,
+    dto: CreateEmployeeBankDto,
+  ): Promise<EmployeeBank> {
     if (dto.isPrimary) {
       await this.resetPrimaryStatus(employeeId);
     }
@@ -21,7 +24,10 @@ export class EmployeeBankService {
   }
 
   async findAllByEmployee(employeeId: string): Promise<EmployeeBank[]> {
-    return this.bankRepository.find({ where: { employeeId }, order: { createdAt: 'DESC' } });
+    return this.bankRepository.find({
+      where: { employeeId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<EmployeeBank> {
@@ -34,7 +40,7 @@ export class EmployeeBankService {
 
   async update(id: string, dto: UpdateEmployeeBankDto): Promise<EmployeeBank> {
     const bank = await this.findOne(id);
-    
+
     if (dto.isPrimary && !bank.isPrimary) {
       await this.resetPrimaryStatus(bank.employeeId);
     }
@@ -51,7 +57,7 @@ export class EmployeeBankService {
   private async resetPrimaryStatus(employeeId: string): Promise<void> {
     await this.bankRepository.update(
       { employeeId, isPrimary: true },
-      { isPrimary: false }
+      { isPrimary: false },
     );
   }
 }

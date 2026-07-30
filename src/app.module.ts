@@ -13,6 +13,7 @@ import { CommonModule } from './common/common.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { EmployeeScopeGuard } from './common/guards/employee-scope.guard';
 import { ActivityLogInterceptor } from './common/interceptors/activity-log.interceptor';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { DesignationsModule } from './modules/designations/designations.module';
@@ -61,10 +62,12 @@ import { ResignationsModule } from './modules/resignations/resignations.module';
 
     ScheduleModule.forRoot(),
 
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
 
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -138,6 +141,10 @@ import { ResignationsModule } from './modules/resignations/resignations.module';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: EmployeeScopeGuard,
     },
     {
       provide: APP_INTERCEPTOR,

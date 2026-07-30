@@ -27,14 +27,20 @@ export class EmployeeCareerMovement {
   @Column({ name: 'employee_id', type: 'uuid' })
   employeeId!: string;
 
-  @ManyToOne(() => Employee, (employee) => employee.careerMovements, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Employee, (employee) => employee.careerMovements, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'employee_id' })
   employee!: Employee;
 
   @Column({ type: 'enum', enum: CareerMovementTypeEnum, name: 'movement_type' })
   movementType!: CareerMovementTypeEnum;
 
-  @Column({ type: 'enum', enum: CareerMovementStatusEnum, default: CareerMovementStatusEnum.PENDING })
+  @Column({
+    type: 'enum',
+    enum: CareerMovementStatusEnum,
+    default: CareerMovementStatusEnum.PENDING,
+  })
   status!: CareerMovementStatusEnum;
 
   @Column({ type: 'date', name: 'effective_date' })
@@ -85,7 +91,12 @@ export class EmployeeCareerMovement {
   @Column({ type: 'text', nullable: true })
   remarks!: string | null;
 
-  @Column({ name: 'reference_number', type: 'varchar', length: 150, nullable: true })
+  @Column({
+    name: 'reference_number',
+    type: 'varchar',
+    length: 150,
+    nullable: true,
+  })
   referenceNumber!: string | null;
 
   @Column({ name: 'attachment_document_id', type: 'uuid', nullable: true })

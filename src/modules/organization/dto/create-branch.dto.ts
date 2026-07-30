@@ -1,4 +1,11 @@
-import { IsString, IsBoolean, IsOptional, IsNotEmpty, IsEnum, IsEmail } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsOptional,
+  IsNotEmpty,
+  IsEnum,
+  IsEmail,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BranchType } from '../../../common/enums/branch-type.enum';
 import { BranchStatus } from '../../../common/enums/branch-status.enum';
@@ -9,7 +16,10 @@ export class CreateBranchDto {
   @IsNotEmpty()
   name!: string;
 
-  @ApiPropertyOptional({ example: 'HQ-001', description: 'Will be auto-generated if not provided' })
+  @ApiPropertyOptional({
+    example: 'HQ-001',
+    description: 'Will be auto-generated if not provided',
+  })
   @IsString()
   @IsOptional()
   code?: string;

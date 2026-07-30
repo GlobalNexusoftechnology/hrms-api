@@ -98,14 +98,16 @@ export class InterviewService {
       where: [{ email: dto.email }, { mobile: dto.mobile }],
     });
     if (employeeExists) {
-      throw new ConflictException('This email or mobile number already exists in the Employee records.');
+      throw new ConflictException(
+        'This email or mobile number already exists in the Employee records.',
+      );
     }
 
     // 2. Find or Create Candidate (can apply to multiple jobs)
     let candidate = await this.candidateRepo.findOne({
-      where: [{ email: dto.email }, { mobile: dto.mobile }] 
+      where: [{ email: dto.email }, { mobile: dto.mobile }],
     });
-    
+
     if (!candidate) {
       candidate = this.candidateRepo.create(dto);
       candidate = await this.candidateRepo.save(candidate);
@@ -129,11 +131,13 @@ export class InterviewService {
 
     // 3. Validate if Candidate already applied to this specific Job
     const existingApp = await this.applicationRepo.findOne({
-      where: { candidateId: candidate.id, jobId: job.id }
+      where: { candidateId: candidate.id, jobId: job.id },
     });
 
     if (existingApp) {
-      throw new ConflictException('You have already applied for this specific job posting.');
+      throw new ConflictException(
+        'You have already applied for this specific job posting.',
+      );
     }
 
     // 4. Create Application
@@ -162,14 +166,19 @@ export class InterviewService {
   }
 
   async updateCandidate(candidateId: string, dto: UpdateCandidateDto) {
-    const candidate = await this.candidateRepo.findOne({ where: { id: candidateId } });
+    const candidate = await this.candidateRepo.findOne({
+      where: { id: candidateId },
+    });
     if (!candidate) throw new NotFoundException('Candidate not found');
 
     if (dto.email || dto.mobile) {
       const existingEmployee = await this.employeeRepo.findOne({
         where: [{ email: dto.email }, { mobile: dto.mobile }],
       });
-      if (existingEmployee) throw new ConflictException('Email or mobile already in use by employee');
+      if (existingEmployee)
+        throw new ConflictException(
+          'Email or mobile already in use by employee',
+        );
     }
 
     Object.assign(candidate, dto);
@@ -180,7 +189,7 @@ export class InterviewService {
   async scheduleInterview(dto: ScheduleInterviewDto) {
     const application = await this.applicationRepo.findOne({
       where: { id: dto.applicationId },
-      relations: { candidate: true, job: true }
+      relations: { candidate: true, job: true },
     });
 
     if (!application) throw new NotFoundException('Application not found');
@@ -192,22 +201,33 @@ export class InterviewService {
     if (!interviewer) throw new NotFoundException('Interviewer not found');
 
     if (new Date(dto.scheduledAt) < new Date()) {
-      throw new BadRequestException('Interview cannot be scheduled in the past');
+      throw new BadRequestException(
+        'Interview cannot be scheduled in the past',
+      );
     }
 
     const roundName = dto.roundName;
 
     if (roundName === InterviewRoundEnum.ASSESSMENT) {
-      if (application.status !== CandidateStatusEnum.APPLIED && application.status !== CandidateStatusEnum.SCREENING) {
-        throw new BadRequestException('Candidate must be in APPLIED or SCREENING state to schedule an Assessment.');
+      if (
+        application.status !== CandidateStatusEnum.APPLIED &&
+        application.status !== CandidateStatusEnum.SCREENING
+      ) {
+        throw new BadRequestException(
+          'Candidate must be in APPLIED or SCREENING state to schedule an Assessment.',
+        );
       }
     } else if (roundName === InterviewRoundEnum.TECHNICAL) {
       if (application.status !== CandidateStatusEnum.ASSESSMENT_CLEARED) {
-        throw new BadRequestException('Candidate must clear Assessment before scheduling Technical round.');
+        throw new BadRequestException(
+          'Candidate must clear Assessment before scheduling Technical round.',
+        );
       }
     } else if (roundName === InterviewRoundEnum.HR) {
       if (application.status !== CandidateStatusEnum.TECHNICAL_CLEARED) {
-        throw new BadRequestException('Candidate must clear Technical round before scheduling HR round.');
+        throw new BadRequestException(
+          'Candidate must clear Technical round before scheduling HR round.',
+        );
       }
     }
 
@@ -220,7 +240,9 @@ export class InterviewService {
     });
 
     if (existingInterview) {
-      throw new BadRequestException(`Interview round '${roundName}' already exists for this application`);
+      throw new BadRequestException(
+        `Interview round '${roundName}' already exists for this application`,
+      );
     }
 
     const scheduledDate = new Date(dto.scheduledAt);
@@ -236,7 +258,9 @@ export class InterviewService {
     });
 
     if (interviewerBusy) {
-      throw new BadRequestException('Interviewer already has another interview scheduled at this time');
+      throw new BadRequestException(
+        'Interviewer already has another interview scheduled at this time',
+      );
     }
 
     const interview = this.interviewRepo.create({
@@ -311,13 +335,18 @@ export class InterviewService {
     });
 
     if (!interview) throw new NotFoundException('Interview not found');
-    if (interview.status !== InterviewStatusEnum.SCHEDULED) throw new BadRequestException('Interview is already completed');
+    if (interview.status !== InterviewStatusEnum.SCHEDULED)
+      throw new BadRequestException('Interview is already completed');
 
     const existingFeedback = await this.feedbackRepo.findOne({
       where: { interviewId, createdBy: employeeId },
     });
-    if (existingFeedback) throw new BadRequestException('Feedback already submitted');
-    if (interview.interviewerId !== employeeId) throw new ForbiddenException('Only assigned interviewer can submit feedback');
+    if (existingFeedback)
+      throw new BadRequestException('Feedback already submitted');
+    if (interview.interviewerId !== employeeId)
+      throw new ForbiddenException(
+        'Only assigned interviewer can submit feedback',
+      );
 
     const feedback = this.feedbackRepo.create({
       interviewId,
@@ -359,19 +388,35 @@ export class InterviewService {
     });
 
     if (!application) throw new NotFoundException('Application not found');
-    if (application.status === CandidateStatusEnum.HIRED) throw new BadRequestException('Cannot change status of hired candidate');
+    if (application.status === CandidateStatusEnum.HIRED)
+      throw new BadRequestException('Cannot change status of hired candidate');
 
     const currentStatus = application.status;
     const newStatus = dto.status;
 
-    if (newStatus === CandidateStatusEnum.ASSESSMENT_CLEARED && currentStatus !== CandidateStatusEnum.ASSESSMENT_SCHEDULED) {
-      throw new BadRequestException('Candidate must be in ASSESSMENT_SCHEDULED state before being marked as ASSESSMENT_CLEARED');
+    if (
+      newStatus === CandidateStatusEnum.ASSESSMENT_CLEARED &&
+      currentStatus !== CandidateStatusEnum.ASSESSMENT_SCHEDULED
+    ) {
+      throw new BadRequestException(
+        'Candidate must be in ASSESSMENT_SCHEDULED state before being marked as ASSESSMENT_CLEARED',
+      );
     }
-    if (newStatus === CandidateStatusEnum.TECHNICAL_CLEARED && currentStatus !== CandidateStatusEnum.TECHNICAL_SCHEDULED) {
-      throw new BadRequestException('Candidate must be in TECHNICAL_SCHEDULED state before being marked as TECHNICAL_CLEARED');
+    if (
+      newStatus === CandidateStatusEnum.TECHNICAL_CLEARED &&
+      currentStatus !== CandidateStatusEnum.TECHNICAL_SCHEDULED
+    ) {
+      throw new BadRequestException(
+        'Candidate must be in TECHNICAL_SCHEDULED state before being marked as TECHNICAL_CLEARED',
+      );
     }
-    if (newStatus === CandidateStatusEnum.SELECTED && currentStatus !== CandidateStatusEnum.HR_SCHEDULED) {
-      throw new BadRequestException('Candidate must be in HR_SCHEDULED state before being marked as SELECTED');
+    if (
+      newStatus === CandidateStatusEnum.SELECTED &&
+      currentStatus !== CandidateStatusEnum.HR_SCHEDULED
+    ) {
+      throw new BadRequestException(
+        'Candidate must be in HR_SCHEDULED state before being marked as SELECTED',
+      );
     }
 
     application.status = newStatus;
@@ -385,21 +430,27 @@ export class InterviewService {
     });
 
     if (!application) throw new NotFoundException('Application not found');
-    if (application.status !== CandidateStatusEnum.SELECTED) throw new BadRequestException('Only selected candidates can be hired');
+    if (application.status !== CandidateStatusEnum.SELECTED)
+      throw new BadRequestException('Only selected candidates can be hired');
 
     const candidate = application.candidate;
     const job = application.job;
 
     const existingEmployee = await this.employeeRepo.findOne({
-      where: [{ email: candidate.email }, { mobile: candidate.mobile }]
+      where: [{ email: candidate.email }, { mobile: candidate.mobile }],
     });
 
-    if (existingEmployee) throw new BadRequestException('Employee already exists with this email or mobile');
+    if (existingEmployee)
+      throw new BadRequestException(
+        'Employee already exists with this email or mobile',
+      );
 
     const role = await this.roleRepo.findOne({ where: { id: dto.roleId } });
     if (!role) throw new NotFoundException('Role not found');
 
-    const designation = await this.designationRepo.findOne({ where: { id: dto.designationId } });
+    const designation = await this.designationRepo.findOne({
+      where: { id: dto.designationId },
+    });
     if (!designation) throw new NotFoundException('Designation not found');
 
     const password = await bcrypt.hash('123456', 10);
@@ -421,12 +472,14 @@ export class InterviewService {
       isActive: true,
     });
 
-    const savedEmployee = await this.employeeRepo.manager.transaction(async (manager) => {
-      const saved = await manager.save(employee);
-      application.status = CandidateStatusEnum.HIRED;
-      await manager.save(application);
-      return saved;
-    });
+    const savedEmployee = await this.employeeRepo.manager.transaction(
+      async (manager) => {
+        const saved = await manager.save(employee);
+        application.status = CandidateStatusEnum.HIRED;
+        await manager.save(application);
+        return saved;
+      },
+    );
 
     return {
       success: true,

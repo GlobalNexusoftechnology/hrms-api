@@ -107,46 +107,70 @@ export class LeaveService {
     });
 
     if (!policy) {
-      throw new BadRequestException('Active policy not found for this leave type');
+      throw new BadRequestException(
+        'Active policy not found for this leave type',
+      );
     }
 
     // Notice Days Validation
     if (policy.noticeDays > 0) {
       const daysNotice = startDate.diff(today, 'day');
       if (daysNotice < policy.noticeDays) {
-        throw new BadRequestException(`This leave type requires at least ${policy.noticeDays} days advance notice`);
+        throw new BadRequestException(
+          `This leave type requires at least ${policy.noticeDays} days advance notice`,
+        );
       }
     }
 
     // Fetch Employee for Validation
-    const employee = await this.employeeRepo.findOne({ where: { id: employeeId } });
+    const employee = await this.employeeRepo.findOne({
+      where: { id: employeeId },
+    });
     if (!employee) throw new NotFoundException('Employee not found');
 
-    if (policy.gender !== 'ALL' && policy.gender.toString() !== employee.gender?.toString()) {
-      throw new BadRequestException(`This leave type is restricted to ${policy.gender} employees only.`);
+    if (
+      policy.gender !== 'ALL' &&
+      policy.gender.toString() !== employee.gender?.toString()
+    ) {
+      throw new BadRequestException(
+        `This leave type is restricted to ${policy.gender} employees only.`,
+      );
     }
 
     // Minimum Service Validation
     if (policy.minimumServiceDays > 0) {
       if (!employee.joiningDate) {
-         throw new BadRequestException('Employee joining date is not set, cannot verify minimum service days.');
+        throw new BadRequestException(
+          'Employee joining date is not set, cannot verify minimum service days.',
+        );
       }
       const daysServed = today.diff(dayjs(employee.joiningDate), 'day');
       if (daysServed < policy.minimumServiceDays) {
-         throw new BadRequestException(`This leave type requires a minimum service of ${policy.minimumServiceDays} days.`);
+        throw new BadRequestException(
+          `This leave type requires a minimum service of ${policy.minimumServiceDays} days.`,
+        );
       }
     }
 
     // Document Requirement
     const rawTotalDays = endDate.diff(startDate, 'day') + 1;
-    if (policy.documentRequiredAfterDays && rawTotalDays > policy.documentRequiredAfterDays) {
+    if (
+      policy.documentRequiredAfterDays &&
+      rawTotalDays > policy.documentRequiredAfterDays
+    ) {
       // Future: require document upload
     }
 
     // Total Days Calculation (Accounting for weekends/holidays)
-    const totalDays = await this.calculateTotalLeaveDays(startDate, endDate, policy);
+    const totalDays = await this.calculateTotalLeaveDays(
+      startDate,
+      endDate,
+      policy,
+    );
     if (totalDays === 0) {
-      throw new BadRequestException('The selected date range contains 0 deductible leave days based on the policy rules.');
+      throw new BadRequestException(
+        'The selected date range contains 0 deductible leave days based on the policy rules.',
+      );
     }
 
     // Balance Validation
@@ -158,7 +182,7 @@ export class LeaveService {
     const accrued = balance ? Number(balance.accrued) : 0;
     const carriedForward = balance ? Number(balance.carriedForward) : 0;
     const used = balance ? Number(balance.used) : 0;
-    
+
     let availableBalance = accrued + carriedForward - used;
 
     if (policy.allowNegativeBalance) {
@@ -166,7 +190,9 @@ export class LeaveService {
     }
 
     if (totalDays > availableBalance) {
-      throw new BadRequestException(`Insufficient leave balance. You are trying to take ${totalDays} days, but only have ${availableBalance} days available.`);
+      throw new BadRequestException(
+        `Insufficient leave balance. You are trying to take ${totalDays} days, but only have ${availableBalance} days available.`,
+      );
     }
 
     const leave = this.leaveRepo.create({
@@ -175,76 +201,100 @@ export class LeaveService {
       startDate: dto.startDate,
       endDate: dto.endDate,
       reason: dto.reason,
-      status: policy.requiresApproval ? LeaveStatusEnum.PENDING : LeaveStatusEnum.APPROVED,
+      status: policy.requiresApproval
+        ? LeaveStatusEnum.PENDING
+        : LeaveStatusEnum.APPROVED,
     });
 
     const saved = await this.leaveRepo.save(leave);
 
     if (!policy.requiresApproval) {
-       await this.reviewLeave(saved.id, LeaveStatusEnum.APPROVED, employeeId, 'Auto-approved by policy');
-       saved.status = LeaveStatusEnum.APPROVED;
+      await this.reviewLeave(
+        saved.id,
+        LeaveStatusEnum.APPROVED,
+        employeeId,
+        'Auto-approved by policy',
+      );
+      saved.status = LeaveStatusEnum.APPROVED;
     }
 
     return saved;
   }
 
-  async requestEncashment(employeeId: string, dto: { leaveTypeId: string; days: number; reason?: string }) {
-    // 1. Fetch Policy
-    const policy = await this.leavePolicyRepo.findOne({
-      where: { leaveTypeId: dto.leaveTypeId, isActive: true },
-    });
-
-    if (!policy) {
-      throw new BadRequestException('Active policy not found for this leave type');
-    }
-
-    if (!policy.encashable) {
-      throw new BadRequestException('This leave type is not eligible for encashment');
-    }
-
-    // 2. Check Balance
-    const year = new Date().getFullYear();
-    const balance = await this.leaveBalanceRepo.findOne({
-      where: { employeeId, leaveTypeId: dto.leaveTypeId, year },
-    });
-
-    if (!balance) {
-      throw new BadRequestException('No leave balance found for this year');
-    }
-
+  async requestEncashment(
+    employeeId: string,
+    dto: { leaveTypeId: string; days: number; reason?: string },
+  ) {
     if (dto.days <= 0) {
       throw new BadRequestException('Requested days must be greater than 0');
     }
 
-    const remaining = Number(balance.accrued) + Number(balance.carriedForward) - Number(balance.used);
-    
-    if (remaining <= 0) {
-      throw new BadRequestException('You do not have any available balance to encash.');
-    }
+    return this.dataSource.transaction(async (manager) => {
+      // 1. Fetch Policy
+      const policy = await manager.findOne(LeavePolicy, {
+        where: { leaveTypeId: dto.leaveTypeId, isActive: true },
+      });
 
-    if (remaining < dto.days) {
-      throw new BadRequestException(`Insufficient balance. You only have ${remaining} days available to encash.`);
-    }
+      if (!policy) {
+        throw new BadRequestException(
+          'Active policy not found for this leave type',
+        );
+      }
 
-    // 3. Process Transaction
-    const ledger = await this.leaveEngineService.processTransaction({
-      employeeId,
-      leaveTypeId: dto.leaveTypeId,
-      transactionType: LeaveTransactionType.ENCASHMENT,
-      days: dto.days,
-      remarks: dto.reason || 'Leave Encashment Requested',
+      if (!policy.encashable) {
+        throw new BadRequestException(
+          'This leave type is not eligible for encashment',
+        );
+      }
+
+      // 2. Check Balance WITH LOCK
+      const year = new Date().getFullYear();
+      const balance = await manager.findOne(LeaveBalance, {
+        where: { employeeId, leaveTypeId: dto.leaveTypeId, year },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!balance) {
+        throw new BadRequestException('No leave balance found for this year');
+      }
+
+      const remaining =
+        Number(balance.accrued) +
+        Number(balance.carriedForward) -
+        Number(balance.used);
+
+      if (remaining <= 0) {
+        throw new BadRequestException(
+          'You do not have any available balance to encash.',
+        );
+      }
+
+      if (remaining < dto.days) {
+        throw new BadRequestException(
+          `Insufficient balance. You only have ${remaining} days available to encash.`,
+        );
+      }
+
+      // 3. Process Transaction
+      const ledger = await this.leaveEngineService.processTransaction({
+        employeeId,
+        leaveTypeId: dto.leaveTypeId,
+        transactionType: LeaveTransactionType.ENCASHMENT,
+        days: dto.days,
+        remarks: dto.reason || 'Leave Encashment Requested',
+      }, manager);
+
+      // 4. Send Notification
+      await this.notificationService.createNotification({
+        employeeId,
+        type: NotificationType.LEAVE,
+        title: 'Leave Encashment',
+        message: `Your request to encash ${dto.days} days has been processed and will be added to your next payslip.`,
+        referenceId: ledger.id,
+      });
+
+      return ledger;
     });
-
-    // 4. Send Notification
-    await this.notificationService.createNotification({
-      employeeId,
-      type: NotificationType.LEAVE,
-      title: 'Leave Encashment',
-      message: `Your request to encash ${dto.days} days has been processed and will be added to your next payslip.`,
-      referenceId: ledger.id,
-    });
-
-    return ledger;
   }
 
   async getMyLeaves(employeeId: string, status?: string) {
@@ -314,7 +364,7 @@ export class LeaveService {
     this.dataScopeService.applyScope(qb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
-      employee: 'employee.id'
+      employee: 'employee.id',
     });
 
     qb.orderBy('leave.created_at', 'DESC');
@@ -341,14 +391,17 @@ export class LeaveService {
   }
 
   async getLeaveReport(startDate?: string, endDate?: string) {
-    const qb = this.leaveRepo.createQueryBuilder('leave')
+    const qb = this.leaveRepo
+      .createQueryBuilder('leave')
       .leftJoinAndSelect('leave.employee', 'employee')
       .leftJoinAndSelect('employee.department', 'department')
       .leftJoinAndSelect('leave.leaveType', 'leaveType');
 
     if (startDate && endDate) {
-      qb.andWhere('leave.start_date >= :startDate', { startDate })
-        .andWhere('leave.start_date <= :endDate', { endDate });
+      qb.andWhere('leave.start_date >= :startDate', { startDate }).andWhere(
+        'leave.start_date <= :endDate',
+        { endDate },
+      );
     }
 
     const leaves = await qb.getMany();
@@ -365,11 +418,11 @@ export class LeaveService {
     for (const leave of leaves) {
       // By Status
       report.byStatus[leave.status] = (report.byStatus[leave.status] || 0) + 1;
-      
+
       // By Type
       const typeName = leave.leaveType?.name || 'Unknown';
       report.byType[typeName] = (report.byType[typeName] || 0) + 1;
-      
+
       // By Department
       const deptName = leave.employee?.department?.name || 'Unassigned';
       report.byDepartment[deptName] = (report.byDepartment[deptName] || 0) + 1;
@@ -407,10 +460,15 @@ export class LeaveService {
         const policy = await manager.findOne(LeavePolicy, {
           where: { leaveTypeId: leave.leaveTypeId, isActive: true },
         });
-        
-        let totalDays = dayjs(leave.endDate).diff(dayjs(leave.startDate), 'day') + 1;
+
+        let totalDays =
+          dayjs(leave.endDate).diff(dayjs(leave.startDate), 'day') + 1;
         if (policy) {
-           totalDays = await this.calculateTotalLeaveDays(dayjs(leave.startDate), dayjs(leave.endDate), policy);
+          totalDays = await this.calculateTotalLeaveDays(
+            dayjs(leave.startDate),
+            dayjs(leave.endDate),
+            policy,
+          );
         }
 
         // DEDUCT BALANCE via LeaveEngine
@@ -421,7 +479,7 @@ export class LeaveService {
           days: totalDays,
           referenceId: leave.id,
           remarks: `Leave approved by ${reviewerId}`,
-        });
+        }, manager);
 
         const systemComment = `Leave taken: ${totalDays} days deducted`;
 
@@ -445,9 +503,10 @@ export class LeaveService {
 
       const updatedLeave = await manager.save(leave);
 
-      const message = status === LeaveStatusEnum.APPROVED 
-        ? `Your leave request from ${dayjs(leave.startDate).format('MMM D')} to ${dayjs(leave.endDate).format('MMM D')} has been approved.`
-        : `Your leave request from ${dayjs(leave.startDate).format('MMM D')} to ${dayjs(leave.endDate).format('MMM D')} has been rejected.`;
+      const message =
+        status === LeaveStatusEnum.APPROVED
+          ? `Your leave request from ${dayjs(leave.startDate).format('MMM D')} to ${dayjs(leave.endDate).format('MMM D')} has been approved.`
+          : `Your leave request from ${dayjs(leave.startDate).format('MMM D')} to ${dayjs(leave.endDate).format('MMM D')} has been rejected.`;
 
       await this.notificationService.createNotification({
         employeeId: leave.employeeId,
@@ -461,30 +520,41 @@ export class LeaveService {
     });
   }
 
-  private async calculateTotalLeaveDays(startDate: dayjs.Dayjs, endDate: dayjs.Dayjs, policy: LeavePolicy): Promise<number> {
+  private async calculateTotalLeaveDays(
+    startDate: dayjs.Dayjs,
+    endDate: dayjs.Dayjs,
+    policy: LeavePolicy,
+  ): Promise<number> {
     let totalDays = 0;
-    
+
     const weekendSettings = await this.weekendRepo.find();
-    const weekendDays = weekendSettings.map(w => w.day.toLowerCase());
+    const weekendDays = weekendSettings.map((w) => w.day.toLowerCase());
 
     const holidays = await this.holidayRepo.find({
       where: {
-        date: Between(startDate.format('YYYY-MM-DD'), endDate.format('YYYY-MM-DD'))
-      }
+        date: Between(
+          startDate.format('YYYY-MM-DD'),
+          endDate.format('YYYY-MM-DD'),
+        ),
+      },
     });
-    const holidayDates = holidays.map(h => h.date);
+    const holidayDates = holidays.map((h) => h.date);
 
-    for (let current = startDate.clone(); current.isBefore(endDate) || current.isSame(endDate, 'day'); current = current.add(1, 'day')) {
-       const dateStr = current.format('YYYY-MM-DD');
-       const dayName = current.format('dddd').toLowerCase();
+    for (
+      let current = startDate.clone();
+      current.isBefore(endDate) || current.isSame(endDate, 'day');
+      current = current.add(1, 'day')
+    ) {
+      const dateStr = current.format('YYYY-MM-DD');
+      const dayName = current.format('dddd').toLowerCase();
 
-       const isWeekend = weekendDays.includes(dayName);
-       const isHoliday = holidayDates.includes(dateStr);
+      const isWeekend = weekendDays.includes(dayName);
+      const isHoliday = holidayDates.includes(dateStr);
 
-       if (isWeekend && !policy.countWeekend) continue;
-       if (isHoliday && !policy.countHoliday) continue;
+      if (isWeekend && !policy.countWeekend) continue;
+      if (isHoliday && !policy.countHoliday) continue;
 
-       totalDays++;
+      totalDays++;
     }
 
     return totalDays;

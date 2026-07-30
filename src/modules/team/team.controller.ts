@@ -31,7 +31,6 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class TeamController {
   constructor(private readonly teamService: TeamService) {}
 
-  
   @Permissions(PermissionEnum.TEAM_CREATE)
   @Post()
   async create(
@@ -81,7 +80,6 @@ export class TeamController {
     return this.teamService.findOne(id, employee);
   }
 
-  
   @Permissions(PermissionEnum.TEAM_UPDATE)
   @Patch(':id')
   async update(
@@ -95,7 +93,6 @@ export class TeamController {
     return this.teamService.updateTeam(id, dto, employee);
   }
 
-  
   @Permissions(PermissionEnum.TEAM_DELETE)
   @Delete('remove-member')
   async removeMember(
@@ -106,7 +103,6 @@ export class TeamController {
     return this.teamService.removeMember(dto, employee);
   }
 
-  
   @Permissions(PermissionEnum.TEAM_DELETE)
   @Delete(':id')
   async delete(
@@ -117,7 +113,6 @@ export class TeamController {
     return this.teamService.deleteTeam(id, employee);
   }
 
-  
   @Permissions(PermissionEnum.TEAM_UPDATE)
   @Patch('change-lead/:teamId')
   async changeLead(
@@ -131,7 +126,6 @@ export class TeamController {
     return this.teamService.changeTeamLead(teamId, dto, employee);
   }
 
-  
   @Permissions(PermissionEnum.TEAM_UPDATE)
   @Patch('toggle-status/:id')
   async toggleStatus(

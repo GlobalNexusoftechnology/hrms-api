@@ -9,9 +9,10 @@ import { DesignationsController } from './designations.controller';
 import { Designation } from './entities/designation.entity';
 
 import { Department } from '../departments/entities/department.entity';
+import { Employee } from '../employees/entities/employee.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Designation, Department])],
+  imports: [TypeOrmModule.forFeature([Designation, Department, Employee])],
 
   controllers: [DesignationsController],
 

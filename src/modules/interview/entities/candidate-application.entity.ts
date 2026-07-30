@@ -19,14 +19,18 @@ export class CandidateApplication {
   @Column({ name: 'candidate_id', type: 'uuid' })
   candidateId!: string;
 
-  @ManyToOne(() => Candidate, (candidate) => candidate.applications, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Candidate, (candidate) => candidate.applications, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'candidate_id' })
   candidate!: Candidate;
 
   @Column({ name: 'job_id', type: 'uuid' })
   jobId!: string;
 
-  @ManyToOne(() => JobPosting, (job) => job.applications, { onDelete: 'CASCADE' })
+  @ManyToOne(() => JobPosting, (job) => job.applications, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'job_id' })
   job!: JobPosting;
 

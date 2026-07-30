@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, ParseUUIDPipe, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ResignationsService } from './resignations.service';
 import { CreateResignationDto } from './dto/create-resignation.dto';
@@ -19,12 +29,17 @@ export class ResignationsController {
   @Permissions(PermissionEnum.RESIGNATION_CREATE)
   @ApiOperation({ summary: 'Submit a new resignation request' })
   create(
-    @Param('employeeId', ParseUUIDPipe) employeeId: string, 
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
     @Body() dto: CreateResignationDto,
     @CurrentUser() user: any,
     @Req() req: any,
   ) {
-    return this.resignationsService.create(employeeId, dto, user.id, req.correlationId);
+    return this.resignationsService.create(
+      employeeId,
+      dto,
+      user.id,
+      req.correlationId,
+    );
   }
 
   @Get()
@@ -50,14 +65,21 @@ export class ResignationsController {
 
   @Patch(':id/approve')
   @Permissions(PermissionEnum.RESIGNATION_APPROVE)
-  @ApiOperation({ summary: 'Approve a resignation request and start notice period' })
+  @ApiOperation({
+    summary: 'Approve a resignation request and start notice period',
+  })
   approve(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ApproveResignationDto,
     @CurrentUser() user: any,
     @Req() req: any,
   ) {
-    return this.resignationsService.approve(id, dto, user.id, req.correlationId);
+    return this.resignationsService.approve(
+      id,
+      dto,
+      user.id,
+      req.correlationId,
+    );
   }
 
   @Patch(':id/execute')

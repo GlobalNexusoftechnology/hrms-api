@@ -1,4 +1,12 @@
-import { Entity, Column, OneToMany, OneToOne, Index, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  OneToMany,
+  OneToOne,
+  Index,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { OrganizationStatus } from '../../../common/enums/organization-status.enum';
 import { OrganizationAddress } from './organization-address.entity';
@@ -17,7 +25,10 @@ export class Organization extends BaseEntity {
   @Index()
   tenantId!: string | null;
 
-  @ManyToOne(() => Tenant, (tenant) => tenant.organizations, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => Tenant, (tenant) => tenant.organizations, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant | null;
   @Index({ unique: true })
@@ -60,19 +71,31 @@ export class Organization extends BaseEntity {
   })
   tax!: OrganizationTax;
 
-  @OneToOne(() => OrganizationSettings, (settings) => settings.organization, { cascade: ['soft-remove'] })
+  @OneToOne(() => OrganizationSettings, (settings) => settings.organization, {
+    cascade: ['soft-remove'],
+  })
   settings!: OrganizationSettings;
 
-  @OneToMany(() => Branch, (branch) => branch.organization, { cascade: ['soft-remove'] })
+  @OneToMany(() => Branch, (branch) => branch.organization, {
+    cascade: ['soft-remove'],
+  })
   branches!: Branch[];
 
-  @OneToMany(() => OrganizationContact, (contact) => contact.organization, { cascade: ['soft-remove'] })
+  @OneToMany(() => OrganizationContact, (contact) => contact.organization, {
+    cascade: ['soft-remove'],
+  })
   contacts!: OrganizationContact[];
 
-  @OneToMany(() => OrganizationBankAccount, (bankAccount) => bankAccount.organization, { cascade: ['soft-remove'] })
+  @OneToMany(
+    () => OrganizationBankAccount,
+    (bankAccount) => bankAccount.organization,
+    { cascade: ['soft-remove'] },
+  )
   bankAccounts!: OrganizationBankAccount[];
 
-  @OneToMany(() => OrganizationDocument, (document) => document.organization, { cascade: ['soft-remove'] })
+  @OneToMany(() => OrganizationDocument, (document) => document.organization, {
+    cascade: ['soft-remove'],
+  })
   documents!: OrganizationDocument[];
 
   @Column({ name: 'default_shift_id', type: 'uuid', nullable: true })

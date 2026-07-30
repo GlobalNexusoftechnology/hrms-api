@@ -1,4 +1,10 @@
-import { Injectable, Logger, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ForbiddenException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
@@ -24,11 +30,13 @@ export class RolesService {
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
     private readonly activityLogService: ActivityLogService,
-  ) { }
+  ) {}
 
   async create(createRoleDto: CreateRoleDto, actingUser: ActingUser) {
     if (createRoleDto.authorityLevel >= actingUser.authorityLevel) {
-      throw new ForbiddenException('Cannot create a role with an authority level equal to or greater than your own.');
+      throw new ForbiddenException(
+        'Cannot create a role with an authority level equal to or greater than your own.',
+      );
     }
 
     const permissions = await this.permissionRepository.find({
@@ -36,7 +44,9 @@ export class RolesService {
     });
 
     if (permissions.length !== createRoleDto.permissionIds.length) {
-      throw new NotFoundException('One or more requested permissions do not exist.');
+      throw new NotFoundException(
+        'One or more requested permissions do not exist.',
+      );
     }
 
     const role = this.roleRepository.create({
@@ -54,12 +64,14 @@ export class RolesService {
         description: `Created Role "${savedRole.name}"`,
         entityType: 'Role',
         entityId: savedRole.id,
-        newValue: savedRole as unknown as Record<string, any>,
+        newValue: savedRole,
       });
       return savedRole;
     } catch (error: any) {
       if (error.code === '23505') {
-        throw new ConflictException(`A role with the name '${createRoleDto.name}' already exists.`);
+        throw new ConflictException(
+          `A role with the name '${createRoleDto.name}' already exists.`,
+        );
       }
       throw error;
     }
@@ -83,7 +95,11 @@ export class RolesService {
     return role;
   }
 
-  async update(id: string, updateRoleDto: UpdateRoleDto, actingUser: ActingUser) {
+  async update(
+    id: string,
+    updateRoleDto: UpdateRoleDto,
+    actingUser: ActingUser,
+  ) {
     const role = await this.findOne(id);
 
     if (role.isProtected) {
@@ -91,11 +107,18 @@ export class RolesService {
     }
 
     if (role.authorityLevel >= actingUser.authorityLevel) {
-      throw new ForbiddenException('Cannot modify a role with an authority level equal to or greater than your own.');
+      throw new ForbiddenException(
+        'Cannot modify a role with an authority level equal to or greater than your own.',
+      );
     }
 
-    if (updateRoleDto.authorityLevel !== undefined && updateRoleDto.authorityLevel >= actingUser.authorityLevel) {
-      throw new ForbiddenException('Cannot escalate a role to an authority level equal to or greater than your own.');
+    if (
+      updateRoleDto.authorityLevel !== undefined &&
+      updateRoleDto.authorityLevel >= actingUser.authorityLevel
+    ) {
+      throw new ForbiddenException(
+        'Cannot escalate a role to an authority level equal to or greater than your own.',
+      );
     }
 
     if (updateRoleDto.permissionIds) {
@@ -103,16 +126,21 @@ export class RolesService {
         where: { id: In(updateRoleDto.permissionIds) },
       });
       if (permissions.length !== updateRoleDto.permissionIds.length) {
-        throw new NotFoundException('One or more requested permissions do not exist.');
+        throw new NotFoundException(
+          'One or more requested permissions do not exist.',
+        );
       }
       role.permissions = permissions;
     }
 
     if (updateRoleDto.name) role.name = updateRoleDto.name;
-    if (updateRoleDto.description !== undefined) role.description = updateRoleDto.description;
-    if (updateRoleDto.authorityLevel !== undefined) role.authorityLevel = updateRoleDto.authorityLevel;
-    if (updateRoleDto.dataScope !== undefined) role.dataScope = updateRoleDto.dataScope;
-    
+    if (updateRoleDto.description !== undefined)
+      role.description = updateRoleDto.description;
+    if (updateRoleDto.authorityLevel !== undefined)
+      role.authorityLevel = updateRoleDto.authorityLevel;
+    if (updateRoleDto.dataScope !== undefined)
+      role.dataScope = updateRoleDto.dataScope;
+
     role.updatedByUserId = actingUser.id;
 
     const savedRole = await this.roleRepository.save(role);
@@ -123,7 +151,7 @@ export class RolesService {
       description: `Updated Role "${savedRole.name}"`,
       entityType: 'Role',
       entityId: savedRole.id,
-      newValue: savedRole as unknown as Record<string, any>,
+      newValue: savedRole,
     });
     return savedRole;
   }
@@ -136,7 +164,9 @@ export class RolesService {
     }
 
     if (role.authorityLevel >= actingUser.authorityLevel) {
-      throw new ForbiddenException('Cannot delete a role with an authority level equal to or greater than your own.');
+      throw new ForbiddenException(
+        'Cannot delete a role with an authority level equal to or greater than your own.',
+      );
     }
 
     role.deletedAt = new Date();
@@ -168,12 +198,14 @@ export class RolesService {
     }
 
     if (role.authorityLevel >= actingUser.authorityLevel) {
-      throw new ForbiddenException('Cannot restore a role with an authority level equal to or greater than your own.');
+      throw new ForbiddenException(
+        'Cannot restore a role with an authority level equal to or greater than your own.',
+      );
     }
 
     role.deletedAt = null;
     role.updatedByUserId = actingUser.id;
-    
+
     const savedRole = await this.roleRepository.save(role);
     await this.activityLogService.logAction({
       userId: actingUser.id,

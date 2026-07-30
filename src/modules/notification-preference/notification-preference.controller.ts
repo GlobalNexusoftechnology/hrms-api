@@ -26,9 +26,7 @@ export class NotificationPreferenceController {
 
   @Permissions(PermissionEnum.NOTIFICATION_SETTINGS_READ)
   @Get('preferences')
-  getPreferences(
-    @CurrentUser() employee: any,
-  ) {
+  getPreferences(@CurrentUser() employee: any) {
     return this.notificationPreferenceService.getPreferences(employee);
   }
 

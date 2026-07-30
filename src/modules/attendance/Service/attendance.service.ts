@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, IsNull } from 'typeorm';
 
 import dayjs from 'dayjs';
 
@@ -11,7 +11,6 @@ import { nowIST, todayIST } from '../../../utils/time.util';
 import { Attendance } from '../entities/attendance.entity';
 
 import { AttendanceValidationService } from './attendance-validation.service';
-
 
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 
@@ -87,9 +86,16 @@ export class AttendanceService {
 
       const shift = this.validationService.getEffectiveShift(employee);
       const [startHour, startMinute] = shift.startTime.split(':').map(Number);
-      const shiftStartTime = dayjs(nowDate).hour(startHour).minute(startMinute).second(0).millisecond(0);
+      const shiftStartTime = dayjs(nowDate)
+        .hour(startHour)
+        .minute(startMinute)
+        .second(0)
+        .millisecond(0);
       const graceTime = shiftStartTime.add(shift.lateGraceMinutes, 'minute');
-      const halfDayTime = shiftStartTime.add(shift.halfDayThresholdMinutes, 'minute');
+      const halfDayTime = shiftStartTime.add(
+        shift.halfDayThresholdMinutes,
+        'minute',
+      );
 
       const nowDayjs = dayjs(nowDate);
 
@@ -129,12 +135,16 @@ export class AttendanceService {
       const now = nowIST();
 
       const nowDate = now.toDate();
+      const todayString = todayIST();
+      const yesterdayString = now.subtract(1, 'day').format('YYYY-MM-DD');
 
       const attendance = await manager.findOne(Attendance, {
-        where: {
-          employeeId,
-
-          date: today,
+        where: [
+          { employeeId, date: todayString, checkOut: IsNull() },
+          { employeeId, date: yesterdayString, checkOut: IsNull() }
+        ],
+        order: {
+          date: 'DESC'
         },
 
         lock: {
@@ -153,7 +163,8 @@ export class AttendanceService {
         breakMinutes = shift.totalBreakMinutes || 0;
       }
 
-      const workedMinutes = Math.floor(now.diff(checkInTime, 'minute')) - breakMinutes;
+      const workedMinutes =
+        Math.floor(now.diff(checkInTime, 'minute')) - breakMinutes;
       const workedHours = workedMinutes / 60;
 
       attendance!.workedMinutes = workedMinutes;

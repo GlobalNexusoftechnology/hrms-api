@@ -11,6 +11,7 @@ import { IsNull, Repository } from 'typeorm';
 import { Designation } from './entities/designation.entity';
 
 import { Department } from '../departments/entities/department.entity';
+import { Employee } from '../employees/entities/employee.entity';
 
 import { CreateDesignationDto } from './dto/create-designation.dto';
 
@@ -24,6 +25,8 @@ export class DesignationsService {
 
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
+    @InjectRepository(Employee)
+    private readonly employeeRepository: Repository<Employee>,
   ) {}
 
   async create(dto: CreateDesignationDto) {
@@ -200,6 +203,16 @@ export class DesignationsService {
 
   async remove(id: string) {
     await this.findOne(id);
+
+    const employeeCount = await this.employeeRepository.count({
+      where: { designationId: id, deletedAt: IsNull() },
+    });
+
+    if (employeeCount > 0) {
+      throw new ConflictException(
+        `Cannot delete designation as it currently has ${employeeCount} active employee(s) assigned.`,
+      );
+    }
 
     await this.designationRepository.softDelete(id);
 

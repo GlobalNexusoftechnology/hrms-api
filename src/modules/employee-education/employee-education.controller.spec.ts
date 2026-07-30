@@ -9,7 +9,9 @@ describe('EmployeeEducationController', () => {
       controllers: [EmployeeEducationController],
     }).compile();
 
-    controller = module.get<EmployeeEducationController>(EmployeeEducationController);
+    controller = module.get<EmployeeEducationController>(
+      EmployeeEducationController,
+    );
   });
 
   it('should be defined', () => {

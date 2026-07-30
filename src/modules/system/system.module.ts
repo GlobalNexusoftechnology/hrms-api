@@ -9,13 +9,7 @@ import { RolesModule } from '../roles/roles.module';
 import { Employee } from '../employees/entities/employee.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([
-      SystemConfig,
-      Employee,
-    ]),
-    RolesModule,
-  ],
+  imports: [TypeOrmModule.forFeature([SystemConfig, Employee]), RolesModule],
   controllers: [SystemController],
   providers: [BootstrapService],
   exports: [BootstrapService],

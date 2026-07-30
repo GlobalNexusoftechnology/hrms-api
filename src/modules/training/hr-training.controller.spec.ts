@@ -42,9 +42,12 @@ describe('HrTrainingController', () => {
     it('should call service.createCourse', async () => {
       const dto = { title: 'JS' };
       const mockUser = { id: 'hr-123' } as any;
-      const result = await controller.createCourse(dto as any, mockUser);
+      const result = await controller.createCourse(dto, mockUser);
       expect(result).toEqual({ id: 'course-123' });
-      expect(mockTrainingService.createCourse).toHaveBeenCalledWith(dto, 'hr-123');
+      expect(mockTrainingService.createCourse).toHaveBeenCalledWith(
+        dto,
+        'hr-123',
+      );
     });
   });
 
@@ -53,7 +56,10 @@ describe('HrTrainingController', () => {
       const dto = { title: 'JS Updated' };
       const result = await controller.updateCourse('course-123', dto);
       expect(result).toEqual({ id: 'course-123' });
-      expect(mockTrainingService.updateCourse).toHaveBeenCalledWith('course-123', dto);
+      expect(mockTrainingService.updateCourse).toHaveBeenCalledWith(
+        'course-123',
+        dto,
+      );
     });
   });
 
@@ -69,7 +75,9 @@ describe('HrTrainingController', () => {
     it('should call service.getCourseById', async () => {
       const result = await controller.getCourseById('course-123');
       expect(result).toEqual({ id: 'course-123' });
-      expect(mockTrainingService.getCourseById).toHaveBeenCalledWith('course-123');
+      expect(mockTrainingService.getCourseById).toHaveBeenCalledWith(
+        'course-123',
+      );
     });
   });
 
@@ -88,7 +96,7 @@ describe('HrTrainingController', () => {
   describe('assignCourse', () => {
     it('should call service.assignCourse', async () => {
       const dto = { employeeIds: ['emp-123'] };
-      const result = await controller.assignCourse('course-123', dto as any);
+      const result = await controller.assignCourse('course-123', dto);
       expect(result).toEqual({ success: true });
       expect(mockTrainingService.assignCourse).toHaveBeenCalledWith(
         'course-123',

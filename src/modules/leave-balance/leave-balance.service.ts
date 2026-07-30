@@ -24,14 +24,14 @@ export class LeaveBalanceService {
       relations: { leaveType: true },
     });
 
-    return balances.map(b => ({
+    return balances.map((b) => ({
       id: b.id,
       leaveType: b.leaveType,
       year: b.year,
       accrued: b.accrued,
       used: b.used,
       carriedForward: b.carriedForward,
-      remaining: (Number(b.accrued) + Number(b.carriedForward)) - Number(b.used)
+      remaining: Number(b.accrued) + Number(b.carriedForward) - Number(b.used),
     }));
   }
 
@@ -39,7 +39,7 @@ export class LeaveBalanceService {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
     const year = Number(query.year ?? new Date().getFullYear());
-    
+
     const qb = this.leaveBalanceRepo.createQueryBuilder('balance');
     qb.leftJoinAndSelect('balance.employee', 'employee');
     qb.leftJoinAndSelect('balance.leaveType', 'leaveType');
@@ -60,7 +60,10 @@ export class LeaveBalanceService {
         accrued: item.accrued,
         used: item.used,
         carriedForward: item.carriedForward,
-        remaining: (Number(item.accrued) + Number(item.carriedForward)) - Number(item.used),
+        remaining:
+          Number(item.accrued) +
+          Number(item.carriedForward) -
+          Number(item.used),
       })),
       meta: {
         total,

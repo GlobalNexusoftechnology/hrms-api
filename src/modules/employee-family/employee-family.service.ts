@@ -12,13 +12,19 @@ export class EmployeeFamilyService {
     private readonly familyRepository: Repository<EmployeeFamily>,
   ) {}
 
-  async create(employeeId: string, dto: CreateEmployeeFamilyDto): Promise<EmployeeFamily> {
+  async create(
+    employeeId: string,
+    dto: CreateEmployeeFamilyDto,
+  ): Promise<EmployeeFamily> {
     const familyMember = this.familyRepository.create({ ...dto, employeeId });
     return this.familyRepository.save(familyMember);
   }
 
   async findAllByEmployee(employeeId: string): Promise<EmployeeFamily[]> {
-    return this.familyRepository.find({ where: { employeeId }, order: { createdAt: 'DESC' } });
+    return this.familyRepository.find({
+      where: { employeeId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<EmployeeFamily> {
@@ -29,7 +35,10 @@ export class EmployeeFamilyService {
     return familyMember;
   }
 
-  async update(id: string, dto: UpdateEmployeeFamilyDto): Promise<EmployeeFamily> {
+  async update(
+    id: string,
+    dto: UpdateEmployeeFamilyDto,
+  ): Promise<EmployeeFamily> {
     const familyMember = await this.findOne(id);
     Object.assign(familyMember, dto);
     return this.familyRepository.save(familyMember);

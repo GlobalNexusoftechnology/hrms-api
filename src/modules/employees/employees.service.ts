@@ -43,7 +43,7 @@ export class EmployeesService {
     private readonly refreshTokenRepository: Repository<RefreshToken>,
     private readonly dataScopeService: DataScopeService,
     private readonly activityLogService: ActivityLogService,
-  ) { }
+  ) {}
 
   async generateEmployeeCode(): Promise<string> {
     const allEmployees = await this.employeeRepository.find({
@@ -116,7 +116,9 @@ export class EmployeesService {
 
     if (dto.departmentId) {
       if (!dto.branchId) {
-        throw new BadRequestException('Branch is required when department is selected');
+        throw new BadRequestException(
+          'Branch is required when department is selected',
+        );
       }
 
       department = await this.departmentRepository.findOne({
@@ -132,7 +134,9 @@ export class EmployeesService {
       }
 
       if (department.branchId && department.branchId !== dto.branchId) {
-        throw new BadRequestException('Selected department does not belong to the selected branch');
+        throw new BadRequestException(
+          'Selected department does not belong to the selected branch',
+        );
       }
     }
 
@@ -238,7 +242,7 @@ export class EmployeesService {
 
   async assignRole(id: string, roleId: string) {
     const employee = await this.employeeRepository.findOne({
-      where: { id, deletedAt: IsNull() }
+      where: { id, deletedAt: IsNull() },
     });
 
     if (!employee) {
@@ -246,7 +250,7 @@ export class EmployeesService {
     }
 
     const role = await this.roleRepository.findOne({
-      where: { id: roleId, deletedAt: IsNull(), isActive: true }
+      where: { id: roleId, deletedAt: IsNull(), isActive: true },
     });
 
     if (!role) {
@@ -262,7 +266,7 @@ export class EmployeesService {
     return {
       message: 'Role assigned successfully',
       employeeId: employee.id,
-      roleId: role.id
+      roleId: role.id,
     };
   }
 
@@ -320,6 +324,33 @@ export class EmployeesService {
         department: true,
         designation: true,
         branch: true,
+      },
+    });
+  }
+
+  async findByIdForAuth(id: string) {
+    return this.employeeRepository.findOne({
+      where: { id },
+      relations: {
+        role: {
+          permissions: true,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        employeeCode: true,
+        isActive: true,
+        roleId: true,
+        branchId: true,
+        departmentId: true,
+        role: {
+          id: true,
+          name: true,
+          dataScope: true,
+          authorityLevel: true,
+          permissions: true,
+        },
       },
     });
   }
@@ -436,7 +467,7 @@ export class EmployeesService {
     this.dataScopeService.applyScope(queryBuilder, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
-      employee: 'employee.id'
+      employee: 'employee.id',
     });
 
     queryBuilder.orderBy(orderBy, sortOrder);
@@ -463,7 +494,8 @@ export class EmployeesService {
   }
 
   async findOne(id: string, currentUser?: Employee) {
-    const queryBuilder = this.employeeRepository.createQueryBuilder('employee')
+    const queryBuilder = this.employeeRepository
+      .createQueryBuilder('employee')
       .leftJoinAndSelect('employee.role', 'role')
       .leftJoinAndSelect('role.permissions', 'permissions')
       .leftJoinAndSelect('employee.addresses', 'addresses')
@@ -482,7 +514,7 @@ export class EmployeesService {
       this.dataScopeService.applyScope(queryBuilder, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
-        employee: 'employee.id'
+        employee: 'employee.id',
       });
     }
 
@@ -542,19 +574,25 @@ export class EmployeesService {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
 
-    const branchId = dto.branchId !== undefined ? dto.branchId : employee.branchId;
-    const departmentId = dto.departmentId !== undefined ? dto.departmentId : employee.departmentId;
+    const branchId =
+      dto.branchId !== undefined ? dto.branchId : employee.branchId;
+    const departmentId =
+      dto.departmentId !== undefined ? dto.departmentId : employee.departmentId;
 
     if (departmentId) {
       if (!branchId) {
-        throw new BadRequestException('Branch is required when department is selected');
+        throw new BadRequestException(
+          'Branch is required when department is selected',
+        );
       }
       const department = await this.departmentRepository.findOne({
-        where: { id: departmentId, deletedAt: IsNull(), isActive: true }
+        where: { id: departmentId, deletedAt: IsNull(), isActive: true },
       });
       if (!department) throw new NotFoundException('Department not found');
       if (department.branchId && department.branchId !== branchId) {
-        throw new BadRequestException('Selected department does not belong to the selected branch');
+        throw new BadRequestException(
+          'Selected department does not belong to the selected branch',
+        );
       }
     }
 
@@ -641,10 +679,7 @@ export class EmployeesService {
     };
   }
 
-  async generateIdCard(
-    id: string,
-    res: Response<any>,
-  ) {
+  async generateIdCard(id: string, res: Response<any>) {
     const employee = await this.employeeRepository.findOne({
       where: {
         id,
@@ -696,12 +731,15 @@ export class EmployeesService {
       try {
         const logoPath = path.join(process.cwd(), orgLogoUrl);
         const logoImage = await loadImage(logoPath);
-        
+
         // Calculate correct aspect ratio
         const maxLogoWidth = 200;
         const maxLogoHeight = 90;
-        const ratio = Math.min(maxLogoWidth / logoImage.width, maxLogoHeight / logoImage.height);
-        
+        const ratio = Math.min(
+          maxLogoWidth / logoImage.width,
+          maxLogoHeight / logoImage.height,
+        );
+
         const logoWidth = logoImage.width * ratio;
         const logoHeight = logoImage.height * ratio;
         const logoX = (600 - logoWidth) / 2;
@@ -710,7 +748,7 @@ export class EmployeesService {
 
         // Draw image cleanly
         ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
-        
+
         // Organization name below the logo
         ctx.font = 'bold 26px Arial';
         ctx.fillStyle = '#ffffff';
@@ -756,7 +794,7 @@ export class EmployeesService {
     // EMPLOYEE NAME & DESIGNATION
     ctx.fillStyle = '#0f172a';
     ctx.textAlign = 'center';
-    
+
     ctx.font = 'bold 42px Arial';
     ctx.fillText(`${employee.firstName} ${employee.lastName}`, 300, 480);
 
@@ -775,10 +813,10 @@ export class EmployeesService {
     // DETAILS LIST
     ctx.textAlign = 'left';
     ctx.fillStyle = '#334155';
-    
+
     const detailsX = 130;
     let detailsY = 610;
-    
+
     ctx.font = 'bold 22px Arial';
     ctx.fillText('ID Number:', detailsX, detailsY);
     ctx.font = '22px Arial';
@@ -800,7 +838,13 @@ export class EmployeesService {
     ctx.font = 'bold 22px Arial';
     ctx.fillText('DOB:', detailsX, detailsY);
     ctx.font = '22px Arial';
-    ctx.fillText(employee.dateOfBirth ? new Date(employee.dateOfBirth).toLocaleDateString() : 'N/A', detailsX + 150, detailsY);
+    ctx.fillText(
+      employee.dateOfBirth
+        ? new Date(employee.dateOfBirth).toLocaleDateString()
+        : 'N/A',
+      detailsX + 150,
+      detailsY,
+    );
 
     // QR CODE
     const qrData = await QRCode.toDataURL(
@@ -808,7 +852,7 @@ export class EmployeesService {
         id: employee.id,
         code: employee.employeeCode,
       }),
-      { width: 140, margin: 1 }
+      { width: 140, margin: 1 },
     );
     const qrImage = await loadImage(qrData);
     ctx.drawImage(qrImage, 230, 770, 140, 140);

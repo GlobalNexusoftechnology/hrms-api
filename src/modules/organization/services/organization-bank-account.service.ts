@@ -19,19 +19,31 @@ export class OrganizationBankAccountService {
     const bankAccount = this.bankAccountRepo.create({
       ...createDto,
       organizationId: org.id,
-        createdByUserId: userId
+      createdByUserId: userId,
     });
     return this.bankAccountRepo.save(bankAccount);
   }
 
-  async update(id: string, updateDto: UpdateOrganizationBankAccountDto, userId?: string) {
+  async update(
+    id: string,
+    updateDto: UpdateOrganizationBankAccountDto,
+    userId?: string,
+  ) {
     const bankAccount = await this.bankAccountRepo.findOne({ where: { id } });
     if (!bankAccount) throw new NotFoundException('Bank Account not found');
 
-    Object.assign(bankAccount, updateDto, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId }, { updatedByUserId: userId });
+    Object.assign(
+      bankAccount,
+      updateDto,
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+      { updatedByUserId: userId },
+    );
     return this.bankAccountRepo.save(bankAccount);
   }
-  
+
   async findAll() {
     const org = await this.organizationService.get();
     return this.bankAccountRepo.find({ where: { organizationId: org.id } });

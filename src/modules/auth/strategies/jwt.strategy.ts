@@ -29,9 +29,7 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (!payload) {
       throw new UnauthorizedException('Invalid token');
     }
-
-    const employee = await this.employeesService.findById(payload.employeeId);
-
+    const employee = await this.employeesService.findByIdForAuth(payload.employeeId);
     if (!employee) {
       throw new UnauthorizedException('Unauthorized');
     }

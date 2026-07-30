@@ -1,4 +1,10 @@
-import { Injectable, ConflictException, Logger, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  Logger,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
@@ -17,9 +23,9 @@ const BOOTSTRAP_FLAG = 'system.bootstrapped';
  *
  * This service executes the "Progressive Setup" architecture:
  * It ONLY seeds RBAC permissions and creates the very first SUPER_ADMIN user.
- * 
- * The system considers itself "bootstrapped" once this user exists. The rest of the 
- * organization profile (Address, Tax, Branches, etc.) will be completed by this user 
+ *
+ * The system considers itself "bootstrapped" once this user exists. The rest of the
+ * organization profile (Address, Tax, Branches, etc.) will be completed by this user
  * via standard protected APIs (the frontend wizard).
  *
  * Transaction Order:
@@ -51,7 +57,7 @@ export class BootstrapService {
       await queryRunner.release();
       throw new ConflictException(
         'System is already initialized. Bootstrap can only be run once. ' +
-        'Please log in with the Chairman credentials to continue the setup process.',
+          'Please log in with the Chairman credentials to continue the setup process.',
       );
     }
 
@@ -61,7 +67,9 @@ export class BootstrapService {
       this.logger.log('Bootstrap transaction started.');
 
       // ── Step 1: Create or Find Tenant ──────────────────────────────────────────
-      let tenant = await queryRunner.manager.findOne(Tenant, { where: { code: 'TNT-001' } });
+      let tenant = await queryRunner.manager.findOne(Tenant, {
+        where: { code: 'TNT-001' },
+      });
       if (!tenant) {
         tenant = queryRunner.manager.create(Tenant, {
           name: 'Default Tenant',
@@ -70,12 +78,16 @@ export class BootstrapService {
         await queryRunner.manager.save(Tenant, tenant);
         this.logger.log(`Tenant created: [${tenant.id}] with code TNT-001`);
       } else {
-        this.logger.log(`Tenant already exists: [${tenant.id}] with code TNT-001. Using existing.`);
+        this.logger.log(
+          `Tenant already exists: [${tenant.id}] with code TNT-001. Using existing.`,
+        );
       }
 
       // ── Step 3: RBAC Initialization (delegated to RBACInitializerService) ────
       const superAdminRole = await this.rbacInitializer.seed(queryRunner);
-      this.logger.log(`RBAC initialized. SUPER_ADMIN role: [${superAdminRole.id}]`);
+      this.logger.log(
+        `RBAC initialized. SUPER_ADMIN role: [${superAdminRole.id}]`,
+      );
 
       // ── Step 5: Chairman Employee ────────────────────────────────────────────
       const latestEmployee = await queryRunner.manager.find(Employee, {
@@ -85,7 +97,10 @@ export class BootstrapService {
 
       let nextNumber = 1;
       if (latestEmployee.length > 0 && latestEmployee[0].employeeCode) {
-        const lastNumber = Number.parseInt(latestEmployee[0].employeeCode.split('-')[1], 10);
+        const lastNumber = Number.parseInt(
+          latestEmployee[0].employeeCode.split('-')[1],
+          10,
+        );
         if (!Number.isNaN(lastNumber)) {
           nextNumber = lastNumber + 1;
         }
@@ -101,7 +116,9 @@ export class BootstrapService {
 
       let chairman: Employee;
       if (existingChairman) {
-        this.logger.warn(`Chairman employee already exists: ${existingChairman.email}. Skipping creation.`);
+        this.logger.warn(
+          `Chairman employee already exists: ${existingChairman.email}. Skipping creation.`,
+        );
         chairman = existingChairman;
       } else {
         chairman = queryRunner.manager.create(Employee, {
@@ -115,7 +132,9 @@ export class BootstrapService {
           isActive: true,
         });
         await queryRunner.manager.save(Employee, chairman);
-        this.logger.log(`Chairman employee created: ${chairman.email} [${chairman.employeeCode}]`);
+        this.logger.log(
+          `Chairman employee created: ${chairman.email} [${chairman.employeeCode}]`,
+        );
       }
 
       // ── Step 6: Mark system as bootstrapped ──────────────────────────────────
@@ -130,14 +149,14 @@ export class BootstrapService {
       this.logger.log('Bootstrap transaction committed successfully.');
 
       return {
-        message: 'System initialized successfully. You can now log in with these credentials to complete the Organization Setup.',
+        message:
+          'System initialized successfully. You can now log in with these credentials to complete the Organization Setup.',
         chairmanEmployee: {
           id: chairman.id,
           employeeCode: chairman.employeeCode,
           email: chairman.email,
         },
       };
-
     } catch (err) {
       await queryRunner.rollbackTransaction();
       this.logger.error('Bootstrap failed — transaction rolled back.', err);

@@ -49,7 +49,6 @@ export class UpdateEmployeeDto {
   @IsString()
   alternatePhone?: string;
 
-
   @IsOptional()
   @IsUUID()
   branchId?: string;

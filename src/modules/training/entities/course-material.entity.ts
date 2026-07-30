@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { CourseTopic } from './course-topic.entity';
 import { TrainingMaterialTypeEnum } from '../../../common/enums/training-material-type.enum';
 
@@ -10,7 +18,9 @@ export class CourseMaterial {
   @Column({ name: 'topic_id' })
   topicId!: string;
 
-  @ManyToOne(() => CourseTopic, topic => topic.materials, { onDelete: 'CASCADE' })
+  @ManyToOne(() => CourseTopic, (topic) => topic.materials, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'topic_id' })
   topic!: CourseTopic;
 

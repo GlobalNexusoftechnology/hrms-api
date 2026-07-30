@@ -1,9 +1,4 @@
-import {
-  Entity,
-  Column,
-  ManyToMany,
-  JoinTable,
-} from 'typeorm';
+import { Entity, Column, ManyToMany, JoinTable } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Permission } from '../../permissions/entities/permission.entity';
 import { DataScopeEnum } from '../../../common/enums/data-scope.enum';
@@ -45,7 +40,8 @@ export class Role extends BaseEntity {
   @Column({
     name: 'is_protected',
     default: false,
-    comment: 'Protected roles cannot have their name, permissions, or authority level modified',
+    comment:
+      'Protected roles cannot have their name, permissions, or authority level modified',
   })
   isProtected!: boolean;
 
@@ -54,7 +50,8 @@ export class Role extends BaseEntity {
     type: 'enum',
     enum: DataScopeEnum,
     default: DataScopeEnum.SELF,
-    comment: 'Phase 1 implementation. Planned to migrate to EmployeeRole assignment table in Phase 2.',
+    comment:
+      'Phase 1 implementation. Planned to migrate to EmployeeRole assignment table in Phase 2.',
   })
   dataScope!: DataScopeEnum;
 

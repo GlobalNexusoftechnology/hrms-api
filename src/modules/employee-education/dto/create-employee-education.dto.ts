@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, MaxLength, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsInt,
+  MaxLength,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class CreateEmployeeEducationDto {
   @IsString()

@@ -80,7 +80,7 @@ describe('SalaryStructureService', () => {
       salaryRepo.findOne.mockResolvedValue(null);
       salaryRepo.save.mockResolvedValue(mockSalary);
       salaryRepo.findOneOrFail.mockResolvedValue(mockSalary);
-      
+
       const mockCurrentUser = { role: { name: 'SUPER_ADMIN' } };
       const result = await service.create(createDto as any, mockCurrentUser);
       expect(result.grossSalary).toBe(65000);
@@ -91,9 +91,9 @@ describe('SalaryStructureService', () => {
     it('should throw NotFoundException if employee not found', async () => {
       employeeRepo.findOne.mockResolvedValue(null);
       const mockCurrentUser = { role: { name: 'SUPER_ADMIN' } };
-      await expect(service.create(createDto as any, mockCurrentUser)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.create(createDto as any, mockCurrentUser),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if active salary structure already exists', async () => {
@@ -101,9 +101,9 @@ describe('SalaryStructureService', () => {
       salaryRepo.findOne.mockResolvedValue(mockSalary);
       const mockCurrentUser = { role: { name: 'SUPER_ADMIN' } };
 
-      await expect(service.create(createDto as any, mockCurrentUser)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.create(createDto as any, mockCurrentUser),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

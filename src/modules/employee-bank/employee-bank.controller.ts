@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { EmployeeBankService } from './employee-bank.service';
 import { CreateEmployeeBankDto } from './dto/create-employee-bank.dto';
@@ -13,7 +23,7 @@ import { PermissionEnum } from 'src/common/enums/permission.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('employees/:employeeId/banks')
 export class EmployeeBankController {
-  constructor(private readonly bankService: EmployeeBankService) { }
+  constructor(private readonly bankService: EmployeeBankService) {}
 
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
@@ -31,7 +41,6 @@ export class EmployeeBankController {
   findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
     return this.bankService.findAllByEmployee(employeeId);
   }
-
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')

@@ -30,9 +30,7 @@ describe('PayrollController (Integration)', () => {
 
   describe('/api/payroll/me (GET)', () => {
     it('should return 401 Unauthorized when requesting without token', async () => {
-      await request(app.getHttpServer())
-        .get('/api/payroll/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/payroll/me').expect(401);
     });
   });
 

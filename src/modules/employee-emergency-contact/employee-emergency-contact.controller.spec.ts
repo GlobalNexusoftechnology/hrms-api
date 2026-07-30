@@ -9,7 +9,9 @@ describe('EmployeeEmergencyContactController', () => {
       controllers: [EmployeeEmergencyContactController],
     }).compile();
 
-    controller = module.get<EmployeeEmergencyContactController>(EmployeeEmergencyContactController);
+    controller = module.get<EmployeeEmergencyContactController>(
+      EmployeeEmergencyContactController,
+    );
   });
 
   it('should be defined', () => {

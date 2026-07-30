@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { ShiftService } from './shift.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
@@ -7,7 +15,6 @@ import { UpdateShiftDto } from './dto/update-shift.dto';
 export class ShiftController {
   constructor(private readonly shiftService: ShiftService) {}
 
-  
   @Post()
   create(@Body() createShiftDto: CreateShiftDto) {
     return this.shiftService.create(createShiftDto);

@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Assessment } from './assessment.entity';
 import { AssessmentOption } from './assessment-option.entity';
 
@@ -10,7 +19,7 @@ export class AssessmentQuestion {
   @Column({ name: 'assessment_id' })
   assessmentId!: string;
 
-  @ManyToOne(() => Assessment, a => a.questions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Assessment, (a) => a.questions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'assessment_id' })
   assessment!: Assessment;
 
@@ -20,7 +29,7 @@ export class AssessmentQuestion {
   @Column({ name: 'sort_order', default: 1 })
   sortOrder!: number;
 
-  @OneToMany(() => AssessmentOption, opt => opt.question)
+  @OneToMany(() => AssessmentOption, (opt) => opt.question)
   options!: AssessmentOption[];
 
   @CreateDateColumn({ name: 'created_at' })

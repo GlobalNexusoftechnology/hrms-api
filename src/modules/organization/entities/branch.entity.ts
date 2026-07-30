@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, JoinColumn, Index, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Index,
+  OneToMany,
+} from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Organization } from './organization.entity';
 import { Employee } from '../../employees/entities/employee.entity';
@@ -28,7 +35,12 @@ export class Branch extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ name: 'branch_type', type: 'enum', enum: BranchType, default: BranchType.BRANCH_OFFICE })
+  @Column({
+    name: 'branch_type',
+    type: 'enum',
+    enum: BranchType,
+    default: BranchType.BRANCH_OFFICE,
+  })
   branchType!: BranchType;
 
   @Column({ unique: true })

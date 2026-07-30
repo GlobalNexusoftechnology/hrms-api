@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { EmployeeEducationService } from './employee-education.service';
 import { CreateEmployeeEducationDto } from './dto/create-employee-education.dto';
@@ -17,7 +27,9 @@ export class EmployeeEducationController {
 
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
-  @ApiOperation({ summary: 'Add a new educational qualification for an employee' })
+  @ApiOperation({
+    summary: 'Add a new educational qualification for an employee',
+  })
   create(
     @Param('employeeId', ParseUUIDPipe) employeeId: string,
     @Body() createDto: CreateEmployeeEducationDto,
@@ -27,7 +39,9 @@ export class EmployeeEducationController {
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
-  @ApiOperation({ summary: 'Get all educational qualifications for an employee' })
+  @ApiOperation({
+    summary: 'Get all educational qualifications for an employee',
+  })
   findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
     return this.educationService.findAllByEmployee(employeeId);
   }

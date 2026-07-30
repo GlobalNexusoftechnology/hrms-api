@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, OneToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  OneToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Course } from './course.entity';
 import { CourseTopic } from './course-topic.entity';
 import { Assessment } from './assessment.entity';
@@ -11,7 +21,7 @@ export class CourseModule {
   @Column({ name: 'course_id' })
   courseId!: string;
 
-  @ManyToOne(() => Course, course => course.modules, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Course, (course) => course.modules, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'course_id' })
   course!: Course;
 
@@ -24,10 +34,10 @@ export class CourseModule {
   @Column({ name: 'sort_order', default: 1 })
   sortOrder!: number;
 
-  @OneToMany(() => CourseTopic, topic => topic.module)
+  @OneToMany(() => CourseTopic, (topic) => topic.module)
   topics!: CourseTopic[];
 
-  @OneToOne(() => Assessment, assessment => assessment.module)
+  @OneToOne(() => Assessment, (assessment) => assessment.module)
   assessment!: Assessment;
 
   @CreateDateColumn({ name: 'created_at' })

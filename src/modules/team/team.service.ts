@@ -42,19 +42,35 @@ export class TeamService {
     private readonly dataScopeService: DataScopeService,
   ) {}
 
-  private validateWriteAccess(teamBranchId: string | undefined, teamDepartmentId: string | undefined, currentUser: Employee) {
+  private validateWriteAccess(
+    teamBranchId: string | undefined,
+    teamDepartmentId: string | undefined,
+    currentUser: Employee,
+  ) {
     if (!currentUser || !currentUser.role) return;
     const scope = currentUser.role.dataScope;
     if (scope === DataScopeEnum.ORGANIZATION) return;
-    
+
     if (scope === DataScopeEnum.BRANCH) {
-      if (currentUser.branchId && teamBranchId && currentUser.branchId !== teamBranchId) {
-        throw new ForbiddenException('You do not have permission to modify teams in this branch');
+      if (
+        currentUser.branchId &&
+        teamBranchId &&
+        currentUser.branchId !== teamBranchId
+      ) {
+        throw new ForbiddenException(
+          'You do not have permission to modify teams in this branch',
+        );
       }
     }
     if (scope === DataScopeEnum.DEPARTMENT) {
-      if (currentUser.departmentId && teamDepartmentId && currentUser.departmentId !== teamDepartmentId) {
-        throw new ForbiddenException('You do not have permission to modify teams in this department');
+      if (
+        currentUser.departmentId &&
+        teamDepartmentId &&
+        currentUser.departmentId !== teamDepartmentId
+      ) {
+        throw new ForbiddenException(
+          'You do not have permission to modify teams in this department',
+        );
       }
     }
   }
@@ -63,7 +79,7 @@ export class TeamService {
     if (!dto.branchId && currentUser?.branchId) {
       dto.branchId = currentUser.branchId;
     }
-    
+
     this.validateWriteAccess(dto.branchId, dto.departmentId, currentUser);
     const existingTeam = await this.teamRepository.findOne({
       where: {
@@ -122,7 +138,8 @@ export class TeamService {
   async findAll(filterDto: TeamFilterDto, currentUser?: Employee) {
     const { search, departmentId, isActive, page = 1, limit = 10 } = filterDto;
 
-    const qb = this.teamRepository.createQueryBuilder('team')
+    const qb = this.teamRepository
+      .createQueryBuilder('team')
       .leftJoinAndSelect('team.department', 'department')
       .leftJoinAndSelect('team.teamLead', 'teamLead');
 
@@ -141,7 +158,7 @@ export class TeamService {
     if (currentUser) {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'team.branchId',
-        department: 'team.departmentId'
+        department: 'team.departmentId',
       });
     }
 
@@ -161,7 +178,8 @@ export class TeamService {
   }
 
   async findOne(id: string, currentUser?: Employee) {
-    const qb = this.teamRepository.createQueryBuilder('team')
+    const qb = this.teamRepository
+      .createQueryBuilder('team')
       .leftJoinAndSelect('team.department', 'department')
       .leftJoinAndSelect('team.teamLead', 'teamLead')
       .leftJoinAndSelect('team.members', 'members')
@@ -171,7 +189,7 @@ export class TeamService {
     if (currentUser) {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'team.branchId',
-        department: 'team.departmentId'
+        department: 'team.departmentId',
       });
     }
 
@@ -196,7 +214,9 @@ export class TeamService {
     }
 
     if (!team.isActive) {
-      throw new BadRequestException('Cannot assign members to an inactive team');
+      throw new BadRequestException(
+        'Cannot assign members to an inactive team',
+      );
     }
 
     const employees = await this.employeeRepository.find({
@@ -204,14 +224,18 @@ export class TeamService {
     });
 
     if (employees.length !== employeeIds.length) {
-      throw new BadRequestException('One or more employees not found or are inactive');
+      throw new BadRequestException(
+        'One or more employees not found or are inactive',
+      );
     }
 
     if (team.departmentId) {
-      const invalidEmployees = employees.filter(emp => emp.departmentId !== team.departmentId);
+      const invalidEmployees = employees.filter(
+        (emp) => emp.departmentId !== team.departmentId,
+      );
       if (invalidEmployees.length > 0) {
         throw new BadRequestException(
-          `Employees must belong to the same department as the team. Invalid employees: ${invalidEmployees.map(e => e.id).join(', ')}`
+          `Employees must belong to the same department as the team. Invalid employees: ${invalidEmployees.map((e) => e.id).join(', ')}`,
         );
       }
     }
@@ -350,7 +374,7 @@ export class TeamService {
     if (!team) {
       throw new NotFoundException('Team not found');
     }
-    
+
     this.validateWriteAccess(team.branchId, team.departmentId, currentUser);
 
     const member = await this.teamMemberRepository.findOne({
@@ -389,7 +413,7 @@ export class TeamService {
     if (!team) {
       throw new NotFoundException('Team not found');
     }
-    
+
     this.validateWriteAccess(team.branchId, team.departmentId, currentUser);
 
     const members = await this.teamMemberRepository.find({
@@ -415,7 +439,11 @@ export class TeamService {
     };
   }
 
-  async changeTeamLead(teamId: string, dto: ChangeTeamLeadDto, currentUser: Employee) {
+  async changeTeamLead(
+    teamId: string,
+    dto: ChangeTeamLeadDto,
+    currentUser: Employee,
+  ) {
     const team = await this.teamRepository.findOne({
       where: {
         id: teamId,
@@ -425,7 +453,7 @@ export class TeamService {
     if (!team) {
       throw new NotFoundException('Team not found');
     }
-    
+
     this.validateWriteAccess(team.branchId, team.departmentId, currentUser);
 
     const employee = await this.employeeRepository.findOne({

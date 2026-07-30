@@ -52,7 +52,7 @@ export class SalaryStructure {
   @OneToMany(
     () => SalaryStructureComponent,
     (component) => component.salaryStructure,
-    { cascade: true }
+    { cascade: true },
   )
   components!: SalaryStructureComponent[];
 

@@ -18,11 +18,16 @@ export class LeaveTypeService {
 
   async create(createLeaveTypeDto: CreateLeaveTypeDto) {
     const existing = await this.leaveTypeRepo.findOne({
-      where: [{ name: createLeaveTypeDto.name }, { code: createLeaveTypeDto.code }],
+      where: [
+        { name: createLeaveTypeDto.name },
+        { code: createLeaveTypeDto.code },
+      ],
     });
 
     if (existing) {
-      throw new BadRequestException('Leave Type with this name or code already exists');
+      throw new BadRequestException(
+        'Leave Type with this name or code already exists',
+      );
     }
 
     const leaveType = this.leaveTypeRepo.create(createLeaveTypeDto);
@@ -43,7 +48,7 @@ export class LeaveTypeService {
 
   async update(id: string, updateLeaveTypeDto: UpdateLeaveTypeDto) {
     const leaveType = await this.findOne(id);
-    
+
     if (updateLeaveTypeDto.name || updateLeaveTypeDto.code) {
       const existing = await this.leaveTypeRepo.findOne({
         where: [
@@ -52,7 +57,9 @@ export class LeaveTypeService {
         ],
       });
       if (existing && existing.id !== id) {
-        throw new BadRequestException('Leave Type with this name or code already exists');
+        throw new BadRequestException(
+          'Leave Type with this name or code already exists',
+        );
       }
     }
 

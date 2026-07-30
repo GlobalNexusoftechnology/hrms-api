@@ -35,13 +35,17 @@ export class SalaryStructureService {
 
   private validateRoleAccess(currentUser: any, targetEmployee: Employee) {
     if (targetEmployee.id === currentUser.id) {
-      throw new ForbiddenException('You cannot manage your own salary structure');
+      throw new ForbiddenException(
+        'You cannot manage your own salary structure',
+      );
     }
 
     if (!currentUser.role || !targetEmployee.role) return;
 
     if (targetEmployee.role.authorityLevel >= currentUser.role.authorityLevel) {
-      throw new ForbiddenException('You cannot manage salary structures for peers or superiors');
+      throw new ForbiddenException(
+        'You cannot manage salary structures for peers or superiors',
+      );
     }
 
     const scope = currentUser.role.dataScope;
@@ -53,7 +57,9 @@ export class SalaryStructureService {
         targetEmployee.branchId &&
         currentUser.branchId !== targetEmployee.branchId
       ) {
-        throw new ForbiddenException('You do not have permission to manage salary structures in this branch');
+        throw new ForbiddenException(
+          'You do not have permission to manage salary structures in this branch',
+        );
       }
     }
 
@@ -63,12 +69,16 @@ export class SalaryStructureService {
         targetEmployee.departmentId &&
         currentUser.departmentId !== targetEmployee.departmentId
       ) {
-        throw new ForbiddenException('You do not have permission to manage salary structures in this department');
+        throw new ForbiddenException(
+          'You do not have permission to manage salary structures in this department',
+        );
       }
     }
 
     if (scope === DataScopeEnum.TEAM || scope === DataScopeEnum.SELF) {
-      throw new ForbiddenException('You do not have sufficient data scope to manage salary structures');
+      throw new ForbiddenException(
+        'You do not have sufficient data scope to manage salary structures',
+      );
     }
   }
 
@@ -85,18 +95,25 @@ export class SalaryStructureService {
     }
 
     const existingCode = await this.componentRepo.findOne({
-      where: { organizationId: dto.organizationId, code: dto.code }
+      where: { organizationId: dto.organizationId, code: dto.code },
     });
     if (existingCode) {
-      throw new BadRequestException(`Component with code ${dto.code} already exists in this organization`);
+      throw new BadRequestException(
+        `Component with code ${dto.code} already exists in this organization`,
+      );
     }
 
     if (dto.displayOrder !== undefined && dto.displayOrder !== null) {
       const existingOrder = await this.componentRepo.findOne({
-        where: { organizationId: dto.organizationId, displayOrder: dto.displayOrder }
+        where: {
+          organizationId: dto.organizationId,
+          displayOrder: dto.displayOrder,
+        },
       });
       if (existingOrder) {
-        throw new BadRequestException(`Component with display order ${dto.displayOrder} already exists in this organization`);
+        throw new BadRequestException(
+          `Component with display order ${dto.displayOrder} already exists in this organization`,
+        );
       }
     }
 
@@ -110,19 +127,30 @@ export class SalaryStructureService {
 
     if (dto.code && dto.code !== existing.code) {
       const existingCode = await this.componentRepo.findOne({
-        where: { organizationId: existing.organizationId, code: dto.code }
+        where: { organizationId: existing.organizationId, code: dto.code },
       });
       if (existingCode) {
-        throw new BadRequestException(`Component with code ${dto.code} already exists in this organization`);
+        throw new BadRequestException(
+          `Component with code ${dto.code} already exists in this organization`,
+        );
       }
     }
 
-    if (dto.displayOrder !== undefined && dto.displayOrder !== null && dto.displayOrder !== existing.displayOrder) {
+    if (
+      dto.displayOrder !== undefined &&
+      dto.displayOrder !== null &&
+      dto.displayOrder !== existing.displayOrder
+    ) {
       const existingOrder = await this.componentRepo.findOne({
-        where: { organizationId: existing.organizationId, displayOrder: dto.displayOrder }
+        where: {
+          organizationId: existing.organizationId,
+          displayOrder: dto.displayOrder,
+        },
       });
       if (existingOrder) {
-        throw new BadRequestException(`Component with display order ${dto.displayOrder} already exists in this organization`);
+        throw new BadRequestException(
+          `Component with display order ${dto.displayOrder} already exists in this organization`,
+        );
       }
     }
 
@@ -145,11 +173,13 @@ export class SalaryStructureService {
     let totalEarnings = 0;
     let totalDeductions = 0;
 
-    const formattedComponents = salary.components?.map(c => {
+    const formattedComponents = salary.components?.map((c) => {
       const amount = Number(c.calculatedAmount);
       if (c.salaryComponent?.type === SalaryComponentTypeEnum.EARNING) {
         totalEarnings += amount;
-      } else if (c.salaryComponent?.type === SalaryComponentTypeEnum.DEDUCTION) {
+      } else if (
+        c.salaryComponent?.type === SalaryComponentTypeEnum.DEDUCTION
+      ) {
         totalDeductions += amount;
       }
 
@@ -199,53 +229,79 @@ export class SalaryStructureService {
       where: { employeeId: dto.employeeId, isActive: true },
     });
 
-    if (existing) throw new BadRequestException('Salary structure already exists');
+    if (existing)
+      throw new BadRequestException('Salary structure already exists');
 
     return this.dataSource.transaction(async (manager) => {
       let grossSalary = Number(dto.basicSalary);
       const structureComponents: SalaryStructureComponent[] = [];
-      const componentIds = dto.components.map(c => c.componentId);
+      const componentIds = dto.components.map((c) => c.componentId);
 
       const uniqueIds = new Set(componentIds);
       if (uniqueIds.size !== componentIds.length) {
-        throw new BadRequestException('Duplicate components are not allowed in the same salary structure');
+        throw new BadRequestException(
+          'Duplicate components are not allowed in the same salary structure',
+        );
       }
 
       // Mandatory components check
-      const orgId = employee.branch?.organizationId || currentUser?.branch?.organizationId;
+      const orgId =
+        employee.branch?.organizationId || currentUser?.branch?.organizationId;
       if (orgId) {
         const mandatoryComponents = await manager.find(SalaryComponent, {
-          where: { organizationId: orgId, isMandatory: true, isActive: true }
+          where: { organizationId: orgId, isMandatory: true, isActive: true },
         });
         for (const mandatory of mandatoryComponents) {
-           if (!componentIds.includes(mandatory.id)) {
-              throw new BadRequestException(`Mandatory component ${mandatory.name} must be included`);
-           }
+          if (!componentIds.includes(mandatory.id)) {
+            throw new BadRequestException(
+              `Mandatory component ${mandatory.name} must be included`,
+            );
+          }
         }
       }
 
       let masterComponents: SalaryComponent[] = [];
       if (componentIds.length > 0) {
-         masterComponents = await manager.find(SalaryComponent, { where: { id: In(componentIds) } });
+        masterComponents = await manager.find(SalaryComponent, {
+          where: { id: In(componentIds) },
+        });
       }
 
       for (const compDto of dto.components) {
-        const masterComp = masterComponents.find(c => c.id === compDto.componentId);
-        if (!masterComp) throw new NotFoundException(`Component ${compDto.componentId} not found`);
-        if (!masterComp.isActive) throw new BadRequestException(`Component ${masterComp.name} is not active`);
+        const masterComp = masterComponents.find(
+          (c) => c.id === compDto.componentId,
+        );
+        if (!masterComp)
+          throw new NotFoundException(
+            `Component ${compDto.componentId} not found`,
+          );
+        if (!masterComp.isActive)
+          throw new BadRequestException(
+            `Component ${masterComp.name} is not active`,
+          );
 
         let calculatedAmount = 0;
 
-        if (compDto.overrideAmount !== undefined && compDto.overrideAmount !== null) {
+        if (
+          compDto.overrideAmount !== undefined &&
+          compDto.overrideAmount !== null
+        ) {
           if (!masterComp.allowOverride) {
-            throw new BadRequestException(`Component ${masterComp.name} does not allow overrides`);
+            throw new BadRequestException(
+              `Component ${masterComp.name} does not allow overrides`,
+            );
           }
           calculatedAmount = Number(compDto.overrideAmount);
         } else {
-          if (masterComp.calculationType === CalculationTypeEnum.PERCENTAGE && masterComp.percentageValue) {
-             calculatedAmount = Number(dto.basicSalary) * (Number(masterComp.percentageValue) / 100);
+          if (
+            masterComp.calculationType === CalculationTypeEnum.PERCENTAGE &&
+            masterComp.percentageValue
+          ) {
+            calculatedAmount =
+              Number(dto.basicSalary) *
+              (Number(masterComp.percentageValue) / 100);
           } else {
-             calculatedAmount = Number(masterComp.defaultAmount);
+            calculatedAmount = Number(masterComp.defaultAmount);
           }
         }
 
@@ -346,62 +402,93 @@ export class SalaryStructureService {
       const createDto = new CreateSalaryStructureDto();
       createDto.employeeId = salary.employeeId;
       createDto.basicSalary = dto.basicSalary ?? salary.basicSalary;
-      createDto.effectiveFrom = dto.effectiveFrom ?? new Date().toISOString().split('T')[0];
-      
+      createDto.effectiveFrom =
+        dto.effectiveFrom ?? new Date().toISOString().split('T')[0];
+
       // Inherit previous components if not provided in update
       if (!dto.components || dto.components.length === 0) {
-        createDto.components = salary.components?.map(c => ({
-          componentId: c.salaryComponentId,
-          overrideAmount: c.calculationType === CalculationTypeEnum.FIXED_AMOUNT ? c.calculatedAmount : undefined,
-        })) || [];
+        createDto.components =
+          salary.components?.map((c) => ({
+            componentId: c.salaryComponentId,
+            overrideAmount:
+              c.calculationType === CalculationTypeEnum.FIXED_AMOUNT
+                ? c.calculatedAmount
+                : undefined,
+          })) || [];
       } else {
         createDto.components = dto.components;
       }
 
       let grossSalary = Number(createDto.basicSalary);
       const structureComponents: SalaryStructureComponent[] = [];
-      const componentIds = createDto.components.map(c => c.componentId);
+      const componentIds = createDto.components.map((c) => c.componentId);
 
       const uniqueIds = new Set(componentIds);
       if (uniqueIds.size !== componentIds.length) {
-        throw new BadRequestException('Duplicate components are not allowed in the same salary structure');
+        throw new BadRequestException(
+          'Duplicate components are not allowed in the same salary structure',
+        );
       }
 
       // Mandatory components check
-      const orgId = salary.employee.branch?.organizationId || currentUser?.branch?.organizationId;
+      const orgId =
+        salary.employee.branch?.organizationId ||
+        currentUser?.branch?.organizationId;
       if (orgId) {
         const mandatoryComponents = await manager.find(SalaryComponent, {
-          where: { organizationId: orgId, isMandatory: true, isActive: true }
+          where: { organizationId: orgId, isMandatory: true, isActive: true },
         });
         for (const mandatory of mandatoryComponents) {
-           if (!componentIds.includes(mandatory.id)) {
-              throw new BadRequestException(`Mandatory component ${mandatory.name} must be included`);
-           }
+          if (!componentIds.includes(mandatory.id)) {
+            throw new BadRequestException(
+              `Mandatory component ${mandatory.name} must be included`,
+            );
+          }
         }
       }
 
       let masterComponents: SalaryComponent[] = [];
       if (componentIds.length > 0) {
-         masterComponents = await manager.find(SalaryComponent, { where: { id: In(componentIds) } });
+        masterComponents = await manager.find(SalaryComponent, {
+          where: { id: In(componentIds) },
+        });
       }
 
       for (const compDto of createDto.components) {
-        const masterComp = masterComponents.find(c => c.id === compDto.componentId);
-        if (!masterComp) throw new NotFoundException(`Component ${compDto.componentId} not found`);
-        if (!masterComp.isActive) throw new BadRequestException(`Component ${masterComp.name} is not active`);
+        const masterComp = masterComponents.find(
+          (c) => c.id === compDto.componentId,
+        );
+        if (!masterComp)
+          throw new NotFoundException(
+            `Component ${compDto.componentId} not found`,
+          );
+        if (!masterComp.isActive)
+          throw new BadRequestException(
+            `Component ${masterComp.name} is not active`,
+          );
 
         let calculatedAmount = 0;
 
-        if (compDto.overrideAmount !== undefined && compDto.overrideAmount !== null) {
+        if (
+          compDto.overrideAmount !== undefined &&
+          compDto.overrideAmount !== null
+        ) {
           if (!masterComp.allowOverride) {
-            throw new BadRequestException(`Component ${masterComp.name} does not allow overrides`);
+            throw new BadRequestException(
+              `Component ${masterComp.name} does not allow overrides`,
+            );
           }
           calculatedAmount = Number(compDto.overrideAmount);
         } else {
-          if (masterComp.calculationType === CalculationTypeEnum.PERCENTAGE && masterComp.percentageValue) {
-             calculatedAmount = Number(createDto.basicSalary) * (Number(masterComp.percentageValue) / 100);
+          if (
+            masterComp.calculationType === CalculationTypeEnum.PERCENTAGE &&
+            masterComp.percentageValue
+          ) {
+            calculatedAmount =
+              Number(createDto.basicSalary) *
+              (Number(masterComp.percentageValue) / 100);
           } else {
-             calculatedAmount = Number(masterComp.defaultAmount);
+            calculatedAmount = Number(masterComp.defaultAmount);
           }
         }
 

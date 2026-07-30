@@ -22,18 +22,27 @@ import { PermissionEnum } from '../../common/enums/permission.enum';
 @UseGuards(JwtAuthGuard)
 @Controller('employees/:employeeId/career-movements')
 export class CareerMovementsController {
-  constructor(private readonly careerMovementsService: CareerMovementsService) {}
+  constructor(
+    private readonly careerMovementsService: CareerMovementsService,
+  ) {}
 
   @Post()
   @Permissions(PermissionEnum.CAREER_MOVEMENT_CREATE)
-  @ApiOperation({ summary: 'Request a career movement (Promotion, Demotion, etc.)' })
+  @ApiOperation({
+    summary: 'Request a career movement (Promotion, Demotion, etc.)',
+  })
   create(
     @Param('employeeId', ParseUUIDPipe) employeeId: string,
     @Body() createDto: CreateCareerMovementDto,
     @CurrentUser() user: any,
     @Req() req: any,
   ) {
-    return this.careerMovementsService.create(employeeId, createDto, user.id, req.correlationId);
+    return this.careerMovementsService.create(
+      employeeId,
+      createDto,
+      user.id,
+      req.correlationId,
+    );
   }
 
   @Get()

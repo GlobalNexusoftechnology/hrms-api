@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { CourseModule } from './course-module.entity';
 import { AssessmentQuestion } from './assessment-question.entity';
 
@@ -10,7 +19,9 @@ export class Assessment {
   @Column({ name: 'module_id' })
   moduleId!: string;
 
-  @OneToOne(() => CourseModule, mod => mod.assessment, { onDelete: 'CASCADE' })
+  @OneToOne(() => CourseModule, (mod) => mod.assessment, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'module_id' })
   module!: CourseModule;
 
@@ -23,7 +34,7 @@ export class Assessment {
   @Column({ type: 'numeric', name: 'passing_percentage', default: 40 })
   passingPercentage!: number;
 
-  @OneToMany(() => AssessmentQuestion, q => q.assessment)
+  @OneToMany(() => AssessmentQuestion, (q) => q.assessment)
   questions!: AssessmentQuestion[];
 
   @CreateDateColumn({ name: 'created_at' })

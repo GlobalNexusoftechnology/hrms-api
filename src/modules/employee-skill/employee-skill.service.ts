@@ -12,13 +12,19 @@ export class EmployeeSkillService {
     private readonly skillRepository: Repository<EmployeeSkill>,
   ) {}
 
-  async create(employeeId: string, dto: CreateEmployeeSkillDto): Promise<EmployeeSkill> {
+  async create(
+    employeeId: string,
+    dto: CreateEmployeeSkillDto,
+  ): Promise<EmployeeSkill> {
     const skill = this.skillRepository.create({ ...dto, employeeId });
     return this.skillRepository.save(skill);
   }
 
   async findAllByEmployee(employeeId: string): Promise<EmployeeSkill[]> {
-    return this.skillRepository.find({ where: { employeeId }, order: { year: 'DESC' } });
+    return this.skillRepository.find({
+      where: { employeeId },
+      order: { year: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<EmployeeSkill> {
@@ -29,7 +35,10 @@ export class EmployeeSkillService {
     return skill;
   }
 
-  async update(id: string, dto: UpdateEmployeeSkillDto): Promise<EmployeeSkill> {
+  async update(
+    id: string,
+    dto: UpdateEmployeeSkillDto,
+  ): Promise<EmployeeSkill> {
     const skill = await this.findOne(id);
     Object.assign(skill, dto);
     return this.skillRepository.save(skill);

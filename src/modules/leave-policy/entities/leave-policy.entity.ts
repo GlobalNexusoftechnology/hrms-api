@@ -63,24 +63,45 @@ export class LeavePolicy {
   @Column({ type: 'decimal', precision: 5, scale: 2, name: 'annual_quota' })
   annualQuota!: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'accrual_rate', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'accrual_rate',
+    default: 0,
+  })
   accrualRate!: number;
 
-  @Column({ type: 'enum', enum: AccrualFrequency, name: 'accrual_frequency', default: AccrualFrequency.YEARLY })
+  @Column({
+    type: 'enum',
+    enum: AccrualFrequency,
+    name: 'accrual_frequency',
+    default: AccrualFrequency.YEARLY,
+  })
   accrualFrequency!: AccrualFrequency;
 
   // --- Carry Forward ---
   @Column({ name: 'carry_forward', default: false })
   carryForward!: boolean;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'max_carry_forward', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'max_carry_forward',
+    default: 0,
+  })
   maxCarryForward!: number;
 
   @Column({ name: 'carry_forward_expiry_months', nullable: true })
   carryForwardExpiryMonths?: number;
 
   // --- Eligibility ---
-  @Column({ type: 'enum', enum: GenderEligibility, default: GenderEligibility.ALL })
+  @Column({
+    type: 'enum',
+    enum: GenderEligibility,
+    default: GenderEligibility.ALL,
+  })
   gender!: GenderEligibility;
 
   @Column({ name: 'minimum_service_days', default: 0 })
@@ -102,7 +123,13 @@ export class LeavePolicy {
   @Column({ name: 'allow_negative_balance', default: false })
   allowNegativeBalance!: boolean;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'max_negative_balance', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'max_negative_balance',
+    default: 0,
+  })
   maxNegativeBalance!: number;
 
   @Column({ default: false })

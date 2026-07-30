@@ -18,7 +18,7 @@ function getRandomInt(min: number, max: number) {
 export const seedTraining = async (dataSource: DataSource) => {
   const departmentRepo = dataSource.getRepository(Department);
   const employeeRepo = dataSource.getRepository(Employee);
-  
+
   const courseRepo = dataSource.getRepository(Course);
   const moduleRepo = dataSource.getRepository(CourseModule);
   const topicRepo = dataSource.getRepository(CourseTopic);
@@ -50,7 +50,7 @@ export const seedTraining = async (dataSource: DataSource) => {
 
   for (const department of departments) {
     const numCourses = getRandomInt(3, 4);
-    
+
     for (let c = 1; c <= numCourses; c++) {
       const course = await courseRepo.save({
         title: `${department.name} Mastery Course ${c}`,
@@ -80,14 +80,21 @@ export const seedTraining = async (dataSource: DataSource) => {
 
           const numMaterials = getRandomInt(3, 4);
           for (let mat = 1; mat <= numMaterials; mat++) {
-            const types = [TrainingMaterialTypeEnum.DOCUMENT, TrainingMaterialTypeEnum.VIDEO, TrainingMaterialTypeEnum.LINK];
+            const types = [
+              TrainingMaterialTypeEnum.DOCUMENT,
+              TrainingMaterialTypeEnum.VIDEO,
+              TrainingMaterialTypeEnum.LINK,
+            ];
             const type = types[getRandomInt(0, types.length - 1)];
-            
+
             await materialRepo.save({
               topicId: topic.id,
               title: `${department.name} - Resource ${mat}`,
               type,
-              fileUrl: type === TrainingMaterialTypeEnum.LINK ? 'https://example.com' : 'https://example.com/file.pdf',
+              fileUrl:
+                type === TrainingMaterialTypeEnum.LINK
+                  ? 'https://example.com'
+                  : 'https://example.com/file.pdf',
               sortOrder: mat,
             });
           }

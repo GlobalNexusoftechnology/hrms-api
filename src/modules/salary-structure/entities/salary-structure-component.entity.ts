@@ -19,7 +19,9 @@ export class SalaryStructureComponent {
   @Column({ name: 'salary_structure_id' })
   salaryStructureId!: string;
 
-  @ManyToOne(() => SalaryStructure, (structure) => structure.components, { onDelete: 'CASCADE' })
+  @ManyToOne(() => SalaryStructure, (structure) => structure.components, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'salary_structure_id' })
   salaryStructure!: SalaryStructure;
 

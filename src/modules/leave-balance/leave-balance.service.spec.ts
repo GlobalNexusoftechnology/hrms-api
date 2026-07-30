@@ -81,7 +81,11 @@ describe('LeaveBalanceService', () => {
       };
       leaveBalanceRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 
-      const result = await service.getAllBalances({ page: 1, limit: 10, year: 2026 });
+      const result = await service.getAllBalances({
+        page: 1,
+        limit: 10,
+        year: 2026,
+      });
       expect(result.data).toHaveLength(1);
       expect(result.data[0].employeeName).toBe('John Doe');
       expect(result.data[0].remaining).toBe(10);

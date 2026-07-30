@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Course } from './course.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 
@@ -10,7 +18,9 @@ export class CourseAssignment {
   @Column({ name: 'course_id' })
   courseId!: string;
 
-  @ManyToOne(() => Course, course => course.assignments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Course, (course) => course.assignments, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'course_id' })
   course!: Course;
 

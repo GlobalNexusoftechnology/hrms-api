@@ -8,7 +8,6 @@ import { ApiProperty } from '@nestjs/swagger';
  * will be created by this Chairman user later using standard protected APIs.
  */
 export class BootstrapSystemDto {
-
   // --- Chairman Details ---
   @ApiProperty({ example: 'John', description: 'First name of the Chairman' })
   @IsString()
@@ -25,13 +24,21 @@ export class BootstrapSystemDto {
   @IsNotEmpty()
   email!: string;
 
-  @ApiProperty({ example: '+91 9876543210', description: 'Mobile with country code' })
+  @ApiProperty({
+    example: '+91 9876543210',
+    description: 'Mobile with country code',
+  })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+\d{1,4}\s?\d{6,14}$/, { message: 'Mobile must include a valid country code (e.g. +91 9876543210)' })
+  @Matches(/^\+\d{1,4}\s?\d{6,14}$/, {
+    message: 'Mobile must include a valid country code (e.g. +91 9876543210)',
+  })
   mobile!: string;
 
-  @ApiProperty({ example: 'SuperSecurePassword123!', description: 'Will be bcrypt-hashed before storage' })
+  @ApiProperty({
+    example: 'SuperSecurePassword123!',
+    description: 'Will be bcrypt-hashed before storage',
+  })
   @IsString()
   @IsNotEmpty()
   password!: string;

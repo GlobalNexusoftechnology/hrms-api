@@ -25,7 +25,10 @@ export class DashboardController {
     const scope = user.role?.dataScope;
     const permissions = user.role?.permissions?.map((p: any) => p.name) || [];
 
-    if (scope === DataScopeEnum.ORGANIZATION || permissions.includes('admin_dashboard.read')) {
+    if (
+      scope === DataScopeEnum.ORGANIZATION ||
+      permissions.includes('admin_dashboard.read')
+    ) {
       return this.dashboardService.getSuperAdminDashboard();
     }
 

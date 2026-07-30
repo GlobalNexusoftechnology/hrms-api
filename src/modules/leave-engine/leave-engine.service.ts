@@ -1,7 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { LeaveLedger, LeaveTransactionType } from '../leave-ledger/entities/leave-ledger.entity';
+import { Repository, EntityManager, DataSource } from 'typeorm';
+import {
+  LeaveLedger,
+  LeaveTransactionType,
+} from '../leave-ledger/entities/leave-ledger.entity';
 import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
 import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
 import { CreateLeaveLedgerDto } from '../leave-ledger/dto/create-leave-ledger.dto';
@@ -19,65 +22,81 @@ export class LeaveEngineService {
     private readonly leavePolicyRepo: Repository<LeavePolicy>,
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
+    private readonly dataSource: DataSource,
   ) {}
 
   // -------------------------------------------------------------
   // CORE: Transaction Processing
   // -------------------------------------------------------------
-  async processTransaction(dto: CreateLeaveLedgerDto) {
-    // 1. Save to Ledger
-    const ledgerEntry = this.leaveLedgerRepo.create(dto);
-    const savedLedger = await this.leaveLedgerRepo.save(ledgerEntry);
+  async processTransaction(dto: CreateLeaveLedgerDto, manager?: EntityManager) {
+    const runInTransaction = async (m: EntityManager) => {
+      // 1. Save to Ledger
+      const ledgerEntry = m.create(LeaveLedger, dto);
+      const savedLedger = await m.save(ledgerEntry);
 
-    // 2. Update Balance
-    const year = new Date().getFullYear();
-    let balance = await this.leaveBalanceRepo.findOne({
-      where: {
-        employeeId: dto.employeeId,
-        leaveTypeId: dto.leaveTypeId,
-        year,
-      },
-    });
-
-    if (!balance) {
-      balance = this.leaveBalanceRepo.create({
-        employeeId: dto.employeeId,
-        leaveTypeId: dto.leaveTypeId,
-        year,
-        accrued: 0,
-        used: 0,
-        carriedForward: 0,
+      // 2. Update Balance
+      const year = new Date().getFullYear();
+      let balance = await m.findOne(LeaveBalance, {
+        where: {
+          employeeId: dto.employeeId,
+          leaveTypeId: dto.leaveTypeId,
+          year,
+        },
+        lock: { mode: 'pessimistic_write' },
       });
+
+      if (!balance) {
+        balance = m.create(LeaveBalance, {
+          employeeId: dto.employeeId,
+          leaveTypeId: dto.leaveTypeId,
+          year,
+          accrued: 0,
+          used: 0,
+          carriedForward: 0,
+        });
+      }
+
+      switch (dto.transactionType) {
+        case LeaveTransactionType.ACCRUAL:
+          balance.accrued = Number(balance.accrued) + Number(dto.days);
+          break;
+        case LeaveTransactionType.LEAVE_TAKEN:
+        case LeaveTransactionType.ENCASHMENT:
+          balance.used = Number(balance.used) + Number(Math.abs(dto.days));
+          break;
+        case LeaveTransactionType.CARRY_FORWARD:
+          balance.carriedForward =
+            Number(balance.carriedForward) + Number(dto.days);
+          break;
+        case LeaveTransactionType.ADJUSTMENT:
+          balance.accrued = Number(balance.accrued) + Number(dto.days);
+          break;
+      }
+
+      await m.save(balance);
+
+      return savedLedger;
+    };
+
+    if (manager) {
+      return runInTransaction(manager);
+    } else {
+      return this.dataSource.transaction(runInTransaction);
     }
-
-    switch (dto.transactionType) {
-      case LeaveTransactionType.ACCRUAL:
-        balance.accrued = Number(balance.accrued) + Number(dto.days);
-        break;
-      case LeaveTransactionType.LEAVE_TAKEN:
-      case LeaveTransactionType.ENCASHMENT:
-        // When taking leave or encashing, the days value should be positive, meaning we add to 'used'
-        balance.used = Number(balance.used) + Number(Math.abs(dto.days));
-        break;
-      case LeaveTransactionType.CARRY_FORWARD:
-        balance.carriedForward = Number(balance.carriedForward) + Number(dto.days);
-        break;
-      case LeaveTransactionType.ADJUSTMENT:
-        // For adjustments, if positive, we add to accrued. If negative, we subtract from accrued.
-        balance.accrued = Number(balance.accrued) + Number(dto.days);
-        break;
-    }
-
-    await this.leaveBalanceRepo.save(balance);
-
-    return savedLedger;
   }
 
   // -------------------------------------------------------------
   // PUBLIC APIS (Triggered by HR / Events)
   // -------------------------------------------------------------
-  async manualAdjustment(employeeId: string, leaveTypeId: string, days: number, remarks: string, hrUserId?: string) {
-    if (days === 0) throw new BadRequestException('Adjustment days cannot be zero');
+  async manualAdjustment(
+    employeeId: string,
+    leaveTypeId: string,
+    days: number,
+    remarks: string,
+    hrUserId?: string,
+  ) {
+    if (days === 0)
+      throw new BadRequestException('Adjustment days cannot be zero');
 
     return this.processTransaction({
       employeeId,
@@ -92,7 +111,7 @@ export class LeaveEngineService {
   // -------------------------------------------------------------
   // ACCRUAL ENGINE (Cron & Business Logic)
   // -------------------------------------------------------------
-  
+
   // Example: Run on the 1st of every month at midnight
   @Cron('0 0 1 * *', { timeZone: 'Asia/Kolkata' })
   async executeMonthlyAccrual() {
@@ -106,7 +125,8 @@ export class LeaveEngineService {
 
       // In a real system, you'd fetch employees based on the policy's scope (ORGANIZATION, BRANCH, etc)
       // Here, we'll assume we have a helper to get eligible employees
-      const eligibleEmployeeIds = await this.getEligibleEmployeesForPolicy(policy);
+      const eligibleEmployeeIds =
+        await this.getEligibleEmployeesForPolicy(policy);
 
       for (const empId of eligibleEmployeeIds) {
         await this.processTransaction({
@@ -129,7 +149,8 @@ export class LeaveEngineService {
     for (const policy of policies) {
       if (policy.annualQuota <= 0) continue;
 
-      const eligibleEmployeeIds = await this.getEligibleEmployeesForPolicy(policy);
+      const eligibleEmployeeIds =
+        await this.getEligibleEmployeesForPolicy(policy);
 
       for (const empId of eligibleEmployeeIds) {
         await this.processTransaction({
@@ -143,7 +164,9 @@ export class LeaveEngineService {
     }
   }
 
-  private async getEligibleEmployeesForPolicy(policy: LeavePolicy): Promise<string[]> {
+  private async getEligibleEmployeesForPolicy(
+    policy: LeavePolicy,
+  ): Promise<string[]> {
     // Phase 1 implementation: organization wide
     const employees = await this.employeeRepo.find({
       select: { id: true },

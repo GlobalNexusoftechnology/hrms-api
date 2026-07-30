@@ -15,12 +15,17 @@ import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { DataScopeService } from '../../common/services/data-scope.service';
 import { Employee } from '../employees/entities/employee.entity';
+import { Designation } from '../designations/entities/designation.entity';
 
 @Injectable()
 export class DepartmentsService {
   constructor(
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
+    @InjectRepository(Employee)
+    private readonly employeeRepository: Repository<Employee>,
+    @InjectRepository(Designation)
+    private readonly designationRepository: Repository<Designation>,
     private readonly dataScopeService: DataScopeService,
   ) {}
 
@@ -84,7 +89,7 @@ export class DepartmentsService {
     if (currentUser) {
       this.dataScopeService.applyScope(queryBuilder, currentUser, {
         branch: 'department.branchId',
-        department: 'department.id'
+        department: 'department.id',
       });
     }
 
@@ -110,7 +115,8 @@ export class DepartmentsService {
   }
 
   async findOne(id: string, currentUser?: Employee) {
-    const queryBuilder = this.departmentRepository.createQueryBuilder('department');
+    const queryBuilder =
+      this.departmentRepository.createQueryBuilder('department');
 
     queryBuilder
       .where('department.id = :id', { id })
@@ -119,7 +125,7 @@ export class DepartmentsService {
     if (currentUser) {
       this.dataScopeService.applyScope(queryBuilder, currentUser, {
         branch: 'department.branchId',
-        department: 'department.id'
+        department: 'department.id',
       });
     }
 
@@ -172,6 +178,24 @@ export class DepartmentsService {
 
   async remove(id: string) {
     await this.findOne(id);
+
+    const employeeCount = await this.employeeRepository.count({
+      where: { departmentId: id, deletedAt: IsNull() },
+    });
+    if (employeeCount > 0) {
+      throw new ConflictException(
+        `Cannot delete department as it currently has ${employeeCount} active employee(s) assigned.`,
+      );
+    }
+
+    const designationCount = await this.designationRepository.count({
+      where: { departmentId: id, deletedAt: IsNull() },
+    });
+    if (designationCount > 0) {
+      throw new ConflictException(
+        `Cannot delete department as it has ${designationCount} designation(s) associated with it.`,
+      );
+    }
 
     await this.departmentRepository.softDelete(id);
 

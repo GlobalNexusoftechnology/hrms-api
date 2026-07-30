@@ -234,9 +234,10 @@ export class CorrectionService {
       // SAVE CORRECTION
       await manager.save(correction);
 
-      const message = status === CorrectionStatus.APPROVED
-        ? `Your attendance correction request has been approved.`
-        : `Your attendance correction request has been rejected.`;
+      const message =
+        status === CorrectionStatus.APPROVED
+          ? `Your attendance correction request has been approved.`
+          : `Your attendance correction request has been rejected.`;
 
       await this.notificationService.createNotification({
         employeeId: correction.employeeId,
@@ -290,7 +291,7 @@ export class CorrectionService {
     this.dataScopeService.applyScope(qb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
-      employee: 'employee.id'
+      employee: 'employee.id',
     });
 
     qb.orderBy('correction.created_at', 'DESC');
