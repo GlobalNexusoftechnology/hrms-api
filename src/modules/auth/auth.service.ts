@@ -25,14 +25,19 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Employee } from '../employees/entities/employee.entity';
+import { AuthLogService } from '../auth-log/auth-log.service';
+import { AuthEvent, AuthStatus } from '../auth-log/entities/auth-log.entity';
+import { ClsService } from 'nestjs-cls';
+
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
     private readonly mailService: MailService,
-
     private employeesService: EmployeesService,
     private configService: ConfigService,
+    private authLogService: AuthLogService,
+    private cls: ClsService,
 
     @InjectRepository(Employee)
     private employeeRepository: Repository<Employee>,
@@ -146,6 +151,15 @@ export class AuthService {
       isRevoked: false,
     });
 
+    // Log Auth Event
+    this.authLogService.logEvent({
+      userId: employee.id,
+      event: AuthEvent.LOGIN,
+      status: AuthStatus.SUCCESS,
+      ipAddress: this.cls.get('ipAddress'),
+      device: this.cls.get('device'),
+    });
+
     return {
       accessToken,
       refreshToken,
@@ -153,7 +167,12 @@ export class AuthService {
       employee: {
         id: employee.id,
         employeeCode: employee.employeeCode,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        middleName: employee.middleName,
+        displayName: employee.displayName,
         email: employee.email,
+        profilePhoto: employee.profilePhoto,
         role: employee.role,
       },
     };
@@ -301,6 +320,15 @@ export class AuthService {
       matchedToken.isRevoked = true;
 
       await this.refreshTokenRepository.save(matchedToken);
+
+      // Log Auth Event for Logout
+      this.authLogService.logEvent({
+        userId: payload.employeeId,
+        event: AuthEvent.LOGOUT,
+        status: AuthStatus.SUCCESS,
+        ipAddress: this.cls.get('ipAddress'),
+        device: this.cls.get('device'),
+      });
 
       return {
         message: 'Logged out successfully',

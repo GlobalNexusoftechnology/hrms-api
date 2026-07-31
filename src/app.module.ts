@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ClsModule } from 'nestjs-cls';
+import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -7,6 +9,8 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { RolesModule } from './modules/roles/roles.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuthLogModule } from './modules/auth-log/auth-log.module';
+import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { CommonModule } from './common/common.module';
 
@@ -15,6 +19,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { EmployeeScopeGuard } from './common/guards/employee-scope.guard';
 import { ActivityLogInterceptor } from './common/interceptors/activity-log.interceptor';
+import { ContextInterceptor } from './common/interceptors/context.interceptor';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { DesignationsModule } from './modules/designations/designations.module';
 import { EmployeeDocumentsModule } from './modules/employee-documents/employee-documents.module';
@@ -60,6 +65,18 @@ import { ResignationsModule } from './modules/resignations/resignations.module';
       envFilePath: '.env',
     }),
 
+    ClsModule.forRoot({
+      global: true,
+      middleware: { mount: true },
+    }),
+
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      },
+    }),
+
     ScheduleModule.forRoot(),
 
     ThrottlerModule.forRoot([
@@ -90,6 +107,8 @@ import { ResignationsModule } from './modules/resignations/resignations.module';
     RolesModule,
     PermissionsModule,
     AuthModule,
+    AuthLogModule,
+    AuditLogModule,
     EmployeesModule,
     DepartmentsModule,
     DesignationsModule,
@@ -145,6 +164,10 @@ import { ResignationsModule } from './modules/resignations/resignations.module';
     {
       provide: APP_GUARD,
       useClass: EmployeeScopeGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ContextInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

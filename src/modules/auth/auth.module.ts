@@ -20,6 +20,7 @@ import jwtConfig from '../../config/jwt.config';
 
 import { AccessTokenStrategy } from './strategies/jwt.strategy';
 import { MailModule } from '../mail/mail.module';
+import { AuthLogModule } from '../auth-log/auth-log.module';
 
 @Module({
   imports: [
@@ -32,9 +33,8 @@ import { MailModule } from '../mail/mail.module';
     }),
 
     EmployeesModule,
-
     MailModule,
-
+    AuthLogModule,
     TypeOrmModule.forFeature([RefreshToken]),
 
     JwtModule.registerAsync(jwtConfig.asProvider()),

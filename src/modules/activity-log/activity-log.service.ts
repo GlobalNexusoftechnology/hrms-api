@@ -19,9 +19,7 @@ export class ActivityLogService {
   logAction(data: Partial<ActivityLog>): void {
     setImmediate(async () => {
       try {
-        // Remove sensitive fields from metadata/oldValue/newValue if they exist
-        const sanitizedData = this.sanitizeSensitiveData(data);
-        const newLog = this.activityLogRepository.create(sanitizedData);
+        const newLog = this.activityLogRepository.create(data);
         await this.activityLogRepository.save(newLog);
       } catch (error) {
         this.logger.error(
@@ -107,45 +105,5 @@ export class ActivityLogService {
       },
     };
   }
-
-  /**
-   * Sanitizes sensitive data before logging.
-   */
-  private sanitizeSensitiveData(
-    data: Partial<ActivityLog>,
-  ): Partial<ActivityLog> {
-    const sanitized = { ...data };
-
-    // Helper to mask properties in JSON objects
-    const maskJson = (obj: any) => {
-      if (!obj || typeof obj !== 'object') return obj;
-      const maskedObj = { ...obj };
-      const sensitiveKeys = [
-        'password',
-        'token',
-        'otp',
-        'refreshToken',
-        'accessToken',
-        'secret',
-      ];
-
-      for (const key of Object.keys(maskedObj)) {
-        if (sensitiveKeys.some((sk) => key.toLowerCase().includes(sk))) {
-          maskedObj[key] = '********';
-        } else if (
-          typeof maskedObj[key] === 'object' &&
-          maskedObj[key] !== null
-        ) {
-          maskedObj[key] = maskJson(maskedObj[key]);
-        }
-      }
-      return maskedObj;
-    };
-
-    if (sanitized.oldValue) sanitized.oldValue = maskJson(sanitized.oldValue);
-    if (sanitized.newValue) sanitized.newValue = maskJson(sanitized.newValue);
-    if (sanitized.metadata) sanitized.metadata = maskJson(sanitized.metadata);
-
-    return sanitized;
-  }
 }
+

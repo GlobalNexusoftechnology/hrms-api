@@ -64,7 +64,6 @@ export class RolesService {
         description: `Created Role "${savedRole.name}"`,
         entityType: 'Role',
         entityId: savedRole.id,
-        newValue: savedRole,
       });
       return savedRole;
     } catch (error: any) {
@@ -151,7 +150,6 @@ export class RolesService {
       description: `Updated Role "${savedRole.name}"`,
       entityType: 'Role',
       entityId: savedRole.id,
-      newValue: savedRole,
     });
     return savedRole;
   }

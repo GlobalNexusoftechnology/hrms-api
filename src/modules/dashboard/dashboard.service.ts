@@ -419,6 +419,11 @@ export class DashboardService {
     return {
       employee: {
         name: `${employee.firstName} ${employee.lastName}`,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        middleName: employee.middleName,
+        displayName: employee.displayName,
+        profilePhoto: employee.profilePhoto,
         employeeCode: employee.employeeCode,
         department: employee.department?.name,
         designation: employee.designation?.name,

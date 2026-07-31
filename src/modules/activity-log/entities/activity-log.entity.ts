@@ -32,15 +32,6 @@ export class ActivityLog {
   @Column({ name: 'entity_id', type: 'uuid', nullable: true })
   entityId?: string;
 
-  @Column({ name: 'old_value', type: 'jsonb', nullable: true })
-  oldValue?: Record<string, any>;
-
-  @Column({ name: 'new_value', type: 'jsonb', nullable: true })
-  newValue?: Record<string, any>;
-
-  @Column({ type: 'jsonb', nullable: true })
-  metadata?: Record<string, any>;
-
   @Column({ name: 'ip_address', length: 45, nullable: true })
   ipAddress?: string;
 

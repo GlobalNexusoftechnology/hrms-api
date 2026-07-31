@@ -105,7 +105,6 @@ export class CareerMovementsService {
         description: `Requested ${dto.movementType} for Employee ID ${employeeId}`,
         entityType: 'EmployeeCareerMovement',
         entityId: savedMovement.id,
-        newValue: savedMovement,
         correlationId,
       });
     }
@@ -149,7 +148,6 @@ export class CareerMovementsService {
         description: `Approved ${movement.movementType} for Employee ID ${movement.employeeId}`,
         entityType: 'EmployeeCareerMovement',
         entityId: savedMovement.id,
-        newValue: savedMovement,
       });
     }
 
@@ -234,7 +232,6 @@ export class CareerMovementsService {
           description: `Executed ${movement.movementType} for Employee ID ${movement.employeeId}`,
           entityType: 'EmployeeCareerMovement',
           entityId: savedMovement.id,
-          newValue: savedMovement,
         });
       }
 
