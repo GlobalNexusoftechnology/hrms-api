@@ -11,10 +11,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+
 @Entity('leaves')
-export class Leave {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class Leave extends TenantAwareEntity {
 
   @Column({
     name: 'employee_id',
@@ -97,13 +97,4 @@ export class Leave {
   })
   reviewedAt: Date | null = null;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

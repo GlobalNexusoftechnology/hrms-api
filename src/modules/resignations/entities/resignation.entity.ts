@@ -7,20 +7,24 @@ import {
   DeleteDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 import { ResignationStatusEnum } from '../../../common/enums/resignation-status.enum';
 
 @Entity('resignations')
-export class Resignation {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class Resignation extends TenantAwareEntity {
 
   @Column({ name: 'employee_id', type: 'uuid' })
   employeeId!: string;
 
   @ManyToOne(() => Employee)
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ name: 'resignation_date', type: 'date' })
@@ -63,12 +67,4 @@ export class Resignation {
   @Column({ name: 'executed_at', type: 'timestamp', nullable: true })
   executedAt!: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
-
-  @DeleteDateColumn({ name: 'deleted_at' })
-  deletedAt!: Date | null;
 }

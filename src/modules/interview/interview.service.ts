@@ -31,6 +31,8 @@ import { CandidateApplication } from './entities/candidate-application.entity';
 import { CreateJobPostingDto } from './dto/create-job-posting.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../../common/enums/NotificationType.enum';
+import { TenantQueryService } from '../../common/services/tenant-query.service';
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class InterviewService {
@@ -64,38 +66,68 @@ export class InterviewService {
 
     private employeeService: EmployeesService,
     private readonly notificationService: NotificationService,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService
   ) {}
 
   // ------------------- JOB POSTINGS -------------------
-  async createJobPosting(dto: CreateJobPostingDto) {
+  async createJobPosting(dto: CreateJobPostingDto, currentUser?: any) {
     const job = this.jobRepo.create(dto);
     return this.jobRepo.save(job);
   }
 
-  async getJobPostings() {
-    return this.jobRepo.find({
-      order: { createdAt: 'DESC' },
-      relations: { department: true, branch: true },
-    });
+  async getJobPostings(currentUser?: any) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const qb = this.jobRepo.createQueryBuilder('job')
+      .leftJoinAndSelect('job.department', 'department')
+      .leftJoinAndSelect('job.branch', 'branch')
+      .where('job.tenantId = :tenantId', { tenantId })
+      .orderBy('job.createdAt', 'DESC');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'job.branchId',
+        department: 'job.departmentId',
+      });
+    }
+
+    return qb.getMany();
   }
 
-  async getJobPosting(id: string) {
-    const job = await this.jobRepo.findOne({
-      where: { id },
-      relations: { department: true, branch: true },
-    });
-    if (!job) throw new NotFoundException('Job not found');
+  async getJobPosting(id: string, currentUser?: any) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const qb = this.jobRepo.createQueryBuilder('job')
+      .leftJoinAndSelect('job.department', 'department')
+      .leftJoinAndSelect('job.branch', 'branch')
+      .where('job.id = :id', { id })
+      .andWhere('job.tenantId = :tenantId', { tenantId });
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'job.branchId',
+        department: 'job.departmentId',
+      });
+    }
+
+    const job = await qb.getOne();
+    if (!job) throw new NotFoundException('Job not found or access denied');
     return job;
   }
 
   // ------------------- APPLICATIONS -------------------
   async applyToJob(dto: CreateCandidateDto) {
-    const job = await this.jobRepo.findOne({ where: { id: dto.jobId } });
+    const job = await this.jobRepo.findOne({ where: { id: dto.jobId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } });
     if (!job) throw new NotFoundException('Job posting not found');
 
     // 1. Validate if Email or Mobile exists in Employee records
     const employeeExists = await this.employeeRepo.findOne({
-      where: [{ email: dto.email }, { mobile: dto.mobile }],
+      where: [{ email: dto.email,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    }, { mobile: dto.mobile,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    }],
     });
     if (employeeExists) {
       throw new ConflictException(
@@ -105,7 +137,11 @@ export class InterviewService {
 
     // 2. Find or Create Candidate (can apply to multiple jobs)
     let candidate = await this.candidateRepo.findOne({
-      where: [{ email: dto.email }, { mobile: dto.mobile }],
+      where: [{ email: dto.email,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    }, { mobile: dto.mobile,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    }],
     });
 
     if (!candidate) {
@@ -131,7 +167,9 @@ export class InterviewService {
 
     // 3. Validate if Candidate already applied to this specific Job
     const existingApp = await this.applicationRepo.findOne({
-      where: { candidateId: candidate.id, jobId: job.id },
+      where: { candidateId: candidate.id, jobId: job.id,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (existingApp) {
@@ -149,31 +187,59 @@ export class InterviewService {
     return this.applicationRepo.save(application);
   }
 
-  async getApplications() {
-    return this.applicationRepo.find({
-      order: { createdAt: 'DESC' },
-      relations: { candidate: true, job: true },
-    });
+  async getApplications(currentUser?: any) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const qb = this.applicationRepo.createQueryBuilder('application')
+      .leftJoinAndSelect('application.candidate', 'candidate')
+      .leftJoinAndSelect('application.job', 'job')
+      .where('application.tenantId = :tenantId', { tenantId })
+      .orderBy('application.createdAt', 'DESC');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'job.branchId',
+        department: 'job.departmentId',
+      });
+    }
+
+    return qb.getMany();
   }
 
-  async getApplication(id: string) {
-    const app = await this.applicationRepo.findOne({
-      where: { id },
-      relations: { candidate: true, job: true },
-    });
-    if (!app) throw new NotFoundException('Application not found');
+  async getApplication(id: string, currentUser?: any) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const qb = this.applicationRepo.createQueryBuilder('application')
+      .leftJoinAndSelect('application.candidate', 'candidate')
+      .leftJoinAndSelect('application.job', 'job')
+      .where('application.id = :id', { id })
+      .andWhere('application.tenantId = :tenantId', { tenantId });
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'job.branchId',
+        department: 'job.departmentId',
+      });
+    }
+
+    const app = await qb.getOne();
+    if (!app) throw new NotFoundException('Application not found or access denied');
     return app;
   }
 
-  async updateCandidate(candidateId: string, dto: UpdateCandidateDto) {
+  async updateCandidate(candidateId: string, dto: UpdateCandidateDto, currentUser?: any) {
     const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
+      where: { id: candidateId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
     if (!candidate) throw new NotFoundException('Candidate not found');
 
     if (dto.email || dto.mobile) {
       const existingEmployee = await this.employeeRepo.findOne({
-        where: [{ email: dto.email }, { mobile: dto.mobile }],
+        where: [{ email: dto.email,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        }, { mobile: dto.mobile,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        }],
       });
       if (existingEmployee)
         throw new ConflictException(
@@ -186,16 +252,13 @@ export class InterviewService {
   }
 
   // ------------------- INTERVIEWS -------------------
-  async scheduleInterview(dto: ScheduleInterviewDto) {
-    const application = await this.applicationRepo.findOne({
-      where: { id: dto.applicationId },
-      relations: { candidate: true, job: true },
-    });
-
-    if (!application) throw new NotFoundException('Application not found');
+  async scheduleInterview(dto: ScheduleInterviewDto, currentUser?: any) {
+    const application = await this.getApplication(dto.applicationId, currentUser);
 
     const interviewer = await this.employeeRepo.findOne({
-      where: { id: dto.interviewerId },
+      where: { id: dto.interviewerId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!interviewer) throw new NotFoundException('Interviewer not found');
@@ -236,7 +299,8 @@ export class InterviewService {
         applicationId: dto.applicationId,
         roundName,
         status: InterviewStatusEnum.SCHEDULED,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (existingInterview) {
@@ -254,7 +318,8 @@ export class InterviewService {
         interviewerId: dto.interviewerId,
         scheduledAt: Between(windowStart, windowEnd),
         status: InterviewStatusEnum.SCHEDULED,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (interviewerBusy) {
@@ -292,30 +357,47 @@ export class InterviewService {
     return savedInterview;
   }
 
-  async getInterviews() {
-    return this.interviewRepo.find({
-      relations: {
-        application: { candidate: true, job: true },
-        interviewer: true,
-        feedbacks: true,
-      },
-      order: {
-        scheduledAt: 'DESC',
-      },
-    });
+  async getInterviews(currentUser?: any) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const qb = this.interviewRepo.createQueryBuilder('interview')
+      .leftJoinAndSelect('interview.application', 'application')
+      .leftJoinAndSelect('application.candidate', 'candidate')
+      .leftJoinAndSelect('application.job', 'job')
+      .leftJoinAndSelect('interview.interviewer', 'interviewer')
+      .leftJoinAndSelect('interview.feedbacks', 'feedbacks')
+      .where('interview.tenantId = :tenantId', { tenantId })
+      .orderBy('interview.scheduledAt', 'DESC');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'job.branchId',
+        department: 'job.departmentId',
+      });
+    }
+    return qb.getMany();
   }
 
-  async getInterview(id: string) {
-    const interview = await this.interviewRepo.findOne({
-      where: { id },
-      relations: {
-        application: { candidate: true, job: true },
-        interviewer: true,
-        feedbacks: { creator: true },
-      },
-    });
+  async getInterview(id: string, currentUser?: any) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const qb = this.interviewRepo.createQueryBuilder('interview')
+      .leftJoinAndSelect('interview.application', 'application')
+      .leftJoinAndSelect('application.candidate', 'candidate')
+      .leftJoinAndSelect('application.job', 'job')
+      .leftJoinAndSelect('interview.interviewer', 'interviewer')
+      .leftJoinAndSelect('interview.feedbacks', 'feedbacks')
+      .leftJoinAndSelect('feedbacks.creator', 'creator')
+      .where('interview.id = :id', { id })
+      .andWhere('interview.tenantId = :tenantId', { tenantId });
 
-    if (!interview) throw new NotFoundException('Interview not found');
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'job.branchId',
+        department: 'job.departmentId',
+      });
+    }
+
+    const interview = await qb.getOne();
+    if (!interview) throw new NotFoundException('Interview not found or access denied');
 
     return {
       interview,
@@ -330,7 +412,9 @@ export class InterviewService {
     employeeId: string,
   ) {
     const interview = await this.interviewRepo.findOne({
-      where: { id: interviewId },
+      where: { id: interviewId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: { application: true },
     });
 
@@ -339,7 +423,9 @@ export class InterviewService {
       throw new BadRequestException('Interview is already completed');
 
     const existingFeedback = await this.feedbackRepo.findOne({
-      where: { interviewId, createdBy: employeeId },
+      where: { interviewId, createdBy: employeeId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
     if (existingFeedback)
       throw new BadRequestException('Feedback already submitted');
@@ -382,12 +468,9 @@ export class InterviewService {
   async updateApplicationStatus(
     applicationId: string,
     dto: UpdateApplicationStatusDto,
+    currentUser?: any,
   ) {
-    const application = await this.applicationRepo.findOne({
-      where: { id: applicationId },
-    });
-
-    if (!application) throw new NotFoundException('Application not found');
+    const application = await this.getApplication(applicationId, currentUser);
     if (application.status === CandidateStatusEnum.HIRED)
       throw new BadRequestException('Cannot change status of hired candidate');
 
@@ -423,13 +506,8 @@ export class InterviewService {
     return this.applicationRepo.save(application);
   }
 
-  async convertToEmployee(applicationId: string, dto: ConvertCandidateDto) {
-    const application = await this.applicationRepo.findOne({
-      where: { id: applicationId },
-      relations: { candidate: true, job: true },
-    });
-
-    if (!application) throw new NotFoundException('Application not found');
+  async convertToEmployee(applicationId: string, dto: ConvertCandidateDto, currentUser?: any) {
+    const application = await this.getApplication(applicationId, currentUser);
     if (application.status !== CandidateStatusEnum.SELECTED)
       throw new BadRequestException('Only selected candidates can be hired');
 
@@ -437,7 +515,11 @@ export class InterviewService {
     const job = application.job;
 
     const existingEmployee = await this.employeeRepo.findOne({
-      where: [{ email: candidate.email }, { mobile: candidate.mobile }],
+      where: [{ email: candidate.email,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    }, { mobile: candidate.mobile,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    }],
     });
 
     if (existingEmployee)
@@ -445,16 +527,21 @@ export class InterviewService {
         'Employee already exists with this email or mobile',
       );
 
-    const role = await this.roleRepo.findOne({ where: { id: dto.roleId } });
+    const role = await this.roleRepo.findOne({ where: { id: dto.roleId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } });
     if (!role) throw new NotFoundException('Role not found');
 
     const designation = await this.designationRepo.findOne({
-      where: { id: dto.designationId },
+      where: { id: dto.designationId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
     if (!designation) throw new NotFoundException('Designation not found');
 
+    const tenantContext = this.tenantQueryService.getTenantContext();
     const password = await bcrypt.hash('123456', 10);
-    const employeeCode = await this.employeeService.generateEmployeeCode();
+    const employeeCode = await this.employeeService.generateEmployeeCode(tenantContext.tenantId);
 
     const employee = this.employeeRepo.create({
       employeeCode,
@@ -470,6 +557,7 @@ export class InterviewService {
       joiningDate: dto.joiningDate,
       employmentType: job.employmentType,
       isActive: true,
+      tenantId: tenantContext.tenantId,
     });
 
     const savedEmployee = await this.employeeRepo.manager.transaction(

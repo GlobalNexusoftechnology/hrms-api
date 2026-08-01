@@ -18,11 +18,16 @@ import { formatCurrency } from './helpers/payslip.helper';
 
 import { getMonthName } from './helpers/payslip.helper';
 
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { DataScopeService } from './../../common/services/data-scope.service';
+
 @Injectable()
 export class PayslipService {
   constructor(
     @InjectRepository(Payroll)
     private readonly payrollRepo: Repository<Payroll>,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService
   ) {}
 
   // =====================
@@ -48,27 +53,30 @@ export class PayslipService {
     payrollId: string,
     res: Response,
     requestedByEmployeeId?: string,
+    currentUser?: any
   ) {
-    const payroll = await this.payrollRepo.findOne({
-      where: {
-        id: payrollId,
-      },
+    const qb = this.payrollRepo.createQueryBuilder('payroll')
+      .leftJoinAndSelect('payroll.employee', 'employee')
+      .leftJoinAndSelect('employee.department', 'department')
+      .leftJoinAndSelect('employee.designation', 'designation')
+      .leftJoinAndSelect('employee.salaryStructures', 'salaryStructures')
+      .leftJoinAndSelect('salaryStructures.components', 'components')
+      .leftJoinAndSelect('components.salaryComponent', 'salaryComponent')
+      .leftJoinAndSelect('employee.branch', 'branch')
+      .leftJoinAndSelect('branch.organization', 'organization')
+      .where('payroll.id = :payrollId', { payrollId });
 
-      relations: {
-        employee: {
-          department: true,
-          designation: true,
-          salaryStructures: {
-            components: {
-              salaryComponent: true,
-            },
-          },
-          branch: {
-            organization: true,
-          },
-        },
-      },
-    });
+    this.tenantQueryService.applyTenantFilter(qb, 'payroll');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+        employee: 'employee.id'
+      });
+    }
+
+    const payroll = await qb.getOne();
 
     if (!payroll) {
       throw new NotFoundException('Payroll not found');

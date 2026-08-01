@@ -7,6 +7,8 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionEnum } from '../../common/enums/permission.enum';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Employee } from '../employees/entities/employee.entity';
 
 @ApiTags('Activity Logs')
 @ApiBearerAuth()
@@ -18,9 +20,11 @@ export class ActivityLogController {
 
   @Permissions(PermissionEnum.ACTIVITY_LOG_READ)
   @Get()
-  @Permissions(PermissionEnum.ACTIVITY_LOG_READ)
   @ApiOperation({ summary: 'Search and filter activity logs' })
-  async search(@Query() searchDto: SearchActivityLogDto) {
-    return this.activityLogService.searchLogs(searchDto);
+  async search(
+    @Query() searchDto: SearchActivityLogDto,
+    @CurrentUser() currentUser: Employee,
+  ) {
+    return this.activityLogService.searchLogs(searchDto, currentUser);
   }
 }

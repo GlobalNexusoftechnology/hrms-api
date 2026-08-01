@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm';
 
 export enum AuditAction {
   INSERT = 'INSERT',
@@ -19,6 +19,10 @@ export enum AuditSeverity {
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Index()
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
+  tenantId?: string | null;
 
   @Column({ name: 'correlation_id', type: 'uuid', nullable: true })
   correlationId: string;

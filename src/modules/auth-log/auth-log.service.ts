@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthLog, AuthEvent, AuthStatus } from './entities/auth-log.entity';
+import { TenantQueryService } from '../../common/services/tenant-query.service';
+import { DataScopeService } from '../../common/services/data-scope.service';
+import { Employee } from '../employees/entities/employee.entity';
 
 @Injectable()
 export class AuthLogService {
@@ -10,11 +13,15 @@ export class AuthLogService {
   constructor(
     @InjectRepository(AuthLog)
     private readonly authLogRepository: Repository<AuthLog>,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   logEvent(data: {
     userId?: string;
     sessionId?: string;
+    tenantId?: string;
+    branchId?: string;
     event: AuthEvent;
     status: AuthStatus;
     ipAddress?: string;
@@ -33,9 +40,18 @@ export class AuthLogService {
     });
   }
 
-  async findAll(query: any = {}) {
+  async findAll(query: any = {}, currentUser?: Employee) {
     const { page = 1, limit = 10, userId, event, status } = query;
     const qb = this.authLogRepository.createQueryBuilder('authLog');
+
+    this.tenantQueryService.applyTenantFilter(qb, 'authLog');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'authLog.branchId',
+        employee: 'authLog.userId',
+      });
+    }
 
     if (userId) {
       qb.andWhere('authLog.userId = :userId', { userId });
@@ -48,7 +64,7 @@ export class AuthLogService {
     }
 
     qb.orderBy('authLog.createdAt', 'DESC');
-    
+
     qb.skip((page - 1) * limit);
     qb.take(limit);
 

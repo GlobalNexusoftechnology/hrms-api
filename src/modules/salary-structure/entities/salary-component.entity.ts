@@ -1,27 +1,28 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Organization } from '../../organization/entities/organization.entity';
 import { SalaryComponentTypeEnum } from '../../../common/enums/salary-component-type.enum';
 import { CalculationTypeEnum } from '../../../common/enums/calculation-type.enum';
 import { PercentageBaseEnum } from '../../../common/enums/percentage-base.enum';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('salary_components')
-export class SalaryComponent {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'organizationId'])
+export class SalaryComponent extends TenantAwareEntity {
 
   @Column({ name: 'organization_id' })
   organizationId!: string;
 
   @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'organization_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'organization_id', referencedColumnName: 'id' },
+  ])
   organization!: Organization;
 
   @Column()
@@ -88,9 +89,4 @@ export class SalaryComponent {
   })
   percentageBase!: PercentageBaseEnum;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

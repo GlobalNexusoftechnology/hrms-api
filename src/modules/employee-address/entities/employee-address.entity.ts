@@ -1,25 +1,26 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   JoinColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Employee } from '../../employees/entities/employee.entity';
 import { AddressTypeEnum } from '../../../common/enums/address-type.enum';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('employee_addresses')
-export class EmployeeAddress {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class EmployeeAddress extends TenantAwareEntity {
 
   @Column({ name: 'employee_id' })
   employeeId!: string;
 
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ type: 'enum', enum: AddressTypeEnum })
@@ -49,9 +50,4 @@ export class EmployeeAddress {
   @Column({ type: 'boolean', default: false, name: 'is_primary' })
   isPrimary!: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

@@ -11,6 +11,8 @@ import {
 
 import { Employee } from '../../employees/entities/employee.entity';
 
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+
 export interface PayrollComponentSnapshot {
   componentId: string;
   componentCode: string | null;
@@ -22,13 +24,10 @@ export interface PayrollComponentSnapshot {
 }
 
 @Entity('payrolls')
-@Index(['employeeId', 'month', 'year'], {
+@Index(['tenantId', 'employeeId', 'month', 'year'], {
   unique: true,
 })
-export class Payroll {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Payroll extends TenantAwareEntity {
   // =====================
   // EMPLOYEE
   // =====================
@@ -308,14 +307,4 @@ export class Payroll {
     name: 'paid_at',
   })
   paidAt!: Date | null;
-
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

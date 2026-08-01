@@ -18,6 +18,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Permission } from '../permissions/entities/permission.entity';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Employee Addresses')
 @ApiBearerAuth()
@@ -32,22 +33,26 @@ export class EmployeeAddressController {
   create(
     @Param('employeeId', ParseUUIDPipe) employeeId: string,
     @Body() createDto: CreateEmployeeAddressDto,
+    @CurrentUser() user: any,
   ) {
-    return this.addressService.create(employeeId, createDto);
+    return this.addressService.create(employeeId, createDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   @ApiOperation({ summary: 'Get all addresses for an employee' })
-  findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
-    return this.addressService.findAllByEmployee(employeeId);
+  findAll(
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.addressService.findAllByEmployee(employeeId, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific address' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.addressService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.addressService.findOne(id, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
@@ -56,14 +61,15 @@ export class EmployeeAddressController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDto: UpdateEmployeeAddressDto,
+    @CurrentUser() user: any,
   ) {
-    return this.addressService.update(id, updateDto);
+    return this.addressService.update(id, updateDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an address' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.addressService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.addressService.remove(id, user);
   }
 }

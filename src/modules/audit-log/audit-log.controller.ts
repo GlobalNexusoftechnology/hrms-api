@@ -1,15 +1,17 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { AuditLogService } from './audit-log.service';
-import { Public } from '../auth/decorators/public.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PermissionEnum } from 'src/common/enums/permission.enum';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Employee } from '../employees/entities/employee.entity';
 
 @Controller('audit-logs')
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
-  // Added @Public() for easy testing via Postman/ThunderClient. Remove if you want it secured.
-  @Public()
+  @Permissions(PermissionEnum.AUDIT_LOG_READ)
   @Get()
-  findAll(@Query() query: any) {
-    return this.auditLogService.findAll(query);
+  findAll(@Query() query: any, @CurrentUser() currentUser: Employee) {
+    return this.auditLogService.findAll(query, currentUser);
   }
 }

@@ -27,8 +27,9 @@ export class LeaveBalanceController {
   getAllBalances(
     @Query()
     query: any,
+    @CurrentUser() hrUser: any,
   ) {
-    return this.leaveBalanceService.getAllBalances(query);
+    return this.leaveBalanceService.getAllBalances(query, hrUser);
   }
 
   @Permissions(PermissionEnum.LEAVE_UPDATE)
@@ -42,7 +43,7 @@ export class LeaveBalanceController {
       dto.leaveTypeId,
       dto.days,
       dto.remarks || 'Manual Adjustment by HR',
-      hrUser.id,
+      hrUser,
     );
   }
 }

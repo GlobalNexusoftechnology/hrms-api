@@ -16,6 +16,7 @@ import { UpdateEmployeeExperienceDto } from './dto/update-employee-experience.dt
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 
 @ApiTags('Employee Experience')
@@ -31,22 +32,26 @@ export class EmployeeExperienceController {
   create(
     @Param('employeeId', ParseUUIDPipe) employeeId: string,
     @Body() createDto: CreateEmployeeExperienceDto,
+    @CurrentUser() user: any,
   ) {
-    return this.experienceService.create(employeeId, createDto);
+    return this.experienceService.create(employeeId, createDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   @ApiOperation({ summary: 'Get all experience records for an employee' })
-  findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
-    return this.experienceService.findAllByEmployee(employeeId);
+  findAll(
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.experienceService.findAllByEmployee(employeeId, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific experience record' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.experienceService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.experienceService.findOne(id, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
@@ -55,14 +60,15 @@ export class EmployeeExperienceController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDto: UpdateEmployeeExperienceDto,
+    @CurrentUser() user: any,
   ) {
-    return this.experienceService.update(id, updateDto);
+    return this.experienceService.update(id, updateDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an experience record' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.experienceService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.experienceService.remove(id, user);
   }
 }

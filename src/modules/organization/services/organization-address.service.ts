@@ -26,7 +26,7 @@ export class OrganizationAddressService {
     });
     if (existing) {
       throw new BadRequestException(
-        `Address type ${createDto.addressType} already exists.`,
+        `Address type '${createDto.addressType}' already exists for this organization.`,
       );
     }
 
@@ -43,18 +43,13 @@ export class OrganizationAddressService {
     updateDto: UpdateOrganizationAddressDto,
     userId?: string,
   ) {
-    const address = await this.addressRepo.findOne({ where: { id } });
+    const org = await this.organizationService.get();
+    const address = await this.addressRepo.findOne({
+      where: { id, organizationId: org.id },
+    });
     if (!address) throw new NotFoundException('Address not found');
 
-    Object.assign(
-      address,
-      updateDto,
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-    );
+    Object.assign(address, updateDto, { updatedByUserId: userId });
     return this.addressRepo.save(address);
   }
 

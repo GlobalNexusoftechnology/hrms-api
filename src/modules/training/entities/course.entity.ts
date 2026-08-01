@@ -13,10 +13,10 @@ import { Employee } from '../../employees/entities/employee.entity';
 import { CourseModule } from './course-module.entity';
 import { CourseAssignment } from './course-assignment.entity';
 
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+
 @Entity('courses')
-export class Course {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class Course extends TenantAwareEntity {
 
   @Column()
   title!: string;
@@ -47,9 +47,4 @@ export class Course {
   @Column({ default: true, name: 'is_active' })
   isActive!: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

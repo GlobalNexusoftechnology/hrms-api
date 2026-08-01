@@ -14,20 +14,18 @@ import {
 import { Employee } from '../../employees/entities/employee.entity';
 import { Designation } from '../../designations/entities/designation.entity';
 import { Branch } from '../../organization/entities/branch.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
-@Index('unique_department_name_active', ['name'], {
+@Index('unique_department_name_active', ['name', 'tenantId'], {
   unique: true,
   where: `"deleted_at" IS NULL`,
 })
-@Index('unique_department_code_active', ['code'], {
+@Index('unique_department_code_active', ['code', 'tenantId'], {
   unique: true,
   where: `"deleted_at" IS NULL`,
 })
 @Entity('departments')
-export class Department {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Department extends TenantAwareEntity {
   @Column()
   name!: string;
 
@@ -58,19 +56,4 @@ export class Department {
 
   @OneToMany(() => Designation, (designation) => designation.department)
   designations!: Designation[];
-
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
-
-  @DeleteDateColumn({
-    name: 'deleted_at',
-  })
-  deletedAt!: Date;
 }

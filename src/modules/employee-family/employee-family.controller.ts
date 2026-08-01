@@ -16,6 +16,7 @@ import { UpdateEmployeeFamilyDto } from './dto/update-employee-family.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 
 @ApiTags('Employee Family')
@@ -31,22 +32,26 @@ export class EmployeeFamilyController {
   create(
     @Param('employeeId', ParseUUIDPipe) employeeId: string,
     @Body() createDto: CreateEmployeeFamilyDto,
+    @CurrentUser() user: any,
   ) {
-    return this.familyService.create(employeeId, createDto);
+    return this.familyService.create(employeeId, createDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   @ApiOperation({ summary: 'Get all family members for an employee' })
-  findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
-    return this.familyService.findAllByEmployee(employeeId);
+  findAll(
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.familyService.findAllByEmployee(employeeId, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific family member' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.familyService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.familyService.findOne(id, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
@@ -55,14 +60,15 @@ export class EmployeeFamilyController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDto: UpdateEmployeeFamilyDto,
+    @CurrentUser() user: any,
   ) {
-    return this.familyService.update(id, updateDto);
+    return this.familyService.update(id, updateDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a family member' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.familyService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.familyService.remove(id, user);
   }
 }

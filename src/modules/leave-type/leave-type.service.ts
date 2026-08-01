@@ -8,19 +8,24 @@ import { UpdateLeaveTypeDto } from './dto/update-leave-type.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LeaveType } from './entities/leave-type.entity';
 import { Repository } from 'typeorm';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
 
 @Injectable()
 export class LeaveTypeService {
   constructor(
     @InjectRepository(LeaveType)
-    private readonly leaveTypeRepo: Repository<LeaveType>,
+    private readonly leaveTypeRepo: Repository<LeaveType>, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   async create(createLeaveTypeDto: CreateLeaveTypeDto) {
     const existing = await this.leaveTypeRepo.findOne({
       where: [
-        { name: createLeaveTypeDto.name },
-        { code: createLeaveTypeDto.code },
+        { name: createLeaveTypeDto.name,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
+        { code: createLeaveTypeDto.code,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
       ],
     });
 
@@ -35,11 +40,15 @@ export class LeaveTypeService {
   }
 
   findAll() {
-    return this.leaveTypeRepo.find({ order: { name: 'ASC' } });
+    return this.leaveTypeRepo.find({ order: { name: 'ASC' },
+        where: { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId }
+    });
   }
 
   async findOne(id: string) {
-    const leaveType = await this.leaveTypeRepo.findOne({ where: { id } });
+    const leaveType = await this.leaveTypeRepo.findOne({ where: { id,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } });
     if (!leaveType) {
       throw new NotFoundException('Leave Type not found');
     }
@@ -52,8 +61,12 @@ export class LeaveTypeService {
     if (updateLeaveTypeDto.name || updateLeaveTypeDto.code) {
       const existing = await this.leaveTypeRepo.findOne({
         where: [
-          { name: updateLeaveTypeDto.name ?? leaveType.name },
-          { code: updateLeaveTypeDto.code ?? leaveType.code },
+          { name: updateLeaveTypeDto.name ?? leaveType.name,
+              tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
+          { code: updateLeaveTypeDto.code ?? leaveType.code,
+              tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
         ],
       });
       if (existing && existing.id !== id) {

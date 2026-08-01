@@ -4,16 +4,14 @@ import {
   Entity,
   JoinColumn,
   OneToOne,
-  PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('notification_preferences')
-export class NotificationPreference {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Index(['tenantId', 'employeeId'], { unique: true })
+export class NotificationPreference extends TenantAwareEntity {
   @Column({
-    unique: true,
     name: 'employee_id',
   })
   employeeId!: string;
@@ -21,9 +19,10 @@ export class NotificationPreference {
   @OneToOne(() => Employee, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'employee_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({

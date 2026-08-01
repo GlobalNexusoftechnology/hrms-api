@@ -1,21 +1,21 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 
 import { Employee } from '../../employees/entities/employee.entity';
 import { SalaryStructureComponent } from './salary-structure-component.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('salary_structures')
-export class SalaryStructure {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class SalaryStructure extends TenantAwareEntity {
 
   @Column({
     name: 'employee_id',
@@ -25,9 +25,10 @@ export class SalaryStructure {
   @ManyToOne(() => Employee, (employee) => employee.salaryStructures, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'employee_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({
@@ -77,13 +78,4 @@ export class SalaryStructure {
   })
   isActive!: boolean;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

@@ -1,3 +1,4 @@
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -6,14 +7,13 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Course } from './course.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 
 @Entity('course_assignments')
-export class CourseAssignment {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class CourseAssignment extends TenantAwareEntity {
 
   @Column({ name: 'course_id' })
   courseId!: string;
@@ -21,14 +21,20 @@ export class CourseAssignment {
   @ManyToOne(() => Course, (course) => course.assignments, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'course_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'course_id', referencedColumnName: 'id' },
+  ])
   course!: Course;
 
   @Column({ name: 'employee_id' })
   employeeId!: string;
 
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ type: 'numeric', name: 'progress_percentage', default: 0 })
@@ -45,7 +51,4 @@ export class CourseAssignment {
 
   @CreateDateColumn({ name: 'assigned_at' })
   assignedAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

@@ -1,11 +1,9 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 
 import { Employee } from '../../employees/entities/employee.entity';
@@ -18,11 +16,11 @@ import { SalaryStructure } from '../../salary-structure/entities/salary-structur
 
 import { CareerMovementTypeEnum } from '../../../common/enums/career-movement-type.enum';
 import { CareerMovementStatusEnum } from '../../../common/enums/career-movement-status.enum';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('employee_career_movements')
-export class EmployeeCareerMovement {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class EmployeeCareerMovement extends TenantAwareEntity {
 
   @Column({ name: 'employee_id', type: 'uuid' })
   employeeId!: string;
@@ -30,7 +28,10 @@ export class EmployeeCareerMovement {
   @ManyToOne(() => Employee, (employee) => employee.careerMovements, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ type: 'enum', enum: CareerMovementTypeEnum, name: 'movement_type' })
@@ -127,9 +128,4 @@ export class EmployeeCareerMovement {
   @Column({ name: 'executed_at', type: 'timestamp', nullable: true })
   executedAt!: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

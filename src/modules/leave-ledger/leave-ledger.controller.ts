@@ -27,14 +27,15 @@ export class LeaveLedgerController {
   @Get('employee/:employeeId')
   findByEmployee(
     @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @CurrentUser() user: any,
     @Query('year') year?: number,
   ) {
-    return this.leaveLedgerService.findAllByEmployee(employeeId, year);
+    return this.leaveLedgerService.findAllByEmployee(employeeId, year, user);
   }
 
   @Permissions(PermissionEnum.LEAVE_LEDGER_READ)
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.leaveLedgerService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.leaveLedgerService.findOne(id, user);
   }
 }

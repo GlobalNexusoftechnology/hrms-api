@@ -1,15 +1,16 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-} from 'typeorm';
+import { Entity, Column, Index } from 'typeorm';
+import { BaseEntity } from '../../../common/entities/base.entity';
 import { ActivityAction } from '../enums/activity-action.enum';
 
 @Entity('activity_logs')
-export class ActivityLog {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class ActivityLog extends BaseEntity {
+  @Index()
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
+  tenantId?: string | null;
+
+  @Index()
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId?: string | null;
 
   @Column({ name: 'user_id', type: 'uuid', nullable: true })
   userId?: string;
@@ -55,7 +56,4 @@ export class ActivityLog {
 
   @Column({ name: 'correlation_id', type: 'uuid', nullable: true })
   correlationId?: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
 }

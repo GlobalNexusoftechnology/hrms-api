@@ -10,10 +10,10 @@ import { MAX_AUTHORITY_LEVEL } from '../constants/role.constants';
 export class RBACInitializerService {
   private readonly logger = new Logger(RBACInitializerService.name);
 
-  async seed(queryRunner: QueryRunner): Promise<Role> {
-    this.logger.log('RBAC Initialization: Seeding permissions...');
+  async seed(queryRunner: QueryRunner, tenantId: string): Promise<Role> {
+    this.logger.log(`RBAC Initialization: Seeding permissions and roles for tenant ${tenantId}...`);
 
-    // ── Step 1: Seed all PermissionEnum values (idempotent) ──
+    // ── Step 1: Seed all PermissionEnum values (idempotent - global) ──
     const allPermissionNames = Object.values(PermissionEnum);
 
     for (const permName of allPermissionNames) {
@@ -32,12 +32,12 @@ export class RBACInitializerService {
     }
 
     this.logger.log(
-      `RBAC Initialization: ${allPermissionNames.length} permissions seeded.`,
+      `RBAC Initialization: ${allPermissionNames.length} permissions verified globally.`,
     );
 
-    // ── Step 2: Find or create SUPER_ADMIN role (idempotent) ──
+    // ── Step 2: Find or create SUPER_ADMIN role scoped to tenant (idempotent) ──
     let superAdminRole = await queryRunner.manager.findOne(Role, {
-      where: { name: 'SUPER_ADMIN' },
+      where: { name: 'SUPER_ADMIN', tenantId },
       relations: { permissions: true },
     });
 
@@ -50,6 +50,7 @@ export class RBACInitializerService {
         isSystem: true,
         authorityLevel: MAX_AUTHORITY_LEVEL,
         dataScope: DataScopeEnum.ORGANIZATION,
+        tenantId,
       });
       await queryRunner.manager.save(Role, superAdminRole);
       this.logger.log('RBAC Initialization: SUPER_ADMIN role created.');

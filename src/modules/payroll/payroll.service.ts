@@ -32,6 +32,8 @@ import { PercentageBaseEnum } from '../../common/enums/percentage-base.enum';
 import { DataScopeService } from './../../common/services/data-scope.service';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../../common/enums/NotificationType.enum';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { ClsService } from 'nestjs-cls';
 
 @Injectable()
 export class PayrollService {
@@ -64,7 +66,9 @@ export class PayrollService {
     private readonly holidayRepo: Repository<Holiday>,
 
     private readonly dataScopeService: DataScopeService,
-    private readonly notificationService: NotificationService,
+    private readonly notificationService: NotificationService, 
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly cls: ClsService,
   ) {}
 
   // =====================
@@ -110,7 +114,8 @@ export class PayrollService {
         employeeId,
         month,
         year,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (existing) {
@@ -118,14 +123,18 @@ export class PayrollService {
     }
 
     const employee = await this.employeeRepo.findOne({
-      where: { id: employeeId },
+      where: { id: employeeId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: { shift: true },
     });
 
     if (!employee) throw new NotFoundException('Employee not found');
 
     const salary = await this.salaryRepo.findOne({
-      where: { employeeId, isActive: true },
+      where: { employeeId, isActive: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: { components: { salaryComponent: true } },
     });
 
@@ -138,11 +147,15 @@ export class PayrollService {
     // WORKING DAYS CALCULATION
     const weekends =
       precalculatedWeekends ??
-      (await this.weekendRepo.find({ where: { isOff: true } }));
+      (await this.weekendRepo.find({ where: { isOff: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } }));
 
     // HOLIDAYS & LEAVES
     const holidays = await this.holidayRepo.find({
-      where: { date: Between(startDate, endDate) },
+      where: { date: Between(startDate, endDate),
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
     const holidayDates = holidays.map((h) => h.date);
     const weekendDays = weekends.map((w) => w.day.toLowerCase());
@@ -185,7 +198,8 @@ export class PayrollService {
       where: {
         employeeId,
         date: Between(startDate, endDate),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const presentDays = attendances.filter(
@@ -292,7 +306,9 @@ export class PayrollService {
       );
 
       const policy = await this.leavePolicyRepo.findOne({
-        where: { leaveTypeId: req.leaveTypeId, isActive: true },
+        where: { leaveTypeId: req.leaveTypeId, isActive: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
       });
 
       let overlapDays = 0;
@@ -431,7 +447,8 @@ export class PayrollService {
           new Date(startDate + 'T00:00:00Z'),
           new Date(endDate + 'T23:59:59Z'),
         ),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const encashedDays = encashments.reduce(
@@ -605,7 +622,8 @@ export class PayrollService {
     const data = await this.payrollRepo.find({
       where: {
         employeeId,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
 
       order: {
         year: 'DESC',
@@ -670,6 +688,8 @@ export class PayrollService {
       );
     }
 
+    this.tenantQueryService.applyTenantFilter(qb, 'payroll');
+
     this.dataScopeService.applyScope(qb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
@@ -703,7 +723,8 @@ export class PayrollService {
     const payroll = await this.payrollRepo.findOne({
       where: {
         id,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!payroll) {
@@ -725,7 +746,9 @@ export class PayrollService {
 
   async payAll(month: number, year: number) {
     const payrolls = await this.payrollRepo.find({
-      where: { month, year, isPaid: false },
+      where: { month, year, isPaid: false,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (payrolls.length === 0) {
@@ -751,11 +774,15 @@ export class PayrollService {
 
   async generateAllPayroll(month: number, year: number) {
     const employees = await this.employeeRepo.find({
-      where: { isActive: true },
+      where: { isActive: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       select: { id: true },
     });
 
-    const weekends = await this.weekendRepo.find({ where: { isOff: true } });
+    const weekends = await this.weekendRepo.find({ where: { isOff: true,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } });
 
     let generated = 0;
     let skipped = 0;
@@ -814,7 +841,31 @@ export class PayrollService {
       console.log(
         `[Payroll Cron] Auto-generating payrolls for ${month}/${year}`,
       );
-      await this.generateAllPayroll(month, year);
+      
+      const tenants = await this.employeeRepo
+        .createQueryBuilder('employee')
+        .select('employee.tenantId', 'tenantId')
+        .where('employee.tenantId IS NOT NULL')
+        .distinct(true)
+        .getRawMany();
+
+      for (const t of tenants) {
+        if (!t.tenantId) continue;
+        await this.cls.runWith(
+          {
+            tenantContext: {
+              tenantId: t.tenantId,
+              branchId: null,
+              userId: 'CRON',
+              email: 'cron@system.local',
+            },
+          } as any,
+          async () => {
+            console.log(`[Payroll Cron] Processing for tenant: ${t.tenantId}`);
+            await this.generateAllPayroll(month, year);
+          }
+        );
+      }
     }
   }
 

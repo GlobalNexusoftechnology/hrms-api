@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, DataSource } from 'typeorm';
 import {
@@ -10,6 +10,8 @@ import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
 import { CreateLeaveLedgerDto } from '../leave-ledger/dto/create-leave-ledger.dto';
 import { Cron } from '@nestjs/schedule';
 import { Employee } from '../employees/entities/employee.entity';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class LeaveEngineService {
@@ -23,6 +25,8 @@ export class LeaveEngineService {
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
     private readonly dataSource: DataSource,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService
   ) {}
 
   // -------------------------------------------------------------
@@ -93,17 +97,32 @@ export class LeaveEngineService {
     leaveTypeId: string,
     days: number,
     remarks: string,
-    hrUserId?: string,
+    currentUser?: any,
   ) {
     if (days === 0)
       throw new BadRequestException('Adjustment days cannot be zero');
+
+    if (currentUser) {
+      const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+      const qb = this.employeeRepo.createQueryBuilder('employee')
+        .where('employee.id = :employeeId', { employeeId })
+        .andWhere('employee.tenantId = :tenantId', { tenantId });
+
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+
+      const emp = await qb.getOne();
+      if (!emp) throw new NotFoundException('Employee not found or access denied for adjustment');
+    }
 
     return this.processTransaction({
       employeeId,
       leaveTypeId,
       transactionType: LeaveTransactionType.ADJUSTMENT,
       days,
-      referenceId: hrUserId, // optionally store who made the adjustment
+      referenceId: currentUser?.id, // optionally store who made the adjustment
       remarks: remarks || 'Manual Adjustment by HR',
     });
   }
@@ -117,7 +136,9 @@ export class LeaveEngineService {
   async executeMonthlyAccrual() {
     // 1. Fetch all active policies with MONTHLY accrual
     const policies = await this.leavePolicyRepo.find({
-      where: { isActive: true, accrualFrequency: 'MONTHLY' as any },
+      where: { isActive: true, accrualFrequency: 'MONTHLY' as any,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     for (const policy of policies) {
@@ -143,7 +164,9 @@ export class LeaveEngineService {
   @Cron('0 0 1 1 *', { timeZone: 'Asia/Kolkata' })
   async executeYearlyAccrual() {
     const policies = await this.leavePolicyRepo.find({
-      where: { isActive: true, accrualFrequency: 'YEARLY' as any },
+      where: { isActive: true, accrualFrequency: 'YEARLY' as any,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     for (const policy of policies) {
@@ -170,7 +193,9 @@ export class LeaveEngineService {
     // Phase 1 implementation: organization wide
     const employees = await this.employeeRepo.find({
       select: { id: true },
-      where: { isActive: true },
+      where: { isActive: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
     return employees.map((e) => e.id);
   }

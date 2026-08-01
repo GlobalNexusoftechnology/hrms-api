@@ -20,6 +20,7 @@ import { Leave } from '../entities/leave.entity';
 import { WeekNumberEnum } from 'src/common/enums/WeekNumberEnum.enum';
 import { WeekDayEnum } from 'src/common/enums/WeekDayEnum.enum';
 import { Shift } from '../../shift/entities/shift.entity';
+import { TenantQueryService } from "../../../common/services/tenant-query.service";
 
 @Injectable()
 export class AttendanceValidationService {
@@ -33,7 +34,7 @@ export class AttendanceValidationService {
     private readonly weekendRepo: Repository<WeekendSetting>,
 
     @InjectRepository(Leave)
-    private readonly leaveRepo: Repository<Leave>,
+    private readonly leaveRepo: Repository<Leave>, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   // =====================
@@ -46,7 +47,8 @@ export class AttendanceValidationService {
         id: employeeId,
         isActive: true,
         deletedAt: IsNull(),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: {
         shift: true,
         branch: {
@@ -230,7 +232,8 @@ export class AttendanceValidationService {
     const holiday = await this.holidayRepo.findOne({
       where: {
         date: today,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (holiday) {
@@ -267,6 +270,7 @@ export class AttendanceValidationService {
           weekNumber: WeekNumberEnum.ALL,
 
           isOff: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
 
         {
@@ -275,6 +279,7 @@ export class AttendanceValidationService {
           weekNumber: weekMap[weekOfMonth],
 
           isOff: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       ],
     });
@@ -284,7 +289,7 @@ export class AttendanceValidationService {
     }
 
     // LEAVE
-    const leave = await this.leaveRepo
+    const leaveQb = this.leaveRepo
       .createQueryBuilder('leave')
       .where(
         `
@@ -311,8 +316,9 @@ export class AttendanceValidationService {
         {
           today,
         },
-      )
-      .getOne();
+      );
+    this.tenantQueryService.applyTenantFilter(leaveQb, 'leave');
+    const leave = await leaveQb.getOne();
 
     if (leave) {
       throw new BadRequestException('Leave approved for today');

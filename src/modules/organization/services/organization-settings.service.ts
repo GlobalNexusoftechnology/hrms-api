@@ -41,18 +41,9 @@ export class OrganizationSettingsService {
     const settings = await this.settingsRepo.findOne({
       where: { organizationId: org.id },
     });
-
     if (!settings) throw new NotFoundException('Settings not found');
 
-    Object.assign(
-      settings,
-      updateDto,
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-    );
+    Object.assign(settings, updateDto, { updatedByUserId: userId });
     return this.settingsRepo.save(settings);
   }
 

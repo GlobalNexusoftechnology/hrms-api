@@ -1,20 +1,18 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('leave_types')
-export class LeaveType {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
-  @Column({ unique: true })
+@Index(['tenantId', 'name'], { unique: true })
+@Index(['tenantId', 'code'], { unique: true })
+export class LeaveType extends TenantAwareEntity {
+  @Column()
   name!: string;
 
-  @Column({ unique: true })
+  @Column()
   code!: string;
 
   @Column({ nullable: true })
@@ -23,9 +21,4 @@ export class LeaveType {
   @Column({ default: true, name: 'is_active' })
   isActive!: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

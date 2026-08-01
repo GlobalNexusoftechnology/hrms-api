@@ -235,8 +235,8 @@ export class OrganizationController {
   @Get('branch')
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get all branches' })
-  async getBranches() {
-    return this.branchService.findAll();
+  async getBranches(@CurrentUser() user: any) {
+    return this.branchService.findAll(user);
   }
 
   @Post('branch')
@@ -266,8 +266,8 @@ export class OrganizationController {
   @Get('branch/:id/contact')
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get all contacts for a specific branch' })
-  async getBranchContacts(@Param('id') branchId: string) {
-    return this.contactService.findByBranch(branchId);
+  async getBranchContacts(@Param('id') branchId: string, @CurrentUser() user: any) {
+    return this.contactService.findByBranch(branchId, user);
   }
 
   @Post('branch/:id/contact')
@@ -292,8 +292,8 @@ export class OrganizationController {
     summary:
       'Get all org-level contacts (not linked to any specific branch). For branch contacts use GET /organization/branch/:id/contact',
   })
-  async getContacts() {
-    return this.contactService.findOrgLevel();
+  async getContacts(@CurrentUser() user: any) {
+    return this.contactService.findOrgLevel(user);
   }
 
   @Post('contact')
@@ -322,8 +322,8 @@ export class OrganizationController {
   @Get('bank-account')
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get all organization bank accounts' })
-  async getBankAccounts() {
-    return this.bankAccountService.findAll();
+  async getBankAccounts(@CurrentUser() user: any) {
+    return this.bankAccountService.findAll(user);
   }
 
   @Post('bank-account')
@@ -352,8 +352,8 @@ export class OrganizationController {
   @Get('document')
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get all organization documents' })
-  async getDocuments() {
-    return this.documentService.findAll();
+  async getDocuments(@CurrentUser() user: any) {
+    return this.documentService.findAll(user);
   }
 
   @Post('document')

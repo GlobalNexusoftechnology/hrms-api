@@ -9,13 +9,13 @@ import {
   JoinColumn,
   ManyToOne,
   OneToOne,
-  PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('notifications')
-export class Notification {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class Notification extends TenantAwareEntity {
 
   @Column({
     name: 'employee_id',
@@ -25,9 +25,10 @@ export class Notification {
   @ManyToOne(() => Employee, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'employee_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column()
@@ -59,6 +60,4 @@ export class Notification {
   })
   isRead!: boolean;
 
-  @CreateDateColumn()
-  createdAt!: Date;
 }

@@ -3,6 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { ActivityLog } from './entities/activity-log.entity';
 import { SearchActivityLogDto } from './dto/search-activity-log.dto';
+import { TenantQueryService } from '../../common/services/tenant-query.service';
+import { DataScopeService } from '../../common/services/data-scope.service';
+import { Employee } from '../employees/entities/employee.entity';
 
 @Injectable()
 export class ActivityLogService {
@@ -11,6 +14,8 @@ export class ActivityLogService {
   constructor(
     @InjectRepository(ActivityLog)
     private readonly activityLogRepository: Repository<ActivityLog>,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   /**
@@ -32,7 +37,7 @@ export class ActivityLogService {
   /**
    * Searches and filters activity logs with pagination.
    */
-  async searchLogs(searchDto: SearchActivityLogDto) {
+  async searchLogs(searchDto: SearchActivityLogDto, currentUser?: Employee) {
     const {
       userId,
       module,
@@ -52,6 +57,15 @@ export class ActivityLogService {
 
     const queryBuilder: SelectQueryBuilder<ActivityLog> =
       this.activityLogRepository.createQueryBuilder('log');
+
+    this.tenantQueryService.applyTenantFilter(queryBuilder, 'log');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(queryBuilder, currentUser, {
+        branch: 'log.branchId',
+        employee: 'log.userId',
+      });
+    }
 
     if (userId) {
       queryBuilder.andWhere('log.userId = :userId', { userId });

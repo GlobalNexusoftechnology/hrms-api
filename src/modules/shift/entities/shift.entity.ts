@@ -1,20 +1,18 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('shifts')
-export class Shift {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'code'], { unique: true })
+export class Shift extends TenantAwareEntity {
 
   @Column({ type: 'varchar', length: 100 })
   name!: string;
 
-  @Column({ type: 'varchar', length: 50, unique: true })
+  @Column({ type: 'varchar', length: 50 })
   code!: string;
 
   @Column({ type: 'text', nullable: true })
@@ -78,9 +76,4 @@ export class Shift {
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive!: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

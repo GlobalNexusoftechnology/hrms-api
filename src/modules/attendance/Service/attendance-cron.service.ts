@@ -27,6 +27,7 @@ import dayjs from 'dayjs';
 import { AttendanceValidationService } from './attendance-validation.service';
 import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../../common/enums/NotificationType.enum';
+import { TenantQueryService } from "../../../common/services/tenant-query.service";
 
 @Injectable()
 export class AttendanceCronService {
@@ -48,7 +49,7 @@ export class AttendanceCronService {
 
     private readonly dataSource: DataSource,
     private readonly validationService: AttendanceValidationService,
-    private readonly notificationService: NotificationService,
+    private readonly notificationService: NotificationService, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   // =====================
@@ -175,7 +176,8 @@ export class AttendanceCronService {
     const holiday = await this.holidayRepo.findOne({
       where: {
         date: today,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!holiday) {
@@ -187,7 +189,8 @@ export class AttendanceCronService {
         isActive: true,
 
         deletedAt: IsNull(),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
 
       select: {
         id: true,
@@ -200,6 +203,7 @@ export class AttendanceCronService {
           employeeId: employee.id,
 
           date: today,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
 
@@ -260,6 +264,7 @@ export class AttendanceCronService {
           weekNumber: WeekNumberEnum.ALL,
 
           isOff: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
 
         {
@@ -268,6 +273,7 @@ export class AttendanceCronService {
           weekNumber: weekMap[weekOfMonth],
 
           isOff: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       ],
     });
@@ -276,7 +282,8 @@ export class AttendanceCronService {
     const holiday = await this.holidayRepo.findOne({
       where: {
         date: today,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (holiday) {
@@ -292,7 +299,8 @@ export class AttendanceCronService {
         isActive: true,
 
         deletedAt: IsNull(),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
 
       select: {
         id: true,
@@ -305,6 +313,7 @@ export class AttendanceCronService {
           employeeId: employee.id,
 
           date: today,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
 
@@ -340,7 +349,8 @@ export class AttendanceCronService {
       where: {
         isActive: true,
         deletedAt: IsNull(),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: {
         shift: true,
         branch: {
@@ -359,7 +369,8 @@ export class AttendanceCronService {
     const holiday = await this.holidayRepo.findOne({
       where: {
         date: today,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     // =====================
@@ -396,6 +407,7 @@ export class AttendanceCronService {
           weekNumber: WeekNumberEnum.ALL,
 
           isOff: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
 
         {
@@ -404,6 +416,7 @@ export class AttendanceCronService {
           weekNumber: weekMap[weekOfMonth],
 
           isOff: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       ],
     });
@@ -413,6 +426,7 @@ export class AttendanceCronService {
         where: {
           employeeId: employee.id,
           date: today,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
 

@@ -4,12 +4,16 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { MailService } from './mail.service';
 import { MailController } from './mail.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Organization } from '../organization/entities/organization.entity';
+import { Branch } from '../organization/entities/branch.entity';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    TypeOrmModule.forFeature([Organization, Branch]),
 
     MailerModule.forRootAsync({
       inject: [ConfigService],

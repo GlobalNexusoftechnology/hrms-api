@@ -1,13 +1,14 @@
-import { Entity, Column, ManyToMany, JoinTable } from 'typeorm';
-import { BaseEntity } from '../../../common/entities/base.entity';
+import { Entity, Column, ManyToMany, JoinTable, Index } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Permission } from '../../permissions/entities/permission.entity';
 import { DataScopeEnum } from '../../../common/enums/data-scope.enum';
 
+@Index('unique_role_name_active', ['name', 'tenantId'], {
+  unique: true,
+})
 @Entity('roles')
-export class Role extends BaseEntity {
-  @Column({
-    unique: true,
-  })
+export class Role extends TenantAwareEntity {
+  @Column()
   name!: string;
 
   @Column({

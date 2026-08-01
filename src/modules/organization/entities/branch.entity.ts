@@ -6,7 +6,7 @@ import {
   Index,
   OneToMany,
 } from 'typeorm';
-import { BaseEntity } from '../../../common/entities/base.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Organization } from './organization.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 import { OrganizationContact } from './organization-contact.entity';
@@ -16,8 +16,12 @@ import { BranchType } from '../../../common/enums/branch-type.enum';
 import { BranchStatus } from '../../../common/enums/branch-status.enum';
 import { Shift } from '../../shift/entities/shift.entity';
 
+@Index('unique_branch_code_active', ['code', 'tenantId'], {
+  unique: true,
+  where: `"deleted_at" IS NULL`,
+})
 @Entity('branches')
-export class Branch extends BaseEntity {
+export class Branch extends TenantAwareEntity {
   @Column({ name: 'organization_id' })
   @Index()
   organizationId!: string;
@@ -43,7 +47,7 @@ export class Branch extends BaseEntity {
   })
   branchType!: BranchType;
 
-  @Column({ unique: true })
+  @Column()
   code!: string;
 
   @Column({ name: 'is_head_office', type: 'boolean', default: false })

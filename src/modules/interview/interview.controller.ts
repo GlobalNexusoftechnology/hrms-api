@@ -57,7 +57,7 @@ export class InterviewController {
   getMyInterviews(@CurrentUser() user: any) {
     // In a real app we'd filter by user.id in the service, but we'll return all for now
     // or you can add a method `getInterviewsByInterviewer(user.id)` to `InterviewService`.
-    return this.interviewService.getInterviews();
+    return this.interviewService.getInterviews(user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

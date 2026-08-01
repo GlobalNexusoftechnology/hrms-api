@@ -13,24 +13,24 @@ export class ContextInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    
-    // Set HTTP context
+
+    // Set HTTP context immediately — available before guards run
     this.cls.set('ipAddress', request.ip);
     this.cls.set('endpoint', request.originalUrl || request.url);
     this.cls.set('method', request.method);
-    
-    // Basic user agent parsing
+
+    // Parse user agent into human-readable labels (not the raw 300-char string)
     const userAgent = request.headers['user-agent'] || '';
     this.cls.set('browser', this.getBrowser(userAgent));
     this.cls.set('os', this.getOS(userAgent));
-    this.cls.set('device', userAgent); // Storing full UA as device for reference
+    this.cls.set('device', this.getDevice(userAgent));
 
-    // Set User context (if authenticated)
+    // NOTE: request.user is populated by Passport middleware BEFORE interceptors
+    // run, so it IS available here on authenticated routes.
+    const user = request.user;
     if (user) {
-      this.cls.set('userId', user.employeeId || user.id || user.sub);
+      this.cls.set('userId', user.id || user.employeeId || user.sub);
       this.cls.set('roleId', user.roleId);
-      this.cls.set('organizationId', user.organizationId);
       this.cls.set('branchId', user.branchId);
       this.cls.set('sessionId', user.sessionId);
     }
@@ -53,5 +53,11 @@ export class ContextInterceptor implements NestInterceptor {
     if (userAgent.includes('Android')) return 'Android';
     if (userAgent.includes('iOS')) return 'iOS';
     return 'Unknown';
+  }
+
+  private getDevice(userAgent: string): string {
+    if (userAgent.includes('Mobile') || userAgent.includes('Android')) return 'Mobile';
+    if (userAgent.includes('Tablet') || userAgent.includes('iPad')) return 'Tablet';
+    return 'Desktop';
   }
 }

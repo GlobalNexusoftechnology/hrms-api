@@ -16,6 +16,7 @@ import { UpdateEmployeeBankDto } from './dto/update-employee-bank.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 
 @ApiTags('Employee Bank Details')
@@ -31,22 +32,26 @@ export class EmployeeBankController {
   create(
     @Param('employeeId', ParseUUIDPipe) employeeId: string,
     @Body() createDto: CreateEmployeeBankDto,
+    @CurrentUser() user: any,
   ) {
-    return this.bankService.create(employeeId, createDto);
+    return this.bankService.create(employeeId, createDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   @ApiOperation({ summary: 'Get all bank accounts for an employee' })
-  findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
-    return this.bankService.findAllByEmployee(employeeId);
+  findAll(
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.bankService.findAllByEmployee(employeeId, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific bank account' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.bankService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.bankService.findOne(id, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
@@ -55,14 +60,15 @@ export class EmployeeBankController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDto: UpdateEmployeeBankDto,
+    @CurrentUser() user: any,
   ) {
-    return this.bankService.update(id, updateDto);
+    return this.bankService.update(id, updateDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a bank account' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.bankService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.bankService.remove(id, user);
   }
 }

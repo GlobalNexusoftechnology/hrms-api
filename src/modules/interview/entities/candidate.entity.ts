@@ -5,14 +5,14 @@ import {
   DeleteDateColumn,
   Entity,
   OneToMany,
-  PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('candidates')
-export class Candidate {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'email'], { unique: true })
+export class Candidate extends TenantAwareEntity {
 
   @Column({
     name: 'first_name',
@@ -24,9 +24,7 @@ export class Candidate {
   })
   lastName!: string;
 
-  @Column({
-    unique: true,
-  })
+  @Column()
   email!: string;
 
   @Column()
@@ -88,19 +86,4 @@ export class Candidate {
   @OneToMany(() => CandidateApplication, (app) => app.candidate)
   applications!: CandidateApplication[];
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
-
-  @DeleteDateColumn({
-    type: 'text',
-    name: 'deleted_at',
-  })
-  deletedAt!: Date | null;
 }

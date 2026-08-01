@@ -1,14 +1,13 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
   ManyToOne,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { Employee } from '../../employees/entities/employee.entity';
 import { LeaveType } from '../../leave-type/entities/leave-type.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 export enum LeaveTransactionType {
   ACCRUAL = 'ACCRUAL',
@@ -19,23 +18,27 @@ export enum LeaveTransactionType {
 }
 
 @Entity('leave_ledger')
-@Index(['employeeId', 'leaveTypeId'])
-export class LeaveLedger {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId', 'leaveTypeId'])
+export class LeaveLedger extends TenantAwareEntity {
 
   @Column({ name: 'employee_id' })
   employeeId!: string;
 
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ name: 'leave_type_id' })
   leaveTypeId!: string;
 
   @ManyToOne(() => LeaveType, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'leave_type_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'leave_type_id', referencedColumnName: 'id' },
+  ])
   leaveType!: LeaveType;
 
   @Column({
@@ -54,6 +57,4 @@ export class LeaveLedger {
   @Column({ nullable: true })
   remarks?: string;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
 }

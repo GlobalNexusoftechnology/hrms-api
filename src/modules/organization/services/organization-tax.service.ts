@@ -41,18 +41,9 @@ export class OrganizationTaxService {
     const tax = await this.taxRepo.findOne({
       where: { organizationId: org.id },
     });
-
     if (!tax) throw new NotFoundException('Tax profile not found');
 
-    Object.assign(
-      tax,
-      updateDto,
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-    );
+    Object.assign(tax, updateDto, { updatedByUserId: userId });
     return this.taxRepo.save(tax);
   }
 

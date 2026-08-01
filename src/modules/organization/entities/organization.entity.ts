@@ -20,6 +20,7 @@ import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Shift } from '../../shift/entities/shift.entity';
 
 @Entity('organizations')
+@Index(['tenantId', 'id'], { unique: true })
 export class Organization extends BaseEntity {
   @Column({ name: 'tenant_id', nullable: true })
   @Index()

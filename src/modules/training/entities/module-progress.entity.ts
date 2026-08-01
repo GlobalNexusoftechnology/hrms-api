@@ -1,3 +1,4 @@
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -6,27 +7,32 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Employee } from '../../employees/entities/employee.entity';
 import { CourseModule } from './course-module.entity';
 
 @Entity('module_progress')
-export class ModuleProgress {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class ModuleProgress extends TenantAwareEntity {
 
   @Column({ name: 'employee_id' })
   employeeId!: string;
 
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ name: 'module_id' })
   moduleId!: string;
 
   @ManyToOne(() => CourseModule, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'module_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'module_id', referencedColumnName: 'id' },
+  ])
   module!: CourseModule;
 
   @Column({ name: 'is_unlocked', default: false })
@@ -37,10 +43,4 @@ export class ModuleProgress {
 
   @Column({ type: 'timestamp', name: 'completed_at', nullable: true })
   completedAt!: Date | null;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

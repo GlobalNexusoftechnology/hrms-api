@@ -12,19 +12,21 @@ import { Holiday } from './entities/holiday.entity';
 
 import { CreateHolidayDto } from './dto/create-holiday.dto';
 import { UpdateHolidayDto } from './dto/update-holiday.dto';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
 
 @Injectable()
 export class HolidayService {
   constructor(
     @InjectRepository(Holiday)
-    private readonly holidayRepo: Repository<Holiday>,
+    private readonly holidayRepo: Repository<Holiday>, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   async create(dto: CreateHolidayDto) {
     const existing = await this.holidayRepo.findOne({
       where: {
         date: dto.date,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (existing) {
@@ -75,7 +77,8 @@ export class HolidayService {
     const holiday = await this.holidayRepo.findOne({
       where: {
         id,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!holiday) {
@@ -92,6 +95,7 @@ export class HolidayService {
       const existing = await this.holidayRepo.findOne({
         where: {
           date: dto.date,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
 

@@ -22,6 +22,7 @@ import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../../common/enums/NotificationType.enum';
 import { DataScopeService } from '../../common/services/data-scope.service';
 import { DataScopeEnum } from '../../common/enums/data-scope.enum';
+import { TenantQueryService } from '../../common/services/tenant-query.service';
 
 @Injectable()
 export class TeamService {
@@ -40,6 +41,7 @@ export class TeamService {
 
     private readonly notificationService: NotificationService,
     private readonly dataScopeService: DataScopeService,
+    private readonly tenantQueryService: TenantQueryService,
   ) {}
 
   private validateWriteAccess(
@@ -84,6 +86,7 @@ export class TeamService {
     const existingTeam = await this.teamRepository.findOne({
       where: {
         name: dto.name,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -95,6 +98,7 @@ export class TeamService {
       const department = await this.departmentRepository.findOne({
         where: {
           id: dto.departmentId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
         },
       });
 
@@ -107,6 +111,7 @@ export class TeamService {
       const employee = await this.employeeRepository.findOne({
         where: {
           id: dto.teamLeadId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
         },
       });
 
@@ -162,6 +167,8 @@ export class TeamService {
       });
     }
 
+    this.tenantQueryService.applyTenantFilter(qb, 'team');
+
     qb.orderBy('team.createdAt', 'DESC');
     qb.skip((page - 1) * limit);
     qb.take(limit);
@@ -193,6 +200,8 @@ export class TeamService {
       });
     }
 
+    this.tenantQueryService.applyTenantFilter(qb, 'team');
+
     const team = await qb.getOne();
 
     if (!team) {
@@ -206,7 +215,7 @@ export class TeamService {
     const { teamId, employeeIds } = dto;
 
     const team = await this.teamRepository.findOne({
-      where: { id: teamId },
+      where: { id: teamId, tenantId: this.tenantQueryService.getTenantWhereClause().tenantId },
     });
 
     if (!team) {
@@ -287,7 +296,7 @@ export class TeamService {
 
   async updateTeam(id: string, dto: UpdateTeamDto, currentUser: Employee) {
     const team = await this.teamRepository.findOne({
-      where: { id },
+      where: { id, tenantId: this.tenantQueryService.getTenantWhereClause().tenantId },
     });
 
     if (!team) {
@@ -303,6 +312,7 @@ export class TeamService {
       const existingTeam = await this.teamRepository.findOne({
         where: {
           name: dto.name,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
         },
       });
 
@@ -315,6 +325,7 @@ export class TeamService {
       const department = await this.departmentRepository.findOne({
         where: {
           id: dto.departmentId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
         },
       });
 
@@ -327,6 +338,7 @@ export class TeamService {
       const employee = await this.employeeRepository.findOne({
         where: {
           id: dto.teamLeadId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
         },
       });
 
@@ -342,6 +354,7 @@ export class TeamService {
     const members = await this.teamMemberRepository.find({
       where: {
         teamId: team.id,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -368,6 +381,7 @@ export class TeamService {
     const team = await this.teamRepository.findOne({
       where: {
         id: teamId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -381,6 +395,7 @@ export class TeamService {
       where: {
         teamId,
         employeeId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -407,7 +422,7 @@ export class TeamService {
 
   async deleteTeam(id: string, currentUser: Employee) {
     const team = await this.teamRepository.findOne({
-      where: { id },
+      where: { id, tenantId: this.tenantQueryService.getTenantWhereClause().tenantId },
     });
 
     if (!team) {
@@ -419,6 +434,7 @@ export class TeamService {
     const members = await this.teamMemberRepository.find({
       where: {
         teamId: id,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -447,6 +463,7 @@ export class TeamService {
     const team = await this.teamRepository.findOne({
       where: {
         id: teamId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -459,6 +476,7 @@ export class TeamService {
     const employee = await this.employeeRepository.findOne({
       where: {
         id: dto.teamLeadId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -470,6 +488,7 @@ export class TeamService {
       where: {
         teamId,
         employeeId: dto.teamLeadId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -523,6 +542,7 @@ export class TeamService {
     const team = await this.teamRepository.findOne({
       where: {
         id,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
       select: {
         isActive: true,
@@ -546,6 +566,7 @@ export class TeamService {
     const updatedTeam = await this.teamRepository.findOne({
       where: {
         id,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
       select: {
         isActive: true,
@@ -555,6 +576,7 @@ export class TeamService {
     const members = await this.teamMemberRepository.find({
       where: {
         teamId: id,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
     });
 
@@ -578,6 +600,7 @@ export class TeamService {
     const teamMember = await this.teamMemberRepository.findOne({
       where: {
         employeeId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
       relations: {
         team: {

@@ -45,22 +45,28 @@ export class ResignationsController {
   @Get()
   @Permissions(PermissionEnum.RESIGNATION_READ)
   @ApiOperation({ summary: 'View all resignations in the system' })
-  findAll() {
-    return this.resignationsService.findAll();
+  findAll(@CurrentUser() user: any) {
+    return this.resignationsService.findAll(user);
   }
 
   @Get('employees/:employeeId')
   @Permissions(PermissionEnum.RESIGNATION_READ)
   @ApiOperation({ summary: 'View resignations for a specific employee' })
-  findByEmployee(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
-    return this.resignationsService.findByEmployee(employeeId);
+  findByEmployee(
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @CurrentUser() user: any
+  ) {
+    return this.resignationsService.findByEmployee(employeeId, user);
   }
 
   @Get(':id')
   @Permissions(PermissionEnum.RESIGNATION_READ)
   @ApiOperation({ summary: 'View a specific resignation' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.resignationsService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: any
+  ) {
+    return this.resignationsService.findOne(id, user);
   }
 
   @Patch(':id/approve')

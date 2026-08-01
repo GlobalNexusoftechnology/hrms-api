@@ -14,6 +14,7 @@ import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 
 import { formatIST, todayIST } from '../../../utils/time.util';
 import { DataScopeService } from '../../../common/services/data-scope.service';
+import { TenantQueryService } from "../../../common/services/tenant-query.service";
 
 @Injectable()
 export class AttendanceDashboardService {
@@ -24,7 +25,7 @@ export class AttendanceDashboardService {
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
 
-    private readonly dataScopeService: DataScopeService,
+    private readonly dataScopeService: DataScopeService, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   async getEmployeeDashboard(employeeId: string) {
@@ -33,7 +34,8 @@ export class AttendanceDashboardService {
         id: employeeId,
 
         deletedAt: IsNull(),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!employee) {
@@ -54,13 +56,15 @@ export class AttendanceDashboardService {
       where: {
         employeeId,
         date: today,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const all = await this.attendanceRepo.find({
       where: {
         employeeId,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const weekly = await this.attendanceRepo

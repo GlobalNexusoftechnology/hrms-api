@@ -31,8 +31,9 @@ export class PayslipController {
 
     @Res()
     res: Response,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.payslipService.downloadPayslip(id, res);
+    return this.payslipService.downloadPayslip(id, res, undefined, currentUser);
   }
 
   @Permissions(PermissionEnum.PAYROLL_READ)

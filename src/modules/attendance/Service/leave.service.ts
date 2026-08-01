@@ -22,6 +22,7 @@ import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../../common/enums/NotificationType.enum';
 import { Holiday } from '../../holiday/entities/holiday.entity';
 import { WeekendSetting } from '../../weekend_settings/entities/weekend_setting.entity';
+import { TenantQueryService } from "../../../common/services/tenant-query.service";
 
 @Injectable()
 export class LeaveService {
@@ -51,7 +52,7 @@ export class LeaveService {
 
     private readonly dataSource: DataSource,
     private readonly dataScopeService: DataScopeService,
-    private readonly notificationService: NotificationService,
+    private readonly notificationService: NotificationService, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   async requestLeave(employeeId: string, dto: CreateLeaveDto) {
@@ -72,6 +73,8 @@ export class LeaveService {
         'Start date cannot be greater than end date',
       );
     }
+
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
     const overlappingLeave = await this.leaveRepo
       .createQueryBuilder('leave')
@@ -94,16 +97,19 @@ export class LeaveService {
 
           endDate: dto.endDate,
         },
-      )
-      .getOne();
+      );
+    this.tenantQueryService.applyTenantFilter(overlappingLeave, 'leave');
+    const hasOverlap = await overlappingLeave.getOne();
 
-    if (overlappingLeave) {
+    if (hasOverlap) {
       throw new BadRequestException('Leave already exists for selected dates');
     }
 
     // Fetch the applicable policy for this leave type
     const policy = await this.leavePolicyRepo.findOne({
-      where: { leaveTypeId: dto.leaveTypeId, isActive: true },
+      where: { leaveTypeId: dto.leaveTypeId, isActive: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!policy) {
@@ -124,7 +130,9 @@ export class LeaveService {
 
     // Fetch Employee for Validation
     const employee = await this.employeeRepo.findOne({
-      where: { id: employeeId },
+      where: { id: employeeId,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
     if (!employee) throw new NotFoundException('Employee not found');
 
@@ -176,7 +184,9 @@ export class LeaveService {
     // Balance Validation
     const year = today.year();
     const balance = await this.leaveBalanceRepo.findOne({
-      where: { employeeId, leaveTypeId: dto.leaveTypeId, year },
+      where: { employeeId, leaveTypeId: dto.leaveTypeId, year,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const accrued = balance ? Number(balance.accrued) : 0;
@@ -204,6 +214,7 @@ export class LeaveService {
       status: policy.requiresApproval
         ? LeaveStatusEnum.PENDING
         : LeaveStatusEnum.APPROVED,
+      tenantId, // Fixed: tenantId was missing, causing NOT NULL constraint violation
     });
 
     const saved = await this.leaveRepo.save(leave);
@@ -320,7 +331,8 @@ export class LeaveService {
       where: {
         id,
         employeeId,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!leave) {
@@ -527,7 +539,7 @@ export class LeaveService {
   ): Promise<number> {
     let totalDays = 0;
 
-    const weekendSettings = await this.weekendRepo.find();
+    const weekendSettings = await this.weekendRepo.find({ where: { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId } });
     const weekendDays = weekendSettings.map((w) => w.day.toLowerCase());
 
     const holidays = await this.holidayRepo.find({
@@ -536,7 +548,8 @@ export class LeaveService {
           startDate.format('YYYY-MM-DD'),
           endDate.format('YYYY-MM-DD'),
         ),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
     const holidayDates = holidays.map((h) => h.date);
 
@@ -577,6 +590,7 @@ export class LeaveService {
           employeeId: leave.employeeId,
 
           date,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
 

@@ -11,6 +11,7 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationQueryDto } from './dto/notification-query.dto';
 import { NotificationType } from '../../common/enums/NotificationType.enum';
 import { NotificationPreference } from '../notification-preference/entities/notification-preference.entity';
+import { TenantQueryService } from '../../common/services/tenant-query.service';
 
 @Injectable()
 export class NotificationService {
@@ -20,6 +21,7 @@ export class NotificationService {
 
     @InjectRepository(NotificationPreference)
     private preferenceRepo: Repository<NotificationPreference>,
+    private readonly tenantQueryService: TenantQueryService,
   ) {}
 
   private mapNotification(notification: Notification) {
@@ -66,6 +68,7 @@ export class NotificationService {
 
     const where: any = {
       employeeId: employee.id,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
     };
 
     // unread filter
@@ -150,6 +153,7 @@ export class NotificationService {
         employeeId: employee.id,
 
         isRead: false,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
 
       {

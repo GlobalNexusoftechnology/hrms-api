@@ -6,7 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
+
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 import { Employee } from '../../employees/entities/employee.entity';
 
@@ -14,9 +17,8 @@ import { Attendance } from './attendance.entity';
 import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
 
 @Entity('attendance_corrections')
-export class AttendanceCorrection {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class AttendanceCorrection extends TenantAwareEntity {
 
   // REQUESTED BY
   @Column({
@@ -27,9 +29,10 @@ export class AttendanceCorrection {
   @ManyToOne(() => Employee, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'employee_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   // ATTENDANCE RECORD
@@ -41,9 +44,10 @@ export class AttendanceCorrection {
   @ManyToOne(() => Attendance, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'attendance_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'attendance_id', referencedColumnName: 'id' },
+  ])
   attendance!: Attendance;
 
   // CURRENT VALUES
@@ -105,9 +109,10 @@ export class AttendanceCorrection {
   @ManyToOne(() => Employee, {
     nullable: true,
   })
-  @JoinColumn({
-    name: 'reviewed_by_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'reviewed_by_id', referencedColumnName: 'id' },
+  ])
   reviewer!: Employee | null;
 
   @Column({
@@ -127,13 +132,4 @@ export class AttendanceCorrection {
   })
   reviewedAt: Date | null = null;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

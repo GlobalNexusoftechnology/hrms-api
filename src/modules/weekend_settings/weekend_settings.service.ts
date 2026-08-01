@@ -8,12 +8,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateWeekendDto } from './dto/create-weekend_setting.dto';
 import { WeekendSetting } from './entities/weekend_setting.entity';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
 
 @Injectable()
 export class WeekendSettingsService {
   constructor(
     @InjectRepository(WeekendSetting)
-    private readonly weekendRepo: Repository<WeekendSetting>,
+    private readonly weekendRepo: Repository<WeekendSetting>, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   async create(dto: CreateWeekendDto[]) {
@@ -23,6 +24,7 @@ export class WeekendSettingsService {
           day: item.day,
 
           weekNumber: item.weekNumber,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
 
@@ -41,6 +43,7 @@ export class WeekendSettingsService {
       order: {
         day: 'ASC',
       },
+        where: { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId }
     });
   }
 
@@ -48,7 +51,8 @@ export class WeekendSettingsService {
     const weekend = await this.weekendRepo.findOne({
       where: {
         id,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!weekend) {

@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, Index } from 'typeorm';
+import { BaseEntity } from '../../../common/entities/base.entity';
 
 export enum AuthStatus {
   SUCCESS = 'SUCCESS',
@@ -16,9 +17,14 @@ export enum AuthEvent {
 }
 
 @Entity('auth_logs')
-export class AuthLog {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+export class AuthLog extends BaseEntity {
+  @Index()
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
+  tenantId?: string | null;
+
+  @Index()
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId?: string | null;
 
   @Column({ name: 'user_id', type: 'uuid', nullable: true })
   userId: string;
@@ -40,7 +46,4 @@ export class AuthLog {
 
   @Column({ type: 'text', nullable: true })
   reason: string; // for failed logins
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
 }

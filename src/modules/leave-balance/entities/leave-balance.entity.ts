@@ -1,9 +1,6 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
   Index,
@@ -11,25 +8,30 @@ import {
 
 import { Employee } from '../../employees/entities/employee.entity';
 import { LeaveType } from '../../leave-type/entities/leave-type.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('leave_balances')
-@Index(['employeeId', 'leaveTypeId', 'year'], { unique: true })
-export class LeaveBalance {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId', 'leaveTypeId', 'year'], { unique: true })
+export class LeaveBalance extends TenantAwareEntity {
 
   @Column({ name: 'employee_id' })
   employeeId!: string;
 
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ name: 'leave_type_id' })
   leaveTypeId!: string;
 
   @ManyToOne(() => LeaveType, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'leave_type_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'leave_type_id', referencedColumnName: 'id' },
+  ])
   leaveType!: LeaveType;
 
   @Column()
@@ -49,12 +51,6 @@ export class LeaveBalance {
     default: 0,
   })
   carriedForward!: number;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 
   // Remaining is computed on the fly in the response/service layer
   // It is conceptually: (accrued + carriedForward) - used

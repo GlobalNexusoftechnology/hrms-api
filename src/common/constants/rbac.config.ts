@@ -100,6 +100,9 @@ export const RBAC_CONFIG = {
     PermissionEnum.SHIFT_READ,
     PermissionEnum.SHIFT_UPDATE,
     PermissionEnum.SHIFT_DELETE,
+
+    PermissionEnum.AUDIT_LOG_READ,
+    PermissionEnum.AUTH_LOG_READ,
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],

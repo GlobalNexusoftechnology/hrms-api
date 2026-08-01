@@ -1,20 +1,18 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   JoinColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { SalaryStructure } from './salary-structure.entity';
 import { SalaryComponent } from './salary-component.entity';
 import { CalculationTypeEnum } from '../../../common/enums/calculation-type.enum';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('salary_structure_components')
-export class SalaryStructureComponent {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'salaryStructureId'])
+export class SalaryStructureComponent extends TenantAwareEntity {
 
   @Column({ name: 'salary_structure_id' })
   salaryStructureId!: string;
@@ -22,14 +20,20 @@ export class SalaryStructureComponent {
   @ManyToOne(() => SalaryStructure, (structure) => structure.components, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'salary_structure_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'salary_structure_id', referencedColumnName: 'id' },
+  ])
   salaryStructure!: SalaryStructure;
 
   @Column({ name: 'salary_component_id' })
   salaryComponentId!: string;
 
   @ManyToOne(() => SalaryComponent)
-  @JoinColumn({ name: 'salary_component_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'salary_component_id', referencedColumnName: 'id' },
+  ])
   salaryComponent!: SalaryComponent;
 
   @Column({ name: 'component_name' })
@@ -59,9 +63,4 @@ export class SalaryStructureComponent {
   })
   calculatedAmount!: number;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

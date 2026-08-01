@@ -14,15 +14,13 @@ import { Employee } from '../../employees/entities/employee.entity';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 import { AttendanceCorrection } from './correction.entity';
 
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+
 @Entity('attendances')
-@Index(['employeeId', 'date'], {
+@Index(['tenantId', 'employeeId', 'date'], {
   unique: true,
 })
-export class Attendance {
-  @Index(['employeeId', 'date'], { unique: true })
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Attendance extends TenantAwareEntity {
   @Column({
     name: 'employee_id',
   })
@@ -120,14 +118,5 @@ export class Attendance {
     name: 'is_auto_checkout',
   })
   isAutoCheckout!: boolean;
-
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }
+

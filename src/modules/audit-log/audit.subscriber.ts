@@ -25,9 +25,20 @@ export class AuditSubscriber implements EntitySubscriberInterface {
     dataSource.subscribers.push(this);
   }
 
-  private getContext() {
+  private getContext(entity?: any) {
+    const tenantContext = (this.cls as any).get('tenantContext');
+    let tenantId = tenantContext?.tenantId;
+    if (!tenantId && entity) {
+      if (entity.tenantId) {
+        tenantId = entity.tenantId;
+      } else if (entity.constructor?.name === 'Tenant' && entity.id) {
+        tenantId = entity.id;
+      }
+    }
+
     return {
       userId: this.cls.get('userId') || 'SYSTEM',
+      tenantId: tenantId || null,
       roleId: this.cls.get('roleId'),
       sessionId: this.cls.get('sessionId'),
       correlationId: this.cls.get('correlationId'),
@@ -78,7 +89,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     if (this.shouldSkipAudit(entityName)) return;
 
-    const ctx = this.getContext();
+    const ctx = this.getContext(event.entity);
     const payload = {
       ...ctx,
       action: AuditAction.INSERT,
@@ -123,7 +134,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     if (changedFields.length === 0) return; // No actual changes
 
-    const ctx = this.getContext();
+    const ctx = this.getContext(event.entity || event.databaseEntity);
     const payload = {
       ...ctx,
       action: AuditAction.UPDATE,
@@ -150,7 +161,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     if (this.shouldSkipAudit(entityName)) return;
 
-    const ctx = this.getContext();
+    const ctx = this.getContext(event.entity || event.databaseEntity);
     const payload = {
       ...ctx,
       action: AuditAction.SOFT_DELETE,
@@ -175,7 +186,7 @@ export class AuditSubscriber implements EntitySubscriberInterface {
 
     if (this.shouldSkipAudit(entityName)) return;
 
-    const ctx = this.getContext();
+    const ctx = this.getContext(event.entity || event.databaseEntity);
     const payload = {
       ...ctx,
       action: AuditAction.RESTORE,

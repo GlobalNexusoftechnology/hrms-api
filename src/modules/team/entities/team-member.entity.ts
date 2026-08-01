@@ -5,16 +5,15 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Team } from './team.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 
 @Entity('team_members')
-@Unique(['teamId', 'employeeId'])
-export class TeamMember {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'teamId', 'employeeId'], { unique: true })
+export class TeamMember extends TenantAwareEntity {
 
   @Column({
     type: 'uuid',
@@ -24,9 +23,10 @@ export class TeamMember {
   @ManyToOne(() => Team, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'teamId',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'teamId', referencedColumnName: 'id' },
+  ])
   team!: Team;
 
   @Column({
@@ -35,11 +35,9 @@ export class TeamMember {
   employeeId!: string;
 
   @ManyToOne(() => Employee)
-  @JoinColumn({
-    name: 'employeeId',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employeeId', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
-
-  @CreateDateColumn()
-  createdAt!: Date;
 }

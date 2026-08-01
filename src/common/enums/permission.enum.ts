@@ -140,4 +140,8 @@ export enum PermissionEnum {
   SHIFT_READ = 'shift.read',
   SHIFT_UPDATE = 'shift.update',
   SHIFT_DELETE = 'shift.delete',
+
+  AUDIT_LOG_READ = 'audit_log.read',
+  
+  AUTH_LOG_READ = 'auth_log.read',
 }

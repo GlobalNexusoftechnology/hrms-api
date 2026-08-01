@@ -9,18 +9,15 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
-  PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { TeamMember } from './team-member.entity';
 
 @Entity('teams')
-export class Team {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
-  @Column({
-    unique: true,
-  })
+@Index(['tenantId', 'name'], { unique: true })
+export class Team extends TenantAwareEntity {
+  @Column()
   name!: string;
 
   @Column({
@@ -38,9 +35,10 @@ export class Team {
   @ManyToOne(() => Department, {
     nullable: true,
   })
-  @JoinColumn({
-    name: 'departmentId',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'departmentId', referencedColumnName: 'id' },
+  ])
   department?: Department;
 
   @Column({
@@ -52,9 +50,10 @@ export class Team {
   @ManyToOne(() => Employee, {
     nullable: true,
   })
-  @JoinColumn({
-    name: 'teamLeadId',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'teamLeadId', referencedColumnName: 'id' },
+  ])
   teamLead?: Employee;
 
   @OneToMany(() => TeamMember, (member) => member.team)
@@ -64,21 +63,24 @@ export class Team {
   branchId?: string;
 
   @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branchId' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'branchId', referencedColumnName: 'id' },
+  ])
   branch?: Branch;
 
   @Column({ type: 'uuid', nullable: true })
   organizationId?: string;
 
   @ManyToOne(() => Organization, { nullable: true })
-  @JoinColumn({ name: 'organizationId' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'organizationId', referencedColumnName: 'id' },
+  ])
   organization?: Organization;
 
   @Column({
     default: true,
   })
   isActive!: boolean;
-
-  @CreateDateColumn()
-  createdAt!: Date;
 }

@@ -1,30 +1,23 @@
 import { Injectable } from '@nestjs/common';
-
 import { InjectRepository } from '@nestjs/typeorm';
-
 import { DataSource, Repository, IsNull } from 'typeorm';
-
 import dayjs from 'dayjs';
 
 import { nowIST, todayIST } from '../../../utils/time.util';
-
 import { Attendance } from '../entities/attendance.entity';
-
 import { AttendanceValidationService } from './attendance-validation.service';
-
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
-
 import { formatAttendanceResponse } from '../helpers/attendance-response.helper';
+import { TenantQueryService } from '../../../common/services/tenant-query.service';
 
 @Injectable()
 export class AttendanceService {
   constructor(
     @InjectRepository(Attendance)
     private readonly attendanceRepo: Repository<Attendance>,
-
     private readonly dataSource: DataSource,
-
     private readonly validationService: AttendanceValidationService,
+    private readonly tenantQueryService: TenantQueryService,
   ) {}
 
   private readonly employeeRelations = {
@@ -36,23 +29,21 @@ export class AttendanceService {
 
   async checkIn(employeeId: string, location?: string) {
     const employee = await this.validationService.validateEmployee(employeeId);
-
     await this.validationService.validateWorkingDay(employeeId);
+
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
     return this.dataSource.transaction(async (manager) => {
       const today = todayIST();
-
       const now = nowIST();
-
       const nowDate = now.toDate();
 
       let attendance = await manager.findOne(Attendance, {
         where: {
           employeeId,
-
           date: today,
+          tenantId,
         },
-
         lock: {
           mode: 'pessimistic_write',
         },
@@ -63,25 +54,18 @@ export class AttendanceService {
       if (!attendance) {
         attendance = manager.create(Attendance, {
           employeeId,
-
           date: today,
+          tenantId, // Fixed: tenantId was missing, causing NOT NULL constraint violation
         });
       }
 
       attendance.checkIn = nowDate;
-
       attendance.checkOut = null;
-
       attendance.checkInLocation = location?.trim() || null;
-
       attendance.checkOutLocation = null;
-
       attendance.earlyCheckoutReason = null;
-
       attendance.workedMinutes = 0;
-
       attendance.overtimeMinutes = 0;
-
       attendance.isAutoCheckout = false;
 
       const shift = this.validationService.getEffectiveShift(employee);
@@ -117,8 +101,8 @@ export class AttendanceService {
       const fullAttendance = await manager.findOne(Attendance, {
         where: {
           id: saved.id,
+          tenantId,
         },
-
         relations: this.employeeRelations,
       });
 
@@ -128,25 +112,23 @@ export class AttendanceService {
 
   async checkOut(employeeId: string, location?: string, reason?: string) {
     const employee = await this.validationService.validateEmployee(employeeId);
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
     return this.dataSource.transaction(async (manager) => {
       const today = todayIST();
-
       const now = nowIST();
-
       const nowDate = now.toDate();
       const todayString = todayIST();
       const yesterdayString = now.subtract(1, 'day').format('YYYY-MM-DD');
 
       const attendance = await manager.findOne(Attendance, {
         where: [
-          { employeeId, date: todayString, checkOut: IsNull() },
-          { employeeId, date: yesterdayString, checkOut: IsNull() }
+          { employeeId, date: todayString, checkOut: IsNull(), tenantId },
+          { employeeId, date: yesterdayString, checkOut: IsNull(), tenantId },
         ],
         order: {
-          date: 'DESC'
+          date: 'DESC',
         },
-
         lock: {
           mode: 'pessimistic_write',
         },
@@ -155,7 +137,6 @@ export class AttendanceService {
       this.validationService.validateCheckOut(attendance);
 
       const checkInTime = dayjs(attendance!.checkIn);
-
       const shift = this.validationService.getEffectiveShift(employee);
 
       let breakMinutes = 0;
@@ -192,11 +173,8 @@ export class AttendanceService {
         }
       }
       attendance!.overtimeMinutes = overtimeMinutes;
-
       attendance!.checkOut = nowDate;
-
       attendance!.checkOutLocation = location?.trim() || null;
-
       attendance!.isAutoCheckout = false;
 
       const saved = await manager.save(attendance!, {
@@ -206,20 +184,16 @@ export class AttendanceService {
       const fullAttendance = await manager.findOne(Attendance, {
         where: {
           id: saved.id,
+          tenantId,
         },
-
         relations: this.employeeRelations,
       });
 
       return {
         ...formatAttendanceResponse(fullAttendance ?? saved),
-
         workedHours: Number(workedHours.toFixed(2)),
-
         workedMinutes,
-
         overtimeMinutes: attendance!.overtimeMinutes,
-
         message: checkoutValidation.message,
       };
     });

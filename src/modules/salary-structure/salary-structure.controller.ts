@@ -104,8 +104,9 @@ export class SalaryStructureController {
   findAll(
     @Query()
     query: any,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.salaryService.findAll(query);
+    return this.salaryService.findAll(query, currentUser);
   }
 
   // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -114,7 +115,8 @@ export class SalaryStructureController {
   findOne(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.salaryService.findOne(id);
+    return this.salaryService.findOne(id, currentUser);
   }
 }

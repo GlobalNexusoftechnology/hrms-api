@@ -33,6 +33,7 @@ import { LeaveStatusEnum } from '../../common/enums/leave-status.enum';
 import { todayIST } from '../../utils/time.util';
 import { DataScopeService } from '../../common/services/data-scope.service';
 import { DataScopeEnum } from '../../common/enums/data-scope.enum';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
 
 @Injectable()
 export class DashboardService {
@@ -66,15 +67,18 @@ export class DashboardService {
 
     private readonly dataScopeService: DataScopeService,
 
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache, private readonly tenantQueryService: TenantQueryService
   ) {}
 
-  async getSuperAdminDashboard() {
-    const cacheKey = `dashboard:super_admin`;
+  async getSuperAdminDashboard(currentUser: any) {
+    const cacheKey = `tenant:${currentUser.tenantId}:dashboard:super_admin`;
     const cachedData = await this.cacheManager.get(cacheKey);
     if (cachedData) {
       return cachedData;
     }
+
+    // Use tenant filters for raw repository calls
+    const tenantWhere = { tenantId: currentUser.tenantId };
 
     const [
       totalEmployees,
@@ -92,66 +96,84 @@ export class DashboardService {
       upcomingHolidays,
       currentMonthPayrolls,
     ] = await Promise.all([
-      this.employeeRepo.count(),
+      this.employeeRepo.count({ where: tenantWhere }),
 
       this.employeeRepo.count({
         where: {
+          ...tenantWhere,
           isActive: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
-      this.departmentRepo.count(),
+      this.departmentRepo.count({ where: tenantWhere }),
 
       this.applicationRepo.count({
         where: {
+          ...tenantWhere,
           status: CandidateStatusEnum.INTERVIEW_SCHEDULED,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
       this.applicationRepo.count({
         where: {
+          ...tenantWhere,
           status: CandidateStatusEnum.SELECTED,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
-      this.trainingRepo.count(),
+      this.trainingRepo.count({ where: tenantWhere }),
 
       this.attendanceRepo.find({
         where: {
+          ...tenantWhere,
           date: todayIST(),
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
       this.getWeeklyAttendance({
+        ...currentUser,
         role: { dataScope: DataScopeEnum.ORGANIZATION },
       }),
 
       this.getMonthlyAttendance({
+        ...currentUser,
         role: { dataScope: DataScopeEnum.ORGANIZATION },
       }),
 
-      this.leaveRepo.count(),
+      this.leaveRepo.count({ where: tenantWhere }),
 
       this.leaveRepo.count({
         where: {
+          ...tenantWhere,
           status: LeaveStatusEnum.PENDING,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
       this.leaveRepo.count({
         where: {
+          ...tenantWhere,
           status: LeaveStatusEnum.APPROVED,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
       this.holidayRepo.find({
-        where: { date: MoreThanOrEqual(todayIST()) },
+        where: { date: MoreThanOrEqual(todayIST()),
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
         order: { date: 'ASC' },
         take: 5,
       }),
 
       this.payrollRepo.find({
-        where: { month: dayjs().month() + 1, year: dayjs().year() },
+        where: { ...tenantWhere, month: dayjs().month() + 1, year: dayjs().year(),
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
       }),
     ]);
 
@@ -191,7 +213,8 @@ export class DashboardService {
         rejected: await this.leaveRepo.count({
           where: {
             status: LeaveStatusEnum.REJECTED,
-          },
+              tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
         }),
       },
 
@@ -209,7 +232,7 @@ export class DashboardService {
   }
 
   async getHrDashboard(currentUser: any) {
-    const cacheKey = `dashboard:hr:${currentUser.id}`;
+    const cacheKey = `tenant:${currentUser.tenantId}:dashboard:hr:${currentUser.id}`;
     const cachedData = await this.cacheManager.get(cacheKey);
     if (cachedData) {
       return cachedData;
@@ -292,7 +315,9 @@ export class DashboardService {
       this.getDepartmentWiseAttendance(currentUser),
       this.getLeaveStats(currentUser),
       this.holidayRepo.find({
-        where: { date: MoreThanOrEqual(todayIST()) },
+        where: { date: MoreThanOrEqual(todayIST()),
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
         order: { date: 'ASC' },
         take: 5,
       }), // Holidays remain global
@@ -348,7 +373,8 @@ export class DashboardService {
     const employee = await this.employeeRepo.findOne({
       where: {
         id: employeeId,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: {
         department: true,
         designation: true,
@@ -374,6 +400,7 @@ export class DashboardService {
         where: {
           employeeId,
           date: todayIST(),
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
@@ -387,6 +414,7 @@ export class DashboardService {
         where: {
           employeeId,
           status: LeaveStatusEnum.PENDING,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
@@ -394,6 +422,7 @@ export class DashboardService {
         where: {
           employeeId,
           status: LeaveStatusEnum.APPROVED,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
@@ -401,17 +430,22 @@ export class DashboardService {
         where: {
           employeeId,
           status: LeaveStatusEnum.REJECTED,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       }),
 
       this.holidayRepo.find({
-        where: { date: MoreThanOrEqual(todayIST()) },
+        where: { date: MoreThanOrEqual(todayIST()),
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
         order: { date: 'ASC' },
         take: 5,
       }),
 
       this.payrollRepo.findOne({
-        where: { employeeId },
+        where: { employeeId,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
         order: { year: 'DESC', month: 'DESC' },
       }),
     ]);
@@ -643,7 +677,7 @@ export class DashboardService {
 
   private async getDepartmentWiseAttendance(currentUser: any) {
     const today = todayIST();
-    const departments = await this.departmentRepo.find();
+    const departments = await this.departmentRepo.find({ where: { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId } });
 
     const qb = this.attendanceRepo
       .createQueryBuilder('attendance')
@@ -768,7 +802,8 @@ export class DashboardService {
       where: {
         employeeId,
         date: Between(startOfWeek, endOfWeek),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const stats = this.calculateAttendanceStats(records);
@@ -792,7 +827,8 @@ export class DashboardService {
       where: {
         employeeId,
         date: Between(startOfMonth, endOfMonth),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const stats = this.calculateAttendanceStats(records);
@@ -821,14 +857,17 @@ export class DashboardService {
     const currentYear = dayjs().year();
 
     const balanceRecord = await this.leaveBalanceRepo.findOne({
-      where: { employeeId, year: currentYear },
+      where: { employeeId, year: currentYear,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const approvedLeaves = await this.leaveRepo.find({
       where: {
         employeeId,
         status: LeaveStatusEnum.APPROVED,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const totalLeaveDays = approvedLeaves.reduce((acc, leave) => {

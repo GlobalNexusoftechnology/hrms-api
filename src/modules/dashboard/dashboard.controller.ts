@@ -29,7 +29,7 @@ export class DashboardController {
       scope === DataScopeEnum.ORGANIZATION ||
       permissions.includes('admin_dashboard.read')
     ) {
-      return this.dashboardService.getSuperAdminDashboard();
+      return this.dashboardService.getSuperAdminDashboard(user);
     }
 
     if (

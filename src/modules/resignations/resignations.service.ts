@@ -18,6 +18,8 @@ import { ActivityLogService } from '../activity-log/activity-log.service';
 import { ActivityAction } from '../activity-log/enums/activity-action.enum';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import dayjs from 'dayjs';
+import { TenantQueryService } from '../../common/services/tenant-query.service';
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class ResignationsService {
@@ -30,6 +32,8 @@ export class ResignationsService {
     private readonly orgSettingsRepository: Repository<OrganizationSettings>,
     private readonly activityLogService: ActivityLogService,
     private readonly dataSource: DataSource,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   async create(
@@ -45,6 +49,20 @@ export class ResignationsService {
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
+    }
+
+    if (currentUserId) {
+       const currentUser = await this.employeeRepository.findOne({ where: { id: currentUserId }, relations: { role: true } });
+       if (currentUser) {
+         const qb = this.employeeRepository.createQueryBuilder('employee').where('employee.id = :employeeId', { employeeId });
+         this.dataScopeService.applyScope(qb, currentUser, {
+            branch: 'employee.branchId',
+            department: 'employee.departmentId',
+            employee: 'employee.id'
+         });
+         const isAllowed = await qb.getOne();
+         if (!isAllowed) throw new ForbiddenException('You are not authorized to submit a resignation for this employee.');
+       }
     }
 
     if (
@@ -107,25 +125,60 @@ export class ResignationsService {
     return savedResignation;
   }
 
-  async findAll() {
-    return this.resignationRepository.find({
-      relations: { employee: true },
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(currentUser?: any) {
+    const qb = this.resignationRepository.createQueryBuilder('resignation')
+      .leftJoinAndSelect('resignation.employee', 'employee')
+      .orderBy('resignation.createdAt', 'DESC');
+      
+    this.tenantQueryService.applyTenantFilter(qb, 'resignation');
+    
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+        employee: 'employee.id'
+      });
+    }
+    
+    return qb.getMany();
   }
 
-  async findByEmployee(employeeId: string) {
-    return this.resignationRepository.find({
-      where: { employeeId },
-      order: { createdAt: 'DESC' },
-    });
+  async findByEmployee(employeeId: string, currentUser?: any) {
+    const qb = this.resignationRepository.createQueryBuilder('resignation')
+      .leftJoinAndSelect('resignation.employee', 'employee')
+      .where('resignation.employeeId = :employeeId', { employeeId })
+      .orderBy('resignation.createdAt', 'DESC');
+      
+    this.tenantQueryService.applyTenantFilter(qb, 'resignation');
+    
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+        employee: 'employee.id'
+      });
+    }
+    
+    return qb.getMany();
   }
 
-  async findOne(id: string) {
-    const resignation = await this.resignationRepository.findOne({
-      where: { id },
-      relations: { employee: { branch: true } },
-    });
+  async findOne(id: string, currentUser?: any) {
+    const qb = this.resignationRepository.createQueryBuilder('resignation')
+      .leftJoinAndSelect('resignation.employee', 'employee')
+      .leftJoinAndSelect('employee.branch', 'branch')
+      .where('resignation.id = :id', { id });
+      
+    this.tenantQueryService.applyTenantFilter(qb, 'resignation');
+    
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+        employee: 'employee.id'
+      });
+    }
+    
+    const resignation = await qb.getOne();
 
     if (!resignation) {
       throw new NotFoundException('Resignation request not found');
@@ -139,7 +192,12 @@ export class ResignationsService {
     currentUserId: string,
     correlationId?: string,
   ) {
-    const resignation = await this.findOne(id);
+    const currentUser = await this.employeeRepository.findOne({
+      where: { id: currentUserId },
+      relations: { role: true },
+    });
+
+    const resignation = await this.findOne(id, currentUser);
 
     if (resignation.status !== ResignationStatusEnum.PENDING) {
       throw new BadRequestException(
@@ -150,22 +208,6 @@ export class ResignationsService {
     if (resignation.employeeId === currentUserId) {
       throw new ForbiddenException(
         'You cannot approve your own resignation request.',
-      );
-    }
-
-    // Organization Isolation Check
-    const currentUser = await this.employeeRepository.findOne({
-      where: { id: currentUserId },
-      relations: { branch: true, role: true },
-    });
-
-    if (
-      currentUser?.role?.name !== RoleEnum.SUPER_ADMIN &&
-      currentUser?.branch?.organizationId !==
-        resignation.employee?.branch?.organizationId
-    ) {
-      throw new ForbiddenException(
-        'Cannot approve resignation outside your organization.',
       );
     }
 
@@ -223,7 +265,12 @@ export class ResignationsService {
   }
 
   async execute(id: string, currentUserId: string, correlationId?: string) {
-    const resignation = await this.findOne(id);
+    const currentUser = await this.employeeRepository.findOne({
+      where: { id: currentUserId },
+      relations: { role: true },
+    });
+
+    const resignation = await this.findOne(id, currentUser);
 
     if (resignation.status !== ResignationStatusEnum.APPROVED) {
       throw new BadRequestException(
@@ -239,22 +286,6 @@ export class ResignationsService {
     ) {
       throw new BadRequestException(
         'Cannot execute resignation before the approved last working date.',
-      );
-    }
-
-    // Organization Isolation Check
-    const currentUser = await this.employeeRepository.findOne({
-      where: { id: currentUserId },
-      relations: { branch: true, role: true },
-    });
-
-    if (
-      currentUser?.role?.name !== RoleEnum.SUPER_ADMIN &&
-      currentUser?.branch?.organizationId !==
-        resignation.employee?.branch?.organizationId
-    ) {
-      throw new ForbiddenException(
-        'Cannot execute resignation outside your organization.',
       );
     }
 

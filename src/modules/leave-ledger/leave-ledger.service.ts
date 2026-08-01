@@ -3,12 +3,16 @@ import { CreateLeaveLedgerDto } from './dto/create-leave-ledger.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LeaveLedger } from './entities/leave-ledger.entity';
 import { Repository } from 'typeorm';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class LeaveLedgerService {
   constructor(
     @InjectRepository(LeaveLedger)
     private readonly leaveLedgerRepo: Repository<LeaveLedger>,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService
   ) {}
 
   async create(createLeaveLedgerDto: CreateLeaveLedgerDto) {
@@ -16,25 +20,47 @@ export class LeaveLedgerService {
     return this.leaveLedgerRepo.save(entry);
   }
 
-  findAllByEmployee(employeeId: string, year?: number) {
+  findAllByEmployee(employeeId: string, year?: number, currentUser?: any) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
     const qb = this.leaveLedgerRepo
       .createQueryBuilder('ledger')
-      .where('ledger.employee_id = :employeeId', { employeeId })
       .leftJoinAndSelect('ledger.leaveType', 'leaveType')
+      .leftJoinAndSelect('ledger.employee', 'employee')
+      .where('ledger.employeeId = :employeeId', { employeeId })
+      .andWhere('ledger.tenantId = :tenantId', { tenantId })
       .orderBy('ledger.createdAt', 'DESC');
 
     if (year) {
       qb.andWhere('EXTRACT(YEAR FROM ledger.created_at) = :year', { year });
     }
 
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
     return qb.getMany();
   }
 
-  async findOne(id: string) {
-    const entry = await this.leaveLedgerRepo.findOne({
-      where: { id },
-      relations: { leaveType: true },
-    });
+  async findOne(id: string, currentUser?: any) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const qb = this.leaveLedgerRepo
+      .createQueryBuilder('ledger')
+      .leftJoinAndSelect('ledger.leaveType', 'leaveType')
+      .leftJoinAndSelect('ledger.employee', 'employee')
+      .where('ledger.id = :id', { id })
+      .andWhere('ledger.tenantId = :tenantId', { tenantId });
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
+    const entry = await qb.getOne();
 
     if (!entry) {
       throw new NotFoundException('Leave ledger entry not found');

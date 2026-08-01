@@ -20,6 +20,8 @@ import { UpdateSalaryComponentDto } from './dto/update-salary-component.dto';
 import { DataScopeEnum } from '../../common/enums/data-scope.enum';
 import { SalaryComponentTypeEnum } from '../../common/enums/salary-component-type.enum';
 import { CalculationTypeEnum } from '../../common/enums/calculation-type.enum';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class SalaryStructureService {
@@ -31,6 +33,8 @@ export class SalaryStructureService {
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
     private readonly dataSource: DataSource,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService
   ) {}
 
   private validateRoleAccess(currentUser: any, targetEmployee: Employee) {
@@ -95,7 +99,9 @@ export class SalaryStructureService {
     }
 
     const existingCode = await this.componentRepo.findOne({
-      where: { organizationId: dto.organizationId, code: dto.code },
+      where: { organizationId: dto.organizationId, code: dto.code,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
     if (existingCode) {
       throw new BadRequestException(
@@ -108,6 +114,7 @@ export class SalaryStructureService {
         where: {
           organizationId: dto.organizationId,
           displayOrder: dto.displayOrder,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
       if (existingOrder) {
@@ -122,12 +129,16 @@ export class SalaryStructureService {
   }
 
   async updateComponent(id: string, dto: UpdateSalaryComponentDto) {
-    const existing = await this.componentRepo.findOne({ where: { id } });
+    const existing = await this.componentRepo.findOne({ where: { id,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } });
     if (!existing) throw new NotFoundException('Salary component not found');
 
     if (dto.code && dto.code !== existing.code) {
       const existingCode = await this.componentRepo.findOne({
-        where: { organizationId: existing.organizationId, code: dto.code },
+        where: { organizationId: existing.organizationId, code: dto.code,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
       });
       if (existingCode) {
         throw new BadRequestException(
@@ -145,6 +156,7 @@ export class SalaryStructureService {
         where: {
           organizationId: existing.organizationId,
           displayOrder: dto.displayOrder,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
       if (existingOrder) {
@@ -155,12 +167,16 @@ export class SalaryStructureService {
     }
 
     await this.componentRepo.update(id, dto);
-    return this.componentRepo.findOne({ where: { id } });
+    return this.componentRepo.findOne({ where: { id,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } });
   }
 
   async getComponents(organizationId: string) {
     return this.componentRepo.find({
-      where: { organizationId, isActive: true },
+      where: { organizationId, isActive: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       order: { displayOrder: 'ASC' },
     });
   }
@@ -218,7 +234,9 @@ export class SalaryStructureService {
 
   async create(dto: CreateSalaryStructureDto, currentUser: any) {
     const employee = await this.employeeRepo.findOne({
-      where: { id: dto.employeeId, deletedAt: IsNull() },
+      where: { id: dto.employeeId, deletedAt: IsNull(),
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: { role: true, branch: true },
     });
 
@@ -226,7 +244,9 @@ export class SalaryStructureService {
     this.validateRoleAccess(currentUser, employee);
 
     const existing = await this.salaryRepo.findOne({
-      where: { employeeId: dto.employeeId, isActive: true },
+      where: { employeeId: dto.employeeId, isActive: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (existing)
@@ -330,13 +350,15 @@ export class SalaryStructureService {
       });
 
       const savedStructure = await manager.save(newStructure);
-      return this.findOne(savedStructure.id, manager);
+      return this.findOne(savedStructure.id, currentUser, manager);
     });
   }
 
   async getMySalaryStructure(employeeId: string) {
     const salary = await this.salaryRepo.findOne({
-      where: { employeeId, isActive: true },
+      where: { employeeId, isActive: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: { employee: true, components: { salaryComponent: true } },
     });
 
@@ -344,17 +366,30 @@ export class SalaryStructureService {
     return this.formatResponse(salary);
   }
 
-  async findOne(id: string, manager = this.salaryRepo.manager) {
-    const salary = await manager.findOne(SalaryStructure, {
-      where: { id },
-      relations: { employee: true, components: { salaryComponent: true } },
-    });
+  async findOne(id: string, currentUser?: any, manager = this.salaryRepo.manager) {
+    const qb = manager.createQueryBuilder(SalaryStructure, 'salary')
+      .leftJoinAndSelect('salary.employee', 'employee')
+      .leftJoinAndSelect('salary.components', 'components')
+      .leftJoinAndSelect('components.salaryComponent', 'salaryComponent')
+      .where('salary.id = :id', { id });
+
+    this.tenantQueryService.applyTenantFilter(qb, 'salary');
+    
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+        employee: 'employee.id'
+      });
+    }
+
+    const salary = await qb.getOne();
 
     if (!salary) throw new NotFoundException('Salary structure not found');
     return this.formatResponse(salary);
   }
 
-  async findAll(query: any) {
+  async findAll(query: any, currentUser?: any) {
     const { employeeId, page = 1, limit = 10 } = query;
     const parsedPage = Math.max(1, isNaN(Number(page)) ? 1 : Number(page));
     const parsedLimit = Math.max(1, isNaN(Number(limit)) ? 10 : Number(limit));
@@ -367,6 +402,15 @@ export class SalaryStructureService {
 
     if (employeeId) {
       qb.andWhere('salary.employeeId = :employeeId', { employeeId });
+    }
+
+    this.tenantQueryService.applyTenantFilter(qb, 'salary');
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+        employee: 'employee.id'
+      });
     }
 
     qb.orderBy('salary.createdAt', 'DESC');
@@ -388,7 +432,9 @@ export class SalaryStructureService {
 
   async update(id: string, dto: UpdateSalaryStructureDto, currentUser: any) {
     const salary = await this.salaryRepo.findOne({
-      where: { id },
+      where: { id,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       relations: { employee: { role: true, branch: true } },
     });
 
@@ -517,7 +563,7 @@ export class SalaryStructureService {
       });
 
       const savedStructure = await manager.save(newStructure);
-      return this.findOne(savedStructure.id, manager);
+      return this.findOne(savedStructure.id, currentUser, manager);
     });
   }
 }

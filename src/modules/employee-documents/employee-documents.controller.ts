@@ -24,6 +24,7 @@ import {
   Permissions,
   PERMISSIONS_KEY,
 } from '../auth/decorators/permissions.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 import { PermissionsService } from '../permissions/permissions.service';
 
@@ -82,11 +83,14 @@ export class EmployeeDocumentsController {
 
     @UploadedFile()
     file: Express.Multer.File,
+
+    @CurrentUser() user: any,
   ) {
     return this.employeeDocumentsService.uploadDocument(
       employeeId,
       dto.documentType,
       file,
+      user,
     );
   }
 
@@ -95,8 +99,9 @@ export class EmployeeDocumentsController {
   getDocuments(
     @Param('id', ParseUUIDPipe)
     employeeId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.employeeDocumentsService.getEmployeeDocuments(employeeId);
+    return this.employeeDocumentsService.getEmployeeDocuments(employeeId, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
@@ -104,7 +109,8 @@ export class EmployeeDocumentsController {
   deleteDocument(
     @Param('documentId', ParseUUIDPipe)
     documentId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.employeeDocumentsService.deleteDocument(documentId);
+    return this.employeeDocumentsService.deleteDocument(documentId, user);
   }
 }

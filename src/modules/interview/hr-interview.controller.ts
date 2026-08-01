@@ -36,14 +36,15 @@ export class HrInterviewController {
   createJobPosting(
     @Body()
     dto: CreateJobPostingDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.createJobPosting(dto);
+    return this.interviewService.createJobPosting(dto, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
   @Get('jobs')
-  getJobPostings() {
-    return this.interviewService.getJobPostings();
+  getJobPostings(@CurrentUser() user: any) {
+    return this.interviewService.getJobPostings(user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
@@ -51,8 +52,9 @@ export class HrInterviewController {
   getJobPosting(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.getJobPosting(id);
+    return this.interviewService.getJobPosting(id, user);
   }
 
   // ------------------- APPLICATIONS -------------------
@@ -67,8 +69,8 @@ export class HrInterviewController {
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
   @Get('applications')
-  getApplications() {
-    return this.interviewService.getApplications();
+  getApplications(@CurrentUser() user: any) {
+    return this.interviewService.getApplications(user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
@@ -76,8 +78,9 @@ export class HrInterviewController {
   getApplication(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.getApplication(id);
+    return this.interviewService.getApplication(id, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_UPDATE)
@@ -87,8 +90,9 @@ export class HrInterviewController {
     id: string,
     @Body()
     dto: UpdateCandidateDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.updateCandidate(id, dto);
+    return this.interviewService.updateCandidate(id, dto, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_UPDATE)
@@ -98,8 +102,9 @@ export class HrInterviewController {
     id: string,
     @Body()
     dto: UpdateApplicationStatusDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.updateApplicationStatus(id, dto);
+    return this.interviewService.updateApplicationStatus(id, dto, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
@@ -109,8 +114,9 @@ export class HrInterviewController {
     id: string,
     @Body()
     dto: ConvertCandidateDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.convertToEmployee(id, dto);
+    return this.interviewService.convertToEmployee(id, dto, user);
   }
 
   // ------------------- INTERVIEWS -------------------
@@ -119,14 +125,15 @@ export class HrInterviewController {
   scheduleInterview(
     @Body()
     dto: ScheduleInterviewDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.scheduleInterview(dto);
+    return this.interviewService.scheduleInterview(dto, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
   @Get('interviews')
-  getInterviews() {
-    return this.interviewService.getInterviews();
+  getInterviews(@CurrentUser() user: any) {
+    return this.interviewService.getInterviews(user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
@@ -134,8 +141,9 @@ export class HrInterviewController {
   getInterview(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.getInterview(id);
+    return this.interviewService.getInterview(id, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_CREATE)

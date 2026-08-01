@@ -3,16 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { AttendanceCorrection } from './../entities/correction.entity';
-import { Attendance } from './../entities/attendance.entity';
+import { AttendanceCorrection } from '../entities/correction.entity';
+import { Attendance } from '../entities/attendance.entity';
 import { Employee } from '../../employees/entities/employee.entity';
-import { CorrectionRequestDto } from './../dto/correction-request.dto';
+import { CorrectionRequestDto } from '../dto/correction-request.dto';
 import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 import { formatIST } from '../../../utils/time.util';
 import { DataScopeService } from '../../../common/services/data-scope.service';
 import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../../common/enums/NotificationType.enum';
+import { TenantQueryService } from '../../../common/services/tenant-query.service';
 
 dayjs.extend(isBetween);
 
@@ -21,20 +22,22 @@ export class CorrectionService {
   constructor(
     @InjectRepository(AttendanceCorrection)
     private correctionRepo: Repository<AttendanceCorrection>,
-
     @InjectRepository(Attendance)
     private attendanceRepo: Repository<Attendance>,
     private dataSource: DataSource,
     private readonly dataScopeService: DataScopeService,
     private readonly notificationService: NotificationService,
+    private readonly tenantQueryService: TenantQueryService,
   ) {}
 
   async requestCorrection(employeeId: string, dto: CorrectionRequestDto) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const attendance = await this.attendanceRepo.findOne({
       where: {
         employeeId,
-
         date: dto.date,
+        tenantId,
       },
     });
 
@@ -45,10 +48,9 @@ export class CorrectionService {
     const existing = await this.correctionRepo.findOne({
       where: {
         employeeId,
-
         attendanceId: attendance.id,
-
         status: CorrectionStatus.PENDING,
+        tenantId,
       },
     });
 
@@ -94,33 +96,23 @@ export class CorrectionService {
 
     const correction = this.correctionRepo.create({
       employeeId,
-
       attendanceId: attendance.id,
-
       currentCheckIn: attendance.checkIn,
-
       currentCheckOut: attendance.checkOut,
-
       requestedCheckIn,
-
       requestedCheckOut,
-
       reason,
-
       status: CorrectionStatus.PENDING,
+      tenantId, // Fixed: tenantId was missing, causing NOT NULL constraint error on insert
     });
 
     const saved = await this.correctionRepo.save(correction);
 
     return {
       ...saved,
-
       currentCheckIn: formatIST(saved.currentCheckIn),
-
       currentCheckOut: formatIST(saved.currentCheckOut),
-
       requestedCheckIn: formatIST(saved.requestedCheckIn),
-
       requestedCheckOut: formatIST(saved.requestedCheckOut),
     };
   }
@@ -129,7 +121,6 @@ export class CorrectionService {
     const time = dayjs(checkIn);
 
     const presentEnd = time.startOf('day').hour(10).minute(30).second(0);
-
     const lateEnd = time.startOf('day').hour(12).minute(30).second(0);
 
     if (time.isBefore(presentEnd) || time.isSame(presentEnd)) {
@@ -144,12 +135,14 @@ export class CorrectionService {
   }
 
   async review(id: string, status: CorrectionStatus, reviewerId: string) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     return this.dataSource.transaction(async (manager) => {
       const correction = await manager.findOne(AttendanceCorrection, {
         where: {
           id,
+          tenantId,
         },
-
         lock: {
           mode: 'pessimistic_write',
         },
@@ -164,9 +157,7 @@ export class CorrectionService {
       }
 
       correction.status = status;
-
       correction.reviewedById = reviewerId;
-
       correction.reviewedAt = new Date();
 
       let updatedAttendance: Attendance | null = null;
@@ -175,8 +166,8 @@ export class CorrectionService {
         const attendance = await manager.findOne(Attendance, {
           where: {
             id: correction.attendanceId,
+            tenantId,
           },
-
           lock: {
             mode: 'pessimistic_write',
           },
@@ -186,7 +177,6 @@ export class CorrectionService {
           throw new BadRequestException('Attendance not found');
         }
 
-        // APPLY CORRECTIONS
         if (correction.requestedCheckIn) {
           attendance.checkIn = new Date(correction.requestedCheckIn);
         }
@@ -195,7 +185,6 @@ export class CorrectionService {
           attendance.checkOut = new Date(correction.requestedCheckOut);
         }
 
-        // INVALID TIME CHECK
         if (
           attendance.checkIn &&
           attendance.checkOut &&
@@ -204,7 +193,6 @@ export class CorrectionService {
           throw new BadRequestException('Invalid time range');
         }
 
-        // RECALCULATE
         if (attendance.checkIn && attendance.checkOut) {
           const workedMinutes = Math.floor(
             (attendance.checkOut.getTime() - attendance.checkIn.getTime()) /
@@ -212,13 +200,10 @@ export class CorrectionService {
           );
 
           attendance.workedMinutes = workedMinutes;
-
           attendance.overtimeMinutes =
             workedMinutes > 480 ? workedMinutes - 480 : 0;
-
           attendance.status = this.calculateStatus(attendance.checkIn);
 
-          // EARLY CHECKOUT
           if (workedMinutes < 480) {
             attendance.earlyCheckoutReason = correction.reason;
           } else {
@@ -231,7 +216,6 @@ export class CorrectionService {
         });
       }
 
-      // SAVE CORRECTION
       await manager.save(correction);
 
       const message =
@@ -249,7 +233,6 @@ export class CorrectionService {
 
       return {
         correction,
-
         attendance: updatedAttendance,
       };
     });
@@ -259,33 +242,32 @@ export class CorrectionService {
     const {
       status,
       employeeId,
-
+      branchId,
       page = 1,
       limit = 10,
     } = query;
 
     const pageNumber = Number(page);
-
     const limitNumber = Number(limit);
 
     const qb = this.correctionRepo.createQueryBuilder('correction');
 
+    this.tenantQueryService.applyTenantFilter(qb, 'correction');
+
     qb.leftJoinAndSelect('correction.employee', 'employee');
-
     qb.leftJoinAndSelect('correction.reviewer', 'reviewer');
-
     qb.leftJoinAndSelect('correction.attendance', 'attendance');
 
     if (status) {
-      qb.andWhere('correction.status = :status', {
-        status,
-      });
+      qb.andWhere('correction.status = :status', { status });
     }
 
     if (employeeId) {
-      qb.andWhere('correction.employee_id = :employeeId', {
-        employeeId,
-      });
+      qb.andWhere('correction.employee_id = :employeeId', { employeeId });
+    }
+
+    if (branchId) {
+      qb.andWhere('employee.branch_id = :branchId', { branchId });
     }
 
     this.dataScopeService.applyScope(qb, currentUser, {
@@ -295,9 +277,7 @@ export class CorrectionService {
     });
 
     qb.orderBy('correction.created_at', 'DESC');
-
     qb.skip((pageNumber - 1) * limitNumber);
-
     qb.take(limitNumber);
 
     const [data, total] = await qb.getManyAndCount();
@@ -305,53 +285,34 @@ export class CorrectionService {
     return {
       data: data.map((correction) => ({
         id: correction.id,
-
         employee: correction.employee
           ? {
               id: correction.employee.id,
-
               employeeCode: correction.employee.employeeCode,
-
               name: `${correction.employee.firstName} ${correction.employee.lastName}`,
             }
           : null,
-
         attendanceId: correction.attendanceId,
-
         currentCheckIn: correction.currentCheckIn,
-
         currentCheckOut: correction.currentCheckOut,
-
         requestedCheckIn: correction.requestedCheckIn,
-
         requestedCheckOut: correction.requestedCheckOut,
-
         reason: correction.reason,
-
         status: correction.status,
-
         reviewedBy: correction.reviewer
           ? {
               id: correction.reviewer.id,
-
               name: `${correction.reviewer.firstName} ${correction.reviewer.lastName}`,
             }
           : null,
-
         reviewComment: correction.reviewComment,
-
         reviewedAt: correction.reviewedAt,
-
         createdAt: correction.createdAt,
       })),
-
       meta: {
         total,
-
         page: pageNumber,
-
         limit: limitNumber,
-
         totalPages: Math.ceil(total / limitNumber),
       },
     };

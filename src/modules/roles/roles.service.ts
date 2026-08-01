@@ -14,6 +14,7 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { ActivityAction } from '../activity-log/enums/activity-action.enum';
+import { TenantQueryService } from '../../common/services/tenant-query.service';
 
 export interface ActingUser {
   id: string;
@@ -30,9 +31,12 @@ export class RolesService {
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
     private readonly activityLogService: ActivityLogService,
+    private readonly tenantQueryService: TenantQueryService,
   ) {}
 
   async create(createRoleDto: CreateRoleDto, actingUser: ActingUser) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     if (createRoleDto.authorityLevel >= actingUser.authorityLevel) {
       throw new ForbiddenException(
         'Cannot create a role with an authority level equal to or greater than your own.',
@@ -49,8 +53,18 @@ export class RolesService {
       );
     }
 
+    const existingName = await this.roleRepository.findOne({
+      where: { name: createRoleDto.name, tenantId },
+    });
+    if (existingName) {
+      throw new ConflictException(
+        `A role with the name '${createRoleDto.name}' already exists in this tenant.`,
+      );
+    }
+
     const role = this.roleRepository.create({
       ...createRoleDto,
+      tenantId, // Fixed: tenantId was missing, causing null constraint violation error
       createdByUserId: actingUser.id,
       permissions,
     });
@@ -69,7 +83,7 @@ export class RolesService {
     } catch (error: any) {
       if (error.code === '23505') {
         throw new ConflictException(
-          `A role with the name '${createRoleDto.name}' already exists.`,
+          `A role with the name '${createRoleDto.name}' already exists in this tenant.`,
         );
       }
       throw error;
@@ -77,15 +91,20 @@ export class RolesService {
   }
 
   async findAll() {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     return this.roleRepository.find({
+      where: { tenantId },
       order: { authorityLevel: 'DESC', name: 'ASC' },
       relations: { permissions: true },
     });
   }
 
   async findOne(id: string) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const role = await this.roleRepository.findOne({
-      where: { id },
+      where: { id, tenantId },
       relations: { permissions: true },
     });
     if (!role) {
@@ -181,8 +200,10 @@ export class RolesService {
   }
 
   async restore(id: string, actingUser: ActingUser) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const role = await this.roleRepository.findOne({
-      where: { id },
+      where: { id, tenantId },
       withDeleted: true,
       relations: { permissions: true },
     });

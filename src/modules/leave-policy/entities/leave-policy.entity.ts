@@ -1,13 +1,12 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { LeaveType } from '../../leave-type/entities/leave-type.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 export enum AccrualFrequency {
   MONTHLY = 'MONTHLY',
@@ -30,15 +29,17 @@ export enum ScopeType {
 }
 
 @Entity('leave_policies')
-export class LeavePolicy {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'leaveTypeId'])
+export class LeavePolicy extends TenantAwareEntity {
 
   @Column({ name: 'leave_type_id' })
   leaveTypeId!: string;
 
   @ManyToOne(() => LeaveType, { eager: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'leave_type_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'leave_type_id', referencedColumnName: 'id' },
+  ])
   leaveType!: LeaveType;
 
   // --- Scope Assignment ---
@@ -145,9 +146,4 @@ export class LeavePolicy {
   @Column({ name: 'is_active', default: true })
   isActive!: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

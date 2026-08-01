@@ -28,6 +28,7 @@ import { Employee } from '../employees/entities/employee.entity';
 import { AuthLogService } from '../auth-log/auth-log.service';
 import { AuthEvent, AuthStatus } from '../auth-log/entities/auth-log.entity';
 import { ClsService } from 'nestjs-cls';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
 
 @Injectable()
 export class AuthService {
@@ -42,7 +43,7 @@ export class AuthService {
     @InjectRepository(Employee)
     private employeeRepository: Repository<Employee>,
     @InjectRepository(RefreshToken)
-    private refreshTokenRepository: Repository<RefreshToken>,
+    private refreshTokenRepository: Repository<RefreshToken>, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   private parseDurationToMs(duration: string): number {
@@ -104,6 +105,8 @@ export class AuthService {
       employeeId: employee.id,
       employeeCode: employee.employeeCode,
       roleId: employee.roleId,
+      tenantId: employee.tenantId,
+      sessionId: randomUUID(), // Unique per login session for revocation support
     };
 
     // Access token
@@ -154,6 +157,8 @@ export class AuthService {
     // Log Auth Event
     this.authLogService.logEvent({
       userId: employee.id,
+      tenantId: employee.tenantId,
+      branchId: employee.branchId || undefined,
       event: AuthEvent.LOGIN,
       status: AuthStatus.SUCCESS,
       ipAddress: this.cls.get('ipAddress'),
@@ -188,6 +193,7 @@ export class AuthService {
         where: {
           employeeId: payload.employeeId,
           isRevoked: false,
+            
         },
       });
 
@@ -230,6 +236,8 @@ export class AuthService {
         employeeId: employee.id,
         employeeCode: employee.employeeCode,
         roleId: employee.roleId,
+        tenantId: employee.tenantId,
+        sessionId: randomUUID(), // New session on each refresh
       };
 
       // Generate access token
@@ -271,7 +279,13 @@ export class AuthService {
         accessToken,
         refreshToken: newRefreshToken,
       };
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -288,6 +302,7 @@ export class AuthService {
         where: {
           employeeId: payload.employeeId,
           isRevoked: false,
+            
         },
       });
 
@@ -324,6 +339,8 @@ export class AuthService {
       // Log Auth Event for Logout
       this.authLogService.logEvent({
         userId: payload.employeeId,
+        tenantId: payload.tenantId,
+        branchId: this.cls.get('branchId'),
         event: AuthEvent.LOGOUT,
         status: AuthStatus.SUCCESS,
         ipAddress: this.cls.get('ipAddress'),
@@ -333,7 +350,13 @@ export class AuthService {
       return {
         message: 'Logged out successfully',
       };
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -346,13 +369,16 @@ export class AuthService {
     const employee = await this.employeeRepository.findOne({
       where: {
         email: dto.email,
-      },
+          
+    },
 
       select: {
         id: true,
         email: true,
         firstName: true,
         passwordVersion: true,
+        tenantId: true,
+        branchId: true,
       },
     });
 
@@ -383,10 +409,10 @@ export class AuthService {
 
     await this.mailService.sendResetPasswordEmail(
       employee.email,
-
       employee.firstName,
-
       resetLink,
+      employee.tenantId!,
+      employee.branchId!,
     );
 
     return {
@@ -415,6 +441,7 @@ export class AuthService {
       const employee = await this.employeeRepository.findOne({
         where: {
           id: payload.employeeId,
+            
         },
 
         select: {

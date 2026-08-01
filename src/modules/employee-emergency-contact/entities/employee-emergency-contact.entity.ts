@@ -1,24 +1,25 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   JoinColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Employee } from '../../employees/entities/employee.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('employee_emergency_contacts')
-export class EmployeeEmergencyContact {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class EmployeeEmergencyContact extends TenantAwareEntity {
 
   @Column({ name: 'employee_id' })
   employeeId!: string;
 
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ type: 'varchar', length: 150 })
@@ -47,9 +48,4 @@ export class EmployeeEmergencyContact {
   @Column({ type: 'boolean', default: false, name: 'is_primary' })
   isPrimary!: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

@@ -33,13 +33,13 @@ import { EmployeeSkill } from '../../employee-skill/entities/employee-skill.enti
 import { EmployeeBank } from '../../employee-bank/entities/employee-bank.entity';
 import { EmployeeCareerMovement } from '../../career-movements/entities/career-movement.entity';
 
-@Entity('employees')
-export class Employee {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+import { Index } from 'typeorm';
 
+@Entity('employees')
+@Index(['tenantId', 'employeeCode'], { unique: true })
+export class Employee extends TenantAwareEntity {
   @Column({
-    unique: true,
     name: 'employee_code',
   })
   employeeCode!: string;
@@ -264,21 +264,6 @@ export class Employee {
     name: 'is_active',
   })
   isActive!: boolean;
-
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
-
-  @DeleteDateColumn({
-    name: 'deleted_at',
-  })
-  deletedAt!: Date | null;
 
   @Column({
     type: 'timestamp',

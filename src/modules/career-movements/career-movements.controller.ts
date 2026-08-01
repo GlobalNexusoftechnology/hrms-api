@@ -40,7 +40,7 @@ export class CareerMovementsController {
     return this.careerMovementsService.create(
       employeeId,
       createDto,
-      user.id,
+      user,
       req.correlationId,
     );
   }
@@ -48,15 +48,18 @@ export class CareerMovementsController {
   @Get()
   @Permissions(PermissionEnum.CAREER_MOVEMENT_READ)
   @ApiOperation({ summary: 'Get all career movements for an employee' })
-  findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
-    return this.careerMovementsService.findAll(employeeId);
+  findAll(
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.careerMovementsService.findAll(employeeId, user);
   }
 
   @Get(':id')
   @Permissions(PermissionEnum.CAREER_MOVEMENT_READ)
   @ApiOperation({ summary: 'Get a specific career movement' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.careerMovementsService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.careerMovementsService.findOne(id, user);
   }
 
   @Patch(':id/approve')
@@ -67,7 +70,7 @@ export class CareerMovementsController {
     @CurrentUser() user: any,
     @Req() req: any,
   ) {
-    return this.careerMovementsService.approve(id, user.id, req.correlationId);
+    return this.careerMovementsService.approve(id, user, req.correlationId);
   }
 
   @Patch(':id/execute')
@@ -78,6 +81,6 @@ export class CareerMovementsController {
     @CurrentUser() user: any,
     @Req() req: any,
   ) {
-    return this.careerMovementsService.execute(id, user.id, req.correlationId);
+    return this.careerMovementsService.execute(id, user, req.correlationId);
   }
 }

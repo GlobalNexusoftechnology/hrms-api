@@ -12,6 +12,8 @@ import { CareerMovementStatusEnum } from '../../common/enums/career-movement-sta
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { ActivityAction } from '../activity-log/enums/activity-action.enum';
 import { SalaryStructure } from '../salary-structure/entities/salary-structure.entity';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class CareerMovementsService {
@@ -21,19 +23,32 @@ export class CareerMovementsService {
     @InjectRepository(Employee)
     private readonly employeeRepository: Repository<Employee>,
     private readonly activityLogService: ActivityLogService,
-    private readonly dataSource: DataSource,
+    private readonly dataSource: DataSource, 
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService
   ) {}
 
   async create(
     employeeId: string,
     dto: CreateCareerMovementDto,
-    currentUserId?: string,
+    currentUser?: any,
     correlationId?: string,
   ) {
-    const employee = await this.employeeRepository.findOne({
-      where: { id: employeeId },
-      relations: { salaryStructures: true },
-    });
+    const currentUserId = currentUser?.id;
+
+    const qb = this.employeeRepository.createQueryBuilder('employee')
+      .leftJoinAndSelect('employee.salaryStructures', 'salaryStructures')
+      .where('employee.id = :employeeId', { employeeId })
+      .andWhere('employee.tenantId = :tenantId', { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId });
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
+    const employee = await qb.getOne();
 
     if (dto.impactPayroll && !dto.newSalaryStructureId) {
       throw new BadRequestException(
@@ -112,23 +127,46 @@ export class CareerMovementsService {
     return savedMovement;
   }
 
-  async findAll(employeeId: string) {
-    return this.movementRepository.find({
-      where: { employeeId },
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(employeeId: string, currentUser?: any) {
+    const qb = this.movementRepository.createQueryBuilder('movement')
+      .leftJoin('movement.employee', 'employee')
+      .where('movement.employeeId = :employeeId', { employeeId })
+      .andWhere('movement.tenantId = :tenantId', { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId })
+      .orderBy('movement.createdAt', 'DESC');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
+    return qb.getMany();
   }
 
-  async findOne(id: string) {
-    const movement = await this.movementRepository.findOne({ where: { id } });
+  async findOne(id: string, currentUser?: any) {
+    const qb = this.movementRepository.createQueryBuilder('movement')
+      .leftJoin('movement.employee', 'employee')
+      .where('movement.id = :id', { id })
+      .andWhere('movement.tenantId = :tenantId', { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId });
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
+    const movement = await qb.getOne();
     if (!movement) {
       throw new NotFoundException('Career movement not found');
     }
     return movement;
   }
 
-  async approve(id: string, currentUserId?: string, correlationId?: string) {
-    const movement = await this.findOne(id);
+  async approve(id: string, currentUser?: any, correlationId?: string) {
+    const movement = await this.findOne(id, currentUser);
+    const currentUserId = currentUser?.id;
 
     if (movement.status !== CareerMovementStatusEnum.PENDING) {
       throw new BadRequestException('Can only approve PENDING movements');
@@ -154,8 +192,9 @@ export class CareerMovementsService {
     return savedMovement;
   }
 
-  async execute(id: string, currentUserId?: string, correlationId?: string) {
-    const movement = await this.findOne(id);
+  async execute(id: string, currentUser?: any, correlationId?: string) {
+    const movement = await this.findOne(id, currentUser);
+    const currentUserId = currentUser?.id;
 
     if (movement.status !== CareerMovementStatusEnum.APPROVED) {
       throw new BadRequestException(
@@ -174,10 +213,19 @@ export class CareerMovementsService {
       throw new BadRequestException('Cannot execute before effective date');
     }
 
-    const employee = await this.employeeRepository.findOne({
-      where: { id: movement.employeeId },
-      relations: { salaryStructures: true },
-    });
+    const qb = this.employeeRepository.createQueryBuilder('employee')
+      .leftJoinAndSelect('employee.salaryStructures', 'salaryStructures')
+      .where('employee.id = :employeeId', { employeeId: movement.employeeId })
+      .andWhere('employee.tenantId = :tenantId', { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId });
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
+    const employee = await qb.getOne();
 
     if (!employee) {
       throw new NotFoundException('Employee not found');

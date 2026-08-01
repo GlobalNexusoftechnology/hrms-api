@@ -4,7 +4,6 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
-  IsPhoneNumber,
   IsString,
   IsUUID,
   MinLength,
@@ -53,19 +52,19 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsUUID()
-  branchId?: string;
+  branchId!: string;
 
   @IsOptional()
   @IsUUID()
-  departmentId?: string;
+  departmentId!: string;
 
   @IsOptional()
   @IsUUID()
-  shiftId?: string;
+  shiftId!: string;
 
   @IsOptional()
   @IsUUID()
-  designationId?: string;
+  designationId!: string;
 
   @IsOptional()
   @IsDateString()
@@ -73,11 +72,11 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsEnum(EmploymentTypeEnum)
-  employmentType?: EmploymentTypeEnum;
+  employmentType!: EmploymentTypeEnum;
 
   @IsOptional()
   @IsEnum(EmploymentStatusEnum)
-  employmentStatus?: EmploymentStatusEnum;
+  employmentStatus!: EmploymentStatusEnum;
 
   @IsOptional()
   @IsEnum(WorkLocationEnum)
@@ -93,7 +92,7 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsDateString()
-  dateOfBirth?: Date;
+dateOfBirth!: Date;
 
   @IsString()
   @MinLength(6)

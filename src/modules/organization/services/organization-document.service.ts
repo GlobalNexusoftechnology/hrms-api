@@ -5,6 +5,7 @@ import { OrganizationDocument } from '../entities/organization-document.entity';
 import { CreateOrganizationDocumentDto } from '../dto/create-organization-document.dto';
 import { UpdateOrganizationDocumentDto } from '../dto/update-organization-document.dto';
 import { OrganizationService } from './organization.service';
+import { DataScopeService } from '../../../common/services/data-scope.service';
 
 @Injectable()
 export class OrganizationDocumentService {
@@ -12,6 +13,7 @@ export class OrganizationDocumentService {
     @InjectRepository(OrganizationDocument)
     private readonly documentRepo: Repository<OrganizationDocument>,
     private readonly organizationService: OrganizationService,
+    private readonly dataScopeService: DataScopeService,
   ) {}
 
   async create(createDto: CreateOrganizationDocumentDto, userId?: string) {
@@ -27,7 +29,6 @@ export class OrganizationDocumentService {
   async uploadDocument(body: any, file: Express.Multer.File, userId?: string) {
     const org = await this.organizationService.get();
 
-    // Fallbacks if body parsing failed
     const docType = body.documentType || 'OTHER';
     const title = body.title || file.originalname;
     const expiry = body.expiryDate ? new Date(body.expiryDate) : null;
@@ -35,13 +36,13 @@ export class OrganizationDocumentService {
 
     const document = this.documentRepo.create({
       organizationId: org.id,
-      branchId: branchId,
+      branchId,
       documentType: docType,
-      title: title,
+      title,
       expiryDate: expiry,
       fileUrl: `/uploads/organization/documents/${file.filename}`,
+      createdByUserId: userId,
     });
-
     return this.documentRepo.save(document);
   }
 
@@ -50,28 +51,36 @@ export class OrganizationDocumentService {
     updateDto: UpdateOrganizationDocumentDto,
     userId?: string,
   ) {
-    const document = await this.documentRepo.findOne({ where: { id } });
+    const org = await this.organizationService.get();
+    const document = await this.documentRepo.findOne({
+      where: { id, organizationId: org.id },
+    });
     if (!document) throw new NotFoundException('Document not found');
 
-    Object.assign(
-      document,
-      updateDto,
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-      { updatedByUserId: userId },
-    );
+    Object.assign(document, updateDto, { updatedByUserId: userId });
     return this.documentRepo.save(document);
   }
 
-  async findAll() {
+  async findAll(currentUser?: any) {
     const org = await this.organizationService.get();
-    return this.documentRepo.find({ where: { organizationId: org.id } });
+    
+    const qb = this.documentRepo.createQueryBuilder('document')
+      .where('document.organizationId = :orgId', { orgId: org.id });
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'document.branchId',
+      });
+    }
+
+    return qb.getMany();
   }
 
   async remove(id: string, userId?: string) {
-    const document = await this.documentRepo.findOne({ where: { id } });
+    const org = await this.organizationService.get();
+    const document = await this.documentRepo.findOne({
+      where: { id, organizationId: org.id },
+    });
     if (!document) throw new NotFoundException('Document not found');
     return this.documentRepo.softRemove(document);
   }

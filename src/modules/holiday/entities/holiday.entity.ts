@@ -1,16 +1,12 @@
 import { HolidayTypeEnum } from '../../../common/enums/HolidayTypeEnum.enum';
 import {
   Column,
-  CreateDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('holidays')
-export class Holiday {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class Holiday extends TenantAwareEntity {
 
   @Column()
   name!: string;
@@ -37,9 +33,4 @@ export class Holiday {
   })
   description!: string | null;
 
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
 }

@@ -1,3 +1,4 @@
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,14 +8,13 @@ import {
   OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { CourseModule } from './course-module.entity';
 import { AssessmentQuestion } from './assessment-question.entity';
 
 @Entity('assessments')
-export class Assessment {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class Assessment extends TenantAwareEntity {
 
   @Column({ name: 'module_id' })
   moduleId!: string;
@@ -22,7 +22,10 @@ export class Assessment {
   @OneToOne(() => CourseModule, (mod) => mod.assessment, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'module_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'module_id', referencedColumnName: 'id' },
+  ])
   module!: CourseModule;
 
   @Column()
@@ -36,10 +39,4 @@ export class Assessment {
 
   @OneToMany(() => AssessmentQuestion, (q) => q.assessment)
   questions!: AssessmentQuestion[];
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

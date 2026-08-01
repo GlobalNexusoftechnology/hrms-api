@@ -16,6 +16,7 @@ import { UpdateEmployeeSkillDto } from './dto/update-employee-skill.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 
 @ApiTags('Employee Skills')
@@ -31,22 +32,26 @@ export class EmployeeSkillController {
   create(
     @Param('employeeId', ParseUUIDPipe) employeeId: string,
     @Body() createDto: CreateEmployeeSkillDto,
+    @CurrentUser() user: any,
   ) {
-    return this.skillService.create(employeeId, createDto);
+    return this.skillService.create(employeeId, createDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   @ApiOperation({ summary: 'Get all skills for an employee' })
-  findAll(@Param('employeeId', ParseUUIDPipe) employeeId: string) {
-    return this.skillService.findAllByEmployee(employeeId);
+  findAll(
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.skillService.findAllByEmployee(employeeId, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific skill' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.skillService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.skillService.findOne(id, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
@@ -55,14 +60,15 @@ export class EmployeeSkillController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateDto: UpdateEmployeeSkillDto,
+    @CurrentUser() user: any,
   ) {
-    return this.skillService.update(id, updateDto);
+    return this.skillService.update(id, updateDto, user);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a skill' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.skillService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.skillService.remove(id, user);
   }
 }

@@ -1,20 +1,19 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Candidate } from './candidate.entity';
 import { JobPosting } from './job-posting.entity';
 import { CandidateStatusEnum } from '../../../common/enums/candidate-status.enum';
 
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+
 @Entity('candidate_applications')
-export class CandidateApplication {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'candidateId', 'jobId'])
+export class CandidateApplication extends TenantAwareEntity {
 
   @Column({ name: 'candidate_id', type: 'uuid' })
   candidateId!: string;
@@ -22,7 +21,10 @@ export class CandidateApplication {
   @ManyToOne(() => Candidate, (candidate) => candidate.applications, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'candidate_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'candidate_id', referencedColumnName: 'id' },
+  ])
   candidate!: Candidate;
 
   @Column({ name: 'job_id', type: 'uuid' })
@@ -31,7 +33,10 @@ export class CandidateApplication {
   @ManyToOne(() => JobPosting, (job) => job.applications, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'job_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'job_id', referencedColumnName: 'id' },
+  ])
   job!: JobPosting;
 
   @Column({
@@ -41,9 +46,4 @@ export class CandidateApplication {
   })
   status!: CandidateStatusEnum;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

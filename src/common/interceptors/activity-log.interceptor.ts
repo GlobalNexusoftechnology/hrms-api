@@ -62,6 +62,8 @@ export class ActivityLogInterceptor implements NestInterceptor {
     else if (method === 'DELETE') action = ActivityAction.DELETE;
 
     this.activityLogService.logAction({
+      tenantId: req.user?.tenantId || null,
+      branchId: req.user?.branchId || null,
       userId: req.user?.id || null, // Populated by AuthGuard
       module: 'API Request',
       action: action,
