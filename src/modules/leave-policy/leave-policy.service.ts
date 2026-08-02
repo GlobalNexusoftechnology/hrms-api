@@ -27,7 +27,10 @@ export class LeavePolicyService {
       throw new NotFoundException('Leave Type not found');
     }
 
-    const leavePolicy = this.leavePolicyRepo.create(createLeavePolicyDto);
+    const leavePolicy = this.leavePolicyRepo.create({
+      ...createLeavePolicyDto,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+    });
     return this.leavePolicyRepo.save(leavePolicy);
   }
 

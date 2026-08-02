@@ -54,7 +54,10 @@ export class NotificationService {
       return null;
     }
 
-    const notification = this.notificationRepo.create(dto);
+    const notification = this.notificationRepo.create({
+      ...dto,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+    });
 
     const saved = await this.notificationRepo.save(notification);
 

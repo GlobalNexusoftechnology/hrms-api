@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -253,9 +254,31 @@ export class CareerMovementsService {
             await queryRunner.manager.save(SalaryStructure, salary);
           }
         }
-        
-        // Note: For V1, we assume the new structure is already active or handled 
-        // separately during its creation phase in the salary-structure module.
+
+        const newSalary = await queryRunner.manager.findOne(SalaryStructure, {
+          where: { id: movement.newSalaryStructureId },
+        });
+
+        if (!newSalary) {
+          throw new NotFoundException(
+            `New salary structure ${movement.newSalaryStructureId} not found`,
+          );
+        }
+
+        newSalary.isActive = true;
+        newSalary.employeeId = employee.id;
+        await queryRunner.manager.save(SalaryStructure, newSalary);
+
+        // INVARIANT CHECK: Enforce that the employee has EXACTLY 1 active salary structure post-execution
+        const activeSalaryCount = await queryRunner.manager.count(SalaryStructure, {
+          where: { employeeId: employee.id, isActive: true },
+        });
+
+        if (activeSalaryCount !== 1) {
+          throw new UnprocessableEntityException(
+            `Active salary invariant violated for employee ${employee.id}. Expected 1 active structure, found ${activeSalaryCount}. Rolling back transaction.`,
+          );
+        }
       }
 
       await queryRunner.manager.save(Employee, employee);

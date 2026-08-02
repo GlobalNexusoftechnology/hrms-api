@@ -120,7 +120,12 @@ export class TeamService {
       }
     }
 
-    const team = this.teamRepository.create(dto);
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
+    const team = this.teamRepository.create({
+      ...dto,
+      tenantId,
+    });
 
     const saved = await this.teamRepository.save(team);
 
@@ -128,11 +133,8 @@ export class TeamService {
     if (saved.teamLeadId) {
       await this.sendTeamNotification(
         [saved.teamLeadId],
-
         'Team Lead Assigned',
-
-        `You have been assigned as Team Lead of "${saved.name}" team`,
-
+        `You have been assigned as Team Lead of team "${saved.name}".`,
         saved.id,
       );
     }
@@ -169,18 +171,20 @@ export class TeamService {
 
     this.tenantQueryService.applyTenantFilter(qb, 'team');
 
-    qb.orderBy('team.createdAt', 'DESC');
+    qb.orderBy('team.name', 'ASC');
     qb.skip((page - 1) * limit);
     qb.take(limit);
 
-    const [teams, total] = await qb.getManyAndCount();
+    const [data, total] = await qb.getManyAndCount();
 
     return {
-      data: teams,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -216,6 +220,7 @@ export class TeamService {
 
     const team = await this.teamRepository.findOne({
       where: { id: teamId, tenantId: this.tenantQueryService.getTenantWhereClause().tenantId },
+      relations: { teamLead: true },
     });
 
     if (!team) {
@@ -270,22 +275,26 @@ export class TeamService {
       };
     }
 
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const members = employeeIdsToAssign.map((employeeId) =>
       this.teamMemberRepository.create({
         teamId,
         employeeId,
+        tenantId,
       }),
     );
 
     await this.teamMemberRepository.save(members);
 
+    const leadName = team.teamLead
+      ? `${team.teamLead.firstName} ${team.teamLead.lastName}`
+      : 'Unassigned';
+
     await this.sendTeamNotification(
       employeeIdsToAssign,
-
       'Team Assigned',
-
-      `You have been added to "${team.name}" team`,
-
+      `You have been added to team "${team.name}" (Team Lead: ${leadName}).`,
       team.id,
     );
 
@@ -351,6 +360,15 @@ export class TeamService {
 
     const updated = await this.teamRepository.save(team);
 
+    const updatedWithRelations = await this.teamRepository.findOne({
+      where: { id: team.id, tenantId: this.tenantQueryService.getTenantWhereClause().tenantId },
+      relations: { teamLead: true },
+    });
+
+    const leadName = updatedWithRelations?.teamLead
+      ? `${updatedWithRelations.teamLead.firstName} ${updatedWithRelations.teamLead.lastName}`
+      : 'Unassigned';
+
     const members = await this.teamMemberRepository.find({
       where: {
         teamId: team.id,
@@ -360,15 +378,11 @@ export class TeamService {
 
     await this.sendTeamNotification(
       [
-        ...(team.teamLeadId ? [team.teamLeadId] : []),
-
+        ...(updatedWithRelations?.teamLeadId ? [updatedWithRelations.teamLeadId] : []),
         ...members.map((member) => member.employeeId),
       ],
-
       'Team Updated',
-
-      `Team "${team.name}" details have been updated`,
-
+      `Team "${updatedWithRelations?.name || team.name}" details have been updated (Team Lead: ${leadName}).`,
       team.id,
     );
 
@@ -383,6 +397,7 @@ export class TeamService {
         id: teamId,
         tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
+      relations: { teamLead: true },
     });
 
     if (!team) {
@@ -405,13 +420,14 @@ export class TeamService {
 
     await this.teamMemberRepository.remove(member);
 
+    const leadName = team.teamLead
+      ? `${team.teamLead.firstName} ${team.teamLead.lastName}`
+      : 'Unassigned';
+
     await this.sendTeamNotification(
       [employeeId],
-
       'Removed From Team',
-
-      `You have been removed from "${team.name}" team`,
-
+      `You have been removed from team "${team.name}" (Team Lead: ${leadName}).`,
       team.id,
     );
 
@@ -423,6 +439,7 @@ export class TeamService {
   async deleteTeam(id: string, currentUser: Employee) {
     const team = await this.teamRepository.findOne({
       where: { id, tenantId: this.tenantQueryService.getTenantWhereClause().tenantId },
+      relations: { teamLead: true },
     });
 
     if (!team) {
@@ -438,13 +455,17 @@ export class TeamService {
       },
     });
 
+    const leadName = team.teamLead
+      ? `${team.teamLead.firstName} ${team.teamLead.lastName}`
+      : 'Unassigned';
+
     await this.sendTeamNotification(
-      members.map((member) => member.employeeId),
-
+      [
+        ...(team.teamLeadId ? [team.teamLeadId] : []),
+        ...members.map((member) => member.employeeId),
+      ],
       'Team Deleted',
-
-      `Team "${team.name}" has been deleted`,
-
+      `Team "${team.name}" (Team Lead: ${leadName}) has been deleted.`,
       team.id,
     );
 
@@ -496,28 +517,30 @@ export class TeamService {
       throw new BadRequestException('Employee is not part of this team');
     }
 
-    // Save old lead before update
     const oldLeadId = team.teamLeadId;
 
-    // Prevent same lead update
     if (oldLeadId === dto.teamLeadId) {
       throw new BadRequestException('Employee is already the team lead');
     }
 
-    // Update lead
     team.teamLeadId = dto.teamLeadId;
 
     await this.teamRepository.save(team);
+
+    const newLeadName = `${employee.firstName} ${employee.lastName}`;
+    const members = await this.teamMemberRepository.find({
+      where: {
+        teamId,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+      },
+    });
 
     // Notify old lead
     if (oldLeadId) {
       await this.sendTeamNotification(
         [oldLeadId],
-
-        'Team Lead Removed',
-
-        `You are no longer Team Lead of "${team.name}" team`,
-
+        'Team Lead Role Changed',
+        `You are no longer Team Lead of team "${team.name}". ${newLeadName} has taken over as Team Lead.`,
         team.id,
       );
     }
@@ -525,13 +548,24 @@ export class TeamService {
     // Notify new lead
     await this.sendTeamNotification(
       [dto.teamLeadId],
-
       'Team Lead Assigned',
-
-      `You are now Team Lead of "${team.name}" team`,
-
+      `You are now official Team Lead of team "${team.name}".`,
       team.id,
     );
+
+    // Notify all team members
+    const memberIdsToNotify = members
+      .map((m) => m.employeeId)
+      .filter((id) => id !== dto.teamLeadId && id !== oldLeadId);
+
+    if (memberIdsToNotify.length > 0) {
+      await this.sendTeamNotification(
+        memberIdsToNotify,
+        'New Team Lead Assigned',
+        `${newLeadName} has been assigned as the new Team Lead for team "${team.name}".`,
+        team.id,
+      );
+    }
 
     return {
       message: 'Team lead updated successfully',
@@ -544,11 +578,7 @@ export class TeamService {
         id,
         tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
-      select: {
-        isActive: true,
-        branchId: true,
-        departmentId: true,
-      },
+      relations: { teamLead: true },
     });
 
     if (!team) {
@@ -568,10 +598,12 @@ export class TeamService {
         id,
         tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
       },
-      select: {
-        isActive: true,
-      },
+      relations: { teamLead: true },
     });
+
+    const leadName = updatedTeam?.teamLead
+      ? `${updatedTeam.teamLead.firstName} ${updatedTeam.teamLead.lastName}`
+      : 'Unassigned';
 
     const members = await this.teamMemberRepository.find({
       where: {
@@ -581,12 +613,12 @@ export class TeamService {
     });
 
     await this.sendTeamNotification(
-      members.map((member) => member.employeeId),
-
+      [
+        ...(updatedTeam?.teamLeadId ? [updatedTeam.teamLeadId] : []),
+        ...members.map((member) => member.employeeId),
+      ],
       updatedStatus ? 'Team Activated' : 'Team Deactivated',
-
-      `Team "${id}" has been ${updatedStatus ? 'activated' : 'deactivated'}`,
-
+      `Team "${updatedTeam?.name || team.name}" (Team Lead: ${leadName}) has been ${updatedStatus ? 'activated' : 'deactivated'}.`,
       id,
     );
 

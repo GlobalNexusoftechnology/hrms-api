@@ -34,6 +34,7 @@ import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../../common/enums/NotificationType.enum';
 import { TenantQueryService } from "../../common/services/tenant-query.service";
 import { ClsService } from 'nestjs-cls';
+import { TenantExecutionService } from '../../common/services/tenant-execution.service';
 
 @Injectable()
 export class PayrollService {
@@ -69,6 +70,7 @@ export class PayrollService {
     private readonly notificationService: NotificationService, 
     private readonly tenantQueryService: TenantQueryService,
     private readonly cls: ClsService,
+    private readonly tenantExecutionService: TenantExecutionService,
   ) {}
 
   // =====================
@@ -838,34 +840,10 @@ export class PayrollService {
     if (tomorrow.getDate() === 1) {
       const month = today.getMonth() + 1;
       const year = today.getFullYear();
-      console.log(
-        `[Payroll Cron] Auto-generating payrolls for ${month}/${year}`,
-      );
       
-      const tenants = await this.employeeRepo
-        .createQueryBuilder('employee')
-        .select('employee.tenantId', 'tenantId')
-        .where('employee.tenantId IS NOT NULL')
-        .distinct(true)
-        .getRawMany();
-
-      for (const t of tenants) {
-        if (!t.tenantId) continue;
-        await this.cls.runWith(
-          {
-            tenantContext: {
-              tenantId: t.tenantId,
-              branchId: null,
-              userId: 'CRON',
-              email: 'cron@system.local',
-            },
-          } as any,
-          async () => {
-            console.log(`[Payroll Cron] Processing for tenant: ${t.tenantId}`);
-            await this.generateAllPayroll(month, year);
-          }
-        );
-      }
+      await this.tenantExecutionService.forEachActiveTenant('Monthly Payroll Generation', async () => {
+        await this.generateAllPayroll(month, year);
+      });
     }
   }
 

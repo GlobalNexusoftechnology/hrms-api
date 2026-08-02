@@ -72,7 +72,10 @@ export class InterviewService {
 
   // ------------------- JOB POSTINGS -------------------
   async createJobPosting(dto: CreateJobPostingDto, currentUser?: any) {
-    const job = this.jobRepo.create(dto);
+    const job = this.jobRepo.create({
+      ...dto,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+    });
     return this.jobRepo.save(job);
   }
 
@@ -145,7 +148,10 @@ export class InterviewService {
     });
 
     if (!candidate) {
-      candidate = this.candidateRepo.create(dto);
+      candidate = this.candidateRepo.create({
+        ...dto,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+      });
       candidate = await this.candidateRepo.save(candidate);
     } else {
       Object.assign(candidate, {

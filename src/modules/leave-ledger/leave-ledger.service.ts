@@ -16,7 +16,10 @@ export class LeaveLedgerService {
   ) {}
 
   async create(createLeaveLedgerDto: CreateLeaveLedgerDto) {
-    const entry = this.leaveLedgerRepo.create(createLeaveLedgerDto);
+    const entry = this.leaveLedgerRepo.create({
+      ...createLeaveLedgerDto,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+    });
     return this.leaveLedgerRepo.save(entry);
   }
 

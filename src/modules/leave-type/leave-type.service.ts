@@ -35,7 +35,10 @@ export class LeaveTypeService {
       );
     }
 
-    const leaveType = this.leaveTypeRepo.create(createLeaveTypeDto);
+    const leaveType = this.leaveTypeRepo.create({
+      ...createLeaveTypeDto,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+    });
     return this.leaveTypeRepo.save(leaveType);
   }
 

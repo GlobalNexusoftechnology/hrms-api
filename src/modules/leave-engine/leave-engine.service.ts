@@ -12,6 +12,7 @@ import { Cron } from '@nestjs/schedule';
 import { Employee } from '../employees/entities/employee.entity';
 import { TenantQueryService } from "../../common/services/tenant-query.service";
 import { DataScopeService } from '../../common/services/data-scope.service';
+import { TenantExecutionService } from '../../common/services/tenant-execution.service';
 
 @Injectable()
 export class LeaveEngineService {
@@ -26,7 +27,8 @@ export class LeaveEngineService {
     private readonly employeeRepo: Repository<Employee>,
     private readonly dataSource: DataSource,
     private readonly tenantQueryService: TenantQueryService,
-    private readonly dataScopeService: DataScopeService
+    private readonly dataScopeService: DataScopeService,
+    private readonly tenantExecutionService: TenantExecutionService,
   ) {}
 
   // -------------------------------------------------------------
@@ -131,71 +133,77 @@ export class LeaveEngineService {
   // ACCRUAL ENGINE (Cron & Business Logic)
   // -------------------------------------------------------------
 
-  // Example: Run on the 1st of every month at midnight
+  // Run on the 1st of every month at midnight
   @Cron('0 0 1 * *', { timeZone: 'Asia/Kolkata' })
   async executeMonthlyAccrual() {
-    // 1. Fetch all active policies with MONTHLY accrual
-    const policies = await this.leavePolicyRepo.find({
-      where: { isActive: true, accrualFrequency: 'MONTHLY' as any,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
-    });
+    await this.tenantExecutionService.forEachActiveTenant('Monthly Leave Accrual', async () => {
+      const currentTenantId = this.tenantQueryService.getTenantWhereClause().tenantId;
+      const policies = await this.leavePolicyRepo.find({
+        where: {
+          isActive: true,
+          accrualFrequency: 'MONTHLY' as any,
+          tenantId: currentTenantId,
+        },
+      });
 
-    for (const policy of policies) {
-      if (policy.accrualRate <= 0) continue;
+      for (const policy of policies) {
+        if (policy.accrualRate <= 0) continue;
 
-      // In a real system, you'd fetch employees based on the policy's scope (ORGANIZATION, BRANCH, etc)
-      // Here, we'll assume we have a helper to get eligible employees
-      const eligibleEmployeeIds =
-        await this.getEligibleEmployeesForPolicy(policy);
+        const eligibleEmployeeIds = await this.getEligibleEmployeesForPolicy(policy);
 
-      for (const empId of eligibleEmployeeIds) {
-        await this.processTransaction({
-          employeeId: empId,
-          leaveTypeId: policy.leaveTypeId,
-          transactionType: LeaveTransactionType.ACCRUAL,
-          days: policy.accrualRate,
-          remarks: 'Automated Monthly Accrual',
-        });
+        for (const empId of eligibleEmployeeIds) {
+          await this.processTransaction({
+            employeeId: empId,
+            leaveTypeId: policy.leaveTypeId,
+            transactionType: LeaveTransactionType.ACCRUAL,
+            days: policy.accrualRate,
+            remarks: 'Automated Monthly Accrual',
+          });
+        }
       }
-    }
+    });
   }
 
   @Cron('0 0 1 1 *', { timeZone: 'Asia/Kolkata' })
   async executeYearlyAccrual() {
-    const policies = await this.leavePolicyRepo.find({
-      where: { isActive: true, accrualFrequency: 'YEARLY' as any,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
-    });
+    await this.tenantExecutionService.forEachActiveTenant('Yearly Leave Accrual', async () => {
+      const currentTenantId = this.tenantQueryService.getTenantWhereClause().tenantId;
+      const policies = await this.leavePolicyRepo.find({
+        where: {
+          isActive: true,
+          accrualFrequency: 'YEARLY' as any,
+          tenantId: currentTenantId,
+        },
+      });
 
-    for (const policy of policies) {
-      if (policy.annualQuota <= 0) continue;
+      for (const policy of policies) {
+        if (policy.annualQuota <= 0) continue;
 
-      const eligibleEmployeeIds =
-        await this.getEligibleEmployeesForPolicy(policy);
+        const eligibleEmployeeIds = await this.getEligibleEmployeesForPolicy(policy);
 
-      for (const empId of eligibleEmployeeIds) {
-        await this.processTransaction({
-          employeeId: empId,
-          leaveTypeId: policy.leaveTypeId,
-          transactionType: LeaveTransactionType.ACCRUAL,
-          days: policy.annualQuota,
-          remarks: 'Automated Yearly Accrual',
-        });
+        for (const empId of eligibleEmployeeIds) {
+          await this.processTransaction({
+            employeeId: empId,
+            leaveTypeId: policy.leaveTypeId,
+            transactionType: LeaveTransactionType.ACCRUAL,
+            days: policy.annualQuota,
+            remarks: 'Automated Yearly Accrual',
+          });
+        }
       }
-    }
+    });
   }
 
   private async getEligibleEmployeesForPolicy(
     policy: LeavePolicy,
   ): Promise<string[]> {
-    // Phase 1 implementation: organization wide
+    const currentTenantId = this.tenantQueryService.getTenantWhereClause().tenantId;
     const employees = await this.employeeRepo.find({
       select: { id: true },
-      where: { isActive: true,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
+      where: {
+        isActive: true,
+        tenantId: currentTenantId,
+      },
     });
     return employees.map((e) => e.id);
   }

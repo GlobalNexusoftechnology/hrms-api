@@ -124,7 +124,10 @@ export class SalaryStructureService {
       }
     }
 
-    const comp = this.componentRepo.create(dto);
+    const comp = this.componentRepo.create({
+      ...dto,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+    });
     return this.componentRepo.save(comp);
   }
 

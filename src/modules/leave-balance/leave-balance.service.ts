@@ -35,16 +35,23 @@ export class LeaveBalanceService {
       });
     }
 
+    const calculateRemaining = (accrued: number | string, carriedForward: number | string, used: number | string): number => {
+      const a = Math.round(Number(accrued || 0) * 100);
+      const c = Math.round(Number(carriedForward || 0) * 100);
+      const u = Math.round(Number(used || 0) * 100);
+      return (a + c - u) / 100;
+    };
+
     const balances = await qb.getMany();
 
     return balances.map((b) => ({
       id: b.id,
       leaveType: b.leaveType,
       year: b.year,
-      accrued: b.accrued,
-      used: b.used,
-      carriedForward: b.carriedForward,
-      remaining: Number(b.accrued) + Number(b.carriedForward) - Number(b.used),
+      accrued: Number(b.accrued),
+      used: Number(b.used),
+      carriedForward: Number(b.carriedForward),
+      remaining: calculateRemaining(b.accrued, b.carriedForward, b.used),
     }));
   }
 
@@ -73,19 +80,23 @@ export class LeaveBalanceService {
 
     const [data, total] = await qb.getManyAndCount();
 
+    const calculateRemaining = (accrued: number | string, carriedForward: number | string, used: number | string): number => {
+      const a = Math.round(Number(accrued || 0) * 100);
+      const c = Math.round(Number(carriedForward || 0) * 100);
+      const u = Math.round(Number(used || 0) * 100);
+      return (a + c - u) / 100;
+    };
+
     return {
       data: data.map((item) => ({
         employeeId: item.employeeId,
         employeeName: `${item.employee.firstName} ${item.employee.lastName}`,
         employeeCode: item.employee.employeeCode,
         leaveType: item.leaveType.name,
-        accrued: item.accrued,
-        used: item.used,
-        carriedForward: item.carriedForward,
-        remaining:
-          Number(item.accrued) +
-          Number(item.carriedForward) -
-          Number(item.used),
+        accrued: Number(item.accrued),
+        used: Number(item.used),
+        carriedForward: Number(item.carriedForward),
+        remaining: calculateRemaining(item.accrued, item.carriedForward, item.used),
       })),
       meta: {
         total,

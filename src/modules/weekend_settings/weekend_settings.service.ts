@@ -18,13 +18,15 @@ export class WeekendSettingsService {
   ) {}
 
   async create(dto: CreateWeekendDto[]) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const entities: WeekendSetting[] = [];
+
     for (const item of dto) {
       const existing = await this.weekendRepo.findOne({
         where: {
           day: item.day,
-
           weekNumber: item.weekNumber,
-            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+          tenantId,
         },
       });
 
@@ -33,9 +35,16 @@ export class WeekendSettingsService {
           `${item.day} ${item.weekNumber} already exists`,
         );
       }
+
+      entities.push(
+        this.weekendRepo.create({
+          ...item,
+          tenantId,
+        }),
+      );
     }
 
-    return this.weekendRepo.save(dto);
+    return this.weekendRepo.save(entities);
   }
 
   async findAll() {
