@@ -188,6 +188,7 @@ export class InterviewService {
     const application = this.applicationRepo.create({
       candidateId: candidate.id,
       jobId: job.id,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
     });
 
     return this.applicationRepo.save(application);
@@ -337,6 +338,7 @@ export class InterviewService {
     const interview = this.interviewRepo.create({
       ...dto,
       roundName,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
     });
 
     const savedInterview = await this.interviewRepo.save(interview);
@@ -444,6 +446,7 @@ export class InterviewService {
       interviewId,
       createdBy: employeeId,
       ...dto,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
     });
 
     await this.feedbackRepo.save(feedback);
@@ -557,9 +560,10 @@ export class InterviewService {
       mobile: candidate.mobile,
       password,
       roleId: dto.roleId,
-      departmentId: job.departmentId,
-      branchId: job.branchId,
+      departmentId: dto.departmentId || job.departmentId,
+      branchId: dto.branchId || job.branchId,
       designationId: dto.designationId,
+      shiftId: dto.shiftId || null,
       joiningDate: dto.joiningDate,
       employmentType: job.employmentType,
       isActive: true,

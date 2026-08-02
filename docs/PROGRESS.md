@@ -348,6 +348,29 @@
 
 ---
 
+## 📅 Last Updated: 2026-08-02
+
+---
+
+## ─────────────────────────────────────
+## Phase 2.5 — Multi-Tenant Architecture & Enterprise Stabilization
+## ─────────────────────────────────────
+
+> **Status:** ✅ Complete
+> **Target Start:** 2026-08-02
+
+| Item | File | Status | Date |
+|---|---|---|---|
+| Centralized `TenantExecutionService` (tenant iteration from Tenant table, isolated try/catch) | `src/common/services/tenant-execution.service.ts` | ✅ Done | 2026-08-02 |
+| Multi-tenant Cron Job Refactoring (Leave, Attendance, Payroll) | `src/modules/*/` | ✅ Done | 2026-08-02 |
+| BullMQ Worker CLS Context Restoration | `src/modules/audit-log/audit.worker.ts` | ✅ Done | 2026-08-02 |
+| Career Movements Post-Swap Salary Invariant Assertion | `src/modules/career-movements/career-movements.service.ts` | ✅ Done | 2026-08-02 |
+| Integer Cent Arithmetic for Leave Balances (Fixed Float Drift) | `src/modules/leave-balance/leave-balance.service.ts` | ✅ Done | 2026-08-02 |
+| Entity Creation Tenant ID Audit & Fix (WeekendSettings, Team, SalaryStructure, LeaveType, LeavePolicy, LeaveLedger, Interview, Notification) | Across 8 Services | ✅ Done | 2026-08-02 |
+| Dynamic Team Notifications with Team Name & Team Lead Name | `src/modules/team/team.service.ts` | ✅ Done | 2026-08-02 |
+| SaaS Tenant Management CRUD & Status Lifecycle (`ACTIVE`, `SUSPENDED`, `INACTIVE`) | `src/modules/tenant/` | ✅ Done | 2026-08-02 |
+| Consolidated Transactional Onboarding Workflow | `src/modules/tenant/services/tenant-onboarding.service.ts` | ✅ Done | 2026-08-02 |
+
 ---
 
 ## ═══════════════════════════════════════
@@ -436,6 +459,14 @@
 | 2026-07-29 | Team | Refactored: Payroll Engine mathematically prorates eligible earnings and dynamically recalculates percentage deductions against configurable bases |
 | 2026-07-29 | Team | Updated: Clean Payslip architecture — PDF and API strictly render mathematically prorated earnings, safely omitting artificial "Absent" deductions from the presentation layer |
 | 2026-07-29 | Team | UI/UX: Added full Structural Basic & Gross Pay transparency to the header of the Payslip PDF |
+| 2026-08-02 | Team | Implemented: Centralized `TenantExecutionService` for active tenant discovery (`TenantStatus.ACTIVE`) across Leave, Attendance, and Payroll crons with per-tenant isolation |
+| 2026-08-02 | Team | Restored: Async BullMQ worker CLS context propagation for `AuditWorker` |
+| 2026-08-02 | Team | Enforced: Invariant assertion during career movement transactions — exactly 1 active salary structure exists post-execution or rolls back transaction |
+| 2026-08-02 | Team | Fixed: Floating point drift in `leave-balance.service.ts` using integer cent arithmetic |
+| 2026-08-02 | Team | Fixed: 500 error in `weekend_settings.service.ts`, `team.service.ts`, `salary-structure.service.ts`, `leave-type.service.ts`, `leave-policy.service.ts`, `leave-ledger.service.ts`, `interview.service.ts`, and `notification.service.ts` by populating `tenantId` via `.create()` |
+| 2026-08-02 | Team | Upgraded: Team module notification engine with dynamic Team Name and Team Lead Name across all CRUD operations |
+| 2026-08-02 | Team | Implemented: Full Tenant management CRUD endpoints (`GET /tenants`, `GET /tenants/:id`, `PATCH /tenants/:id`, `PATCH /tenants/:id/status`, `DELETE /tenants/:id`) with `ACTIVE`, `SUSPENDED`, `INACTIVE` lifecycle handling |
+| 2026-08-02 | Team | Refactored: Consolidated single transactional onboarding endpoint (`POST /onboarding`) and removed redundant empty tenant creation |
 
 ---
 
