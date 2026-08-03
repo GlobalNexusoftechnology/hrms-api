@@ -214,6 +214,8 @@ export class SalaryStructureService {
       };
     });
 
+    const netSalary = Math.max(0, Number(salary.grossSalary) - totalDeductions);
+
     return {
       id: salary.id,
       employee: salary.employee
@@ -227,6 +229,7 @@ export class SalaryStructureService {
       basicSalary: Number(salary.basicSalary),
       totalEarnings,
       totalDeductions,
+      netSalary,
       grossSalary: Number(salary.grossSalary),
       effectiveFrom: salary.effectiveFrom,
       effectiveTo: (salary as any).effectiveTo || null,
@@ -332,16 +335,21 @@ export class SalaryStructureService {
           grossSalary += calculatedAmount;
         }
 
+        const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
         const structureComp = manager.create(SalaryStructureComponent, {
           salaryComponentId: masterComp.id,
           componentName: masterComp.name,
           calculationType: masterComp.calculationType,
           percentageValue: masterComp.percentageValue,
           calculatedAmount: calculatedAmount,
+          tenantId,
         });
 
         structureComponents.push(structureComp);
       }
+
+      const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
       const newStructure = manager.create(SalaryStructure, {
         employeeId: dto.employeeId,
@@ -350,6 +358,7 @@ export class SalaryStructureService {
         effectiveFrom: dto.effectiveFrom,
         isActive: true,
         components: structureComponents,
+        tenantId,
       });
 
       const savedStructure = await manager.save(newStructure);
@@ -438,7 +447,7 @@ export class SalaryStructureService {
       where: { id,
           tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
     },
-      relations: { employee: { role: true, branch: true } },
+      relations: { employee: { role: true, branch: true }, components: { salaryComponent: true } },
     });
 
     if (!salary) throw new NotFoundException('Salary structure not found');
@@ -545,16 +554,21 @@ export class SalaryStructureService {
           grossSalary += calculatedAmount;
         }
 
+        const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
         const structureComp = manager.create(SalaryStructureComponent, {
           salaryComponentId: masterComp.id,
           componentName: masterComp.name,
           calculationType: masterComp.calculationType,
           percentageValue: masterComp.percentageValue,
           calculatedAmount: calculatedAmount,
+          tenantId,
         });
 
         structureComponents.push(structureComp);
       }
+
+      const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
       const newStructure = manager.create(SalaryStructure, {
         employeeId: createDto.employeeId,
@@ -563,6 +577,7 @@ export class SalaryStructureService {
         effectiveFrom: createDto.effectiveFrom,
         isActive: true,
         components: structureComponents,
+        tenantId,
       });
 
       const savedStructure = await manager.save(newStructure);

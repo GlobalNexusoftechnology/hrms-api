@@ -33,6 +33,8 @@ export class HolidayService {
       throw new BadRequestException('Holiday already exists on this date');
     }
 
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     return this.holidayRepo.save({
       name: dto.name.trim(),
 
@@ -43,6 +45,8 @@ export class HolidayService {
       isPaid: dto.isPaid,
 
       description: dto.description?.trim() || null,
+
+      tenantId,
     });
   }
 
@@ -50,6 +54,7 @@ export class HolidayService {
     const { month, year, type } = query;
 
     const qb = this.holidayRepo.createQueryBuilder('holiday');
+    this.tenantQueryService.applyTenantFilter(qb, 'holiday');
 
     if (month && year) {
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`;

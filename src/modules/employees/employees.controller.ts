@@ -39,8 +39,8 @@ export class EmployeesController {
 
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
-  create(@Body() dto: CreateEmployeeDto) {
-    return this.employeesService.create(dto);
+  create(@Body() dto: CreateEmployeeDto, @CurrentUser() user: any) {
+    return this.employeesService.create(dto, user);
   }
 
   // @Public()
@@ -80,15 +80,12 @@ export class EmployeesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEmployeeDto,
-    @CurrentUser() user: any, // 👈 1. Get the logged-in user
+    @CurrentUser() user: any,
   ) {
-    // 2 & 3. If the user is a regular employee, verify the IDs match
     if (user.role?.name === RoleEnum.EMPLOYEE && user.id !== id) {
-      // 4. Deny access
       throw new ForbiddenException('You can only update your own details.');
     }
-    // 5. Proceed with update
-    return this.employeesService.update(id, dto);
+    return this.employeesService.update(id, dto, user);
   }
 
   @Permissions('role.assign')
@@ -96,8 +93,9 @@ export class EmployeesController {
   assignRole(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AssignRoleDto,
+    @CurrentUser() user: any,
   ) {
-    return this.employeesService.assignRole(id, dto.roleId);
+    return this.employeesService.assignRole(id, dto.roleId, user);
   }
 
   // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -160,8 +158,9 @@ export class EmployeesController {
   remove(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() user: any,
   ) {
-    return this.employeesService.remove(id);
+    return this.employeesService.remove(id, user);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN)

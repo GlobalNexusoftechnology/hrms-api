@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, IsNull, Repository } from 'typeorm';
@@ -68,7 +69,22 @@ export class EmployeesService {
     return `EMP-${String(nextNumber).padStart(3, '0')}`;
   }
 
-  async create(dto: CreateEmployeeDto) {
+  private validateAuthorityLevel(
+    currentUser: Employee | undefined,
+    targetAuthorityLevel: number,
+    action: string,
+  ) {
+    if (!currentUser || !currentUser.role) return;
+    if (currentUser.role.authorityLevel >= 100) return; // Super Admin bypass
+
+    if (targetAuthorityLevel >= currentUser.role.authorityLevel) {
+      throw new ForbiddenException(
+        `You cannot ${action} an employee with an equal or higher authority level`,
+      );
+    }
+  }
+
+  async create(dto: CreateEmployeeDto, currentUser?: Employee) {
     const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
     dto.email = dto.email.trim().toLowerCase();
@@ -108,6 +124,10 @@ export class EmployeesService {
 
     if (!role) {
       throw new NotFoundException('Role not found in this tenant');
+    }
+
+    if (currentUser) {
+      this.validateAuthorityLevel(currentUser, role.authorityLevel, 'create');
     }
 
     if (dto.branchId) {
@@ -243,15 +263,20 @@ export class EmployeesService {
     }
   }
 
-  async assignRole(id: string, roleId: string) {
+  async assignRole(id: string, roleId: string, currentUser?: Employee) {
     const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
     const employee = await this.employeeRepository.findOne({
       where: { id, tenantId, deletedAt: IsNull() },
+      relations: { role: true },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
+    }
+
+    if (currentUser && employee.role) {
+      this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'change role of');
     }
 
     const role = await this.roleRepository.findOne({
@@ -260,6 +285,10 @@ export class EmployeesService {
 
     if (!role) {
       throw new NotFoundException('Role not found or is inactive');
+    }
+
+    if (currentUser) {
+      this.validateAuthorityLevel(currentUser, role.authorityLevel, 'assign role of');
     }
 
     employee.roleId = roleId;
@@ -510,15 +539,31 @@ export class EmployeesService {
     return employee;
   }
 
-  async update(id: string, dto: UpdateEmployeeDto) {
+  async update(id: string, dto: UpdateEmployeeDto, currentUser?: Employee) {
     const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
     const employee = await this.employeeRepository.findOne({
       where: { id, tenantId, deletedAt: IsNull() },
+      relations: { role: true },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
+    }
+
+    if (currentUser && employee.role) {
+      this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'modify');
+    }
+
+    const targetRoleId = (dto as any).roleId;
+    if (targetRoleId && targetRoleId !== employee.roleId) {
+      const newRole = await this.roleRepository.findOne({
+        where: { id: targetRoleId, tenantId, deletedAt: IsNull(), isActive: true },
+      });
+      if (!newRole) throw new NotFoundException('Role not found');
+      if (currentUser) {
+        this.validateAuthorityLevel(currentUser, newRole.authorityLevel, 'assign role of');
+      }
     }
 
     if (dto.email) {
@@ -623,15 +668,20 @@ export class EmployeesService {
     };
   }
 
-  async remove(id: string) {
+  async remove(id: string, currentUser?: Employee) {
     const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
     const employee = await this.employeeRepository.findOne({
       where: { id, tenantId, deletedAt: IsNull() },
+      relations: { role: true },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
+    }
+
+    if (currentUser && employee.role) {
+      this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'delete');
     }
 
     await this.employeeRepository.softDelete(id);

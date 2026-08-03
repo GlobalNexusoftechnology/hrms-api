@@ -118,6 +118,10 @@ export class TeamService {
       if (!employee) {
         throw new NotFoundException('Team lead not found');
       }
+
+      if (dto.branchId && employee.branchId && employee.branchId !== dto.branchId) {
+        throw new BadRequestException('Team lead must belong to the same branch as the team');
+      }
     }
 
     const { tenantId } = this.tenantQueryService.getTenantWhereClause();
@@ -233,14 +237,27 @@ export class TeamService {
       );
     }
 
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const employees = await this.employeeRepository.find({
-      where: employeeIds.map((id) => ({ id, isActive: true })),
+      where: employeeIds.map((id) => ({ id, isActive: true, tenantId })),
     });
 
     if (employees.length !== employeeIds.length) {
       throw new BadRequestException(
         'One or more employees not found or are inactive',
       );
+    }
+
+    if (team.branchId) {
+      const invalidBranchEmployees = employees.filter(
+        (emp) => emp.branchId && emp.branchId !== team.branchId,
+      );
+      if (invalidBranchEmployees.length > 0) {
+        throw new BadRequestException(
+          `Employees must belong to the same branch as the team. Invalid employees: ${invalidBranchEmployees.map((e) => e.id).join(', ')}`,
+        );
+      }
     }
 
     if (team.departmentId) {
@@ -274,8 +291,6 @@ export class TeamService {
         message: 'All employees are already members of this team',
       };
     }
-
-    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
     const members = employeeIdsToAssign.map((employeeId) =>
       this.teamMemberRepository.create({
@@ -353,6 +368,11 @@ export class TeamService {
 
       if (!employee) {
         throw new NotFoundException('Team lead not found');
+      }
+
+      const targetBranchId = dto.branchId || team.branchId;
+      if (targetBranchId && employee.branchId && employee.branchId !== targetBranchId) {
+        throw new BadRequestException('Team lead must belong to the same branch as the team');
       }
     }
 
@@ -503,6 +523,10 @@ export class TeamService {
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
+    }
+
+    if (team.branchId && employee.branchId && employee.branchId !== team.branchId) {
+      throw new BadRequestException('Team lead must belong to the same branch as the team');
     }
 
     const member = await this.teamMemberRepository.findOne({

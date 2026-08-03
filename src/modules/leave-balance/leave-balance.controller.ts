@@ -46,4 +46,13 @@ export class LeaveBalanceController {
       hrUser,
     );
   }
+
+  @Permissions(PermissionEnum.LEAVE_UPDATE)
+  @Post('hr/leave-balance/run-credit')
+  async runCredit() {
+    await this.leaveEngineService.executeMonthlyAccrual();
+    return {
+      message: 'Monthly leave accrual credit executed successfully',
+    };
+  }
 }

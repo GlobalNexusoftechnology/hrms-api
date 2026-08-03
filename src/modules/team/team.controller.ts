@@ -81,39 +81,6 @@ export class TeamController {
   }
 
   @Permissions(PermissionEnum.TEAM_UPDATE)
-  @Patch(':id')
-  async update(
-    @Param('id', ParseUUIDPipe)
-    id: string,
-
-    @Body()
-    dto: UpdateTeamDto,
-    @CurrentUser() employee: any,
-  ) {
-    return this.teamService.updateTeam(id, dto, employee);
-  }
-
-  @Permissions(PermissionEnum.TEAM_DELETE)
-  @Delete('remove-member')
-  async removeMember(
-    @Body()
-    dto: RemoveTeamMemberDto,
-    @CurrentUser() employee: any,
-  ) {
-    return this.teamService.removeMember(dto, employee);
-  }
-
-  @Permissions(PermissionEnum.TEAM_DELETE)
-  @Delete(':id')
-  async delete(
-    @Param('id', ParseUUIDPipe)
-    id: string,
-    @CurrentUser() employee: any,
-  ) {
-    return this.teamService.deleteTeam(id, employee);
-  }
-
-  @Permissions(PermissionEnum.TEAM_UPDATE)
   @Patch('change-lead/:teamId')
   async changeLead(
     @Param('teamId', ParseUUIDPipe)
@@ -134,5 +101,18 @@ export class TeamController {
     @CurrentUser() employee: any,
   ) {
     return this.teamService.toggleStatus(id, employee);
+  }
+
+  @Permissions(PermissionEnum.TEAM_UPDATE)
+  @Patch(':id')
+  async update(
+    @Param('id', ParseUUIDPipe)
+    id: string,
+
+    @Body()
+    dto: UpdateTeamDto,
+    @CurrentUser() employee: any,
+  ) {
+    return this.teamService.updateTeam(id, dto, employee);
   }
 }
