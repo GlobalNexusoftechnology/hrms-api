@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Post,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { InterviewService } from './interview.service';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
@@ -26,16 +27,14 @@ export class InterviewController {
   // ------------------- PUBLIC ENDPOINTS -------------------
   @Public()
   @Get('public/jobs')
-  getPublicJobs() {
-    // Ideally this filters for JobStatusEnum.OPEN in the service,
-    // but for now we just return all active jobs
-    return this.interviewService.getJobPostings();
+  getPublicJobs(@Query('tenantId', ParseUUIDPipe) tenantId: string) {
+    return this.interviewService.getPublicJobPostings(tenantId);
   }
 
   @Public()
   @Get('public/jobs/:id')
   getPublicJob(@Param('id', ParseUUIDPipe) id: string) {
-    return this.interviewService.getJobPosting(id);
+    return this.interviewService.getPublicJobPosting(id);
   }
 
   @Public()
@@ -46,7 +45,7 @@ export class InterviewController {
   ) {
     // Ensure the jobId in DTO matches the URL param
     dto.jobId = id;
-    return this.interviewService.applyToJob(dto);
+    return this.interviewService.applyToPublicJob(dto);
   }
 
   // ------------------- INTERNAL EMPLOYEE ENDPOINTS -------------------

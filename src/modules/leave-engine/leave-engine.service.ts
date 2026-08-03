@@ -36,8 +36,13 @@ export class LeaveEngineService {
   // -------------------------------------------------------------
   async processTransaction(dto: CreateLeaveLedgerDto, manager?: EntityManager) {
     const runInTransaction = async (m: EntityManager) => {
+      const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
       // 1. Save to Ledger
-      const ledgerEntry = m.create(LeaveLedger, dto);
+      const ledgerEntry = m.create(LeaveLedger, {
+        ...dto,
+        tenantId,
+      });
       const savedLedger = await m.save(ledgerEntry);
 
       // 2. Update Balance
@@ -47,6 +52,7 @@ export class LeaveEngineService {
           employeeId: dto.employeeId,
           leaveTypeId: dto.leaveTypeId,
           year,
+          tenantId,
         },
         lock: { mode: 'pessimistic_write' },
       });
@@ -55,6 +61,7 @@ export class LeaveEngineService {
         balance = m.create(LeaveBalance, {
           employeeId: dto.employeeId,
           leaveTypeId: dto.leaveTypeId,
+          tenantId,
           year,
           accrued: 0,
           used: 0,

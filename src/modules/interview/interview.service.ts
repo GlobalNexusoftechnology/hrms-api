@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, IsNull, MoreThanOrEqual } from 'typeorm';
 import { Candidate } from './entities/candidate.entity';
 import { Interview } from './entities/interview.entity';
 import { InterviewFeedback } from './entities/interview-feedback.entity';
@@ -23,6 +23,7 @@ import { ConvertCandidateDto } from './dto/convert-candidate.dto';
 import { EmployeesService } from '../employees/employees.service';
 import { InterviewStatusEnum } from 'src/common/enums/interview-status.enum';
 import { InterviewRoundEnum } from '../../common/enums/interview-round.enum';
+import { JobStatusEnum } from '../../common/enums/job-status.enum';
 import { Role } from '../roles/entities/role.entity';
 import { Department } from '../departments/entities/department.entity';
 import { Designation } from '../designations/entities/designation.entity';
@@ -70,6 +71,21 @@ export class InterviewService {
     private readonly dataScopeService: DataScopeService
   ) {}
 
+  // ------------------- HELPER -------------------
+  private async autoCloseExpiredJobs(tenantId?: string) {
+    const qb = this.jobRepo.createQueryBuilder()
+      .update()
+      .set({ status: JobStatusEnum.CLOSED })
+      .where('lastDateToApply < :now', { now: new Date() })
+      .andWhere('status = :status', { status: JobStatusEnum.OPEN });
+
+    if (tenantId) {
+      qb.andWhere('tenantId = :tenantId', { tenantId });
+    }
+
+    await qb.execute();
+  }
+
   // ------------------- JOB POSTINGS -------------------
   async createJobPosting(dto: CreateJobPostingDto, currentUser?: any) {
     const job = this.jobRepo.create({
@@ -78,9 +94,116 @@ export class InterviewService {
     });
     return this.jobRepo.save(job);
   }
+  // ------------------- PUBLIC ENDPOINTS -------------------
+  async getPublicJobPostings(tenantId: string) {
+    await this.autoCloseExpiredJobs(tenantId);
+    return this.jobRepo.find({
+      where: [
+        { tenantId, lastDateToApply: IsNull() },
+        { tenantId, lastDateToApply: MoreThanOrEqual(new Date()) }
+      ],
+      relations: { department: true, branch: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
 
+  async getPublicJobPosting(id: string) {
+    // We don't have tenantId immediately here, but we can call it without tenantId, 
+    // or just rely on the fact that if it expired, it will throw error anyway.
+    // Let's call it globally for all tenants as a cleanup, or just skip it here 
+    // since applyToPublicJob blocks it anyway. Let's call it globally:
+    await this.autoCloseExpiredJobs();
+    
+    const job = await this.jobRepo.findOne({
+      where: { id },
+      relations: { department: true, branch: true },
+    });
+    if (!job) throw new NotFoundException('Job not found');
+    return job;
+  }
+
+  async applyToPublicJob(dto: CreateCandidateDto) {
+    await this.autoCloseExpiredJobs();
+    const job = await this.jobRepo.findOne({ where: { id: dto.jobId } });
+    if (!job) throw new NotFoundException('Job posting not found');
+    
+    if (job.lastDateToApply && new Date(job.lastDateToApply).getTime() < Date.now()) {
+      throw new BadRequestException('This job posting has expired and is no longer accepting applications.');
+    }
+    
+    const tenantId = job.tenantId;
+
+    // 1. Validate if Email or Mobile exists in Employee records
+    const employeeExists = await this.employeeRepo.findOne({
+      where: [
+        { email: dto.email, tenantId },
+        { mobile: dto.mobile, tenantId },
+      ],
+    });
+    if (employeeExists) {
+      throw new ConflictException(
+        'This email or mobile number already exists in the Employee records.',
+      );
+    }
+
+    // 2. Find or Create Candidate (can apply to multiple jobs)
+    let candidate = await this.candidateRepo.findOne({
+      where: [
+        { email: dto.email, tenantId },
+        { mobile: dto.mobile, tenantId },
+      ],
+    });
+
+    if (!candidate) {
+      candidate = this.candidateRepo.create({
+        ...dto,
+        tenantId,
+      });
+      candidate = await this.candidateRepo.save(candidate);
+    } else {
+      Object.assign(candidate, {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+        mobile: dto.mobile,
+        resumeUrl: dto.resumeUrl || candidate.resumeUrl,
+        experience: dto.experience || candidate.experience,
+        currentCompany: dto.currentCompany || candidate.currentCompany,
+        currentCtc: dto.currentCtc || candidate.currentCtc,
+        expectedCtc: dto.expectedCtc || candidate.expectedCtc,
+        noticePeriod: dto.noticePeriod || candidate.noticePeriod,
+        skills: dto.skills || candidate.skills,
+        source: dto.source || candidate.source,
+      });
+      candidate = await this.candidateRepo.save(candidate);
+    }
+
+    // 3. Validate if Candidate already applied to this specific Job
+    const existingApp = await this.applicationRepo.findOne({
+      where: { candidateId: candidate.id, jobId: job.id, tenantId },
+    });
+
+    if (existingApp) {
+      throw new ConflictException(
+        'You have already applied for this specific job posting.',
+      );
+    }
+
+    // 4. Create Application
+    const application = this.applicationRepo.create({
+      candidateId: candidate.id,
+      jobId: job.id,
+      tenantId,
+    });
+
+    return this.applicationRepo.save(application);
+  }
+
+  // ------------------- JOB POSTINGS (INTERNAL) -------------------
   async getJobPostings(currentUser?: any) {
     const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    await this.autoCloseExpiredJobs(tenantId);
+    
     const qb = this.jobRepo.createQueryBuilder('job')
       .leftJoinAndSelect('job.department', 'department')
       .leftJoinAndSelect('job.branch', 'branch')
@@ -99,6 +222,8 @@ export class InterviewService {
 
   async getJobPosting(id: string, currentUser?: any) {
     const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    await this.autoCloseExpiredJobs(tenantId);
+    
     const qb = this.jobRepo.createQueryBuilder('job')
       .leftJoinAndSelect('job.department', 'department')
       .leftJoinAndSelect('job.branch', 'branch')
@@ -119,10 +244,20 @@ export class InterviewService {
 
   // ------------------- APPLICATIONS -------------------
   async applyToJob(dto: CreateCandidateDto) {
-    const job = await this.jobRepo.findOne({ where: { id: dto.jobId,
-        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    } });
+    const tenantId = this.tenantQueryService.getTenantWhereClause().tenantId;
+    await this.autoCloseExpiredJobs(tenantId);
+
+    const job = await this.jobRepo.findOne({ 
+      where: { 
+        id: dto.jobId,
+        tenantId
+      } 
+    });
     if (!job) throw new NotFoundException('Job posting not found');
+
+    if (job.lastDateToApply && new Date(job.lastDateToApply).getTime() < Date.now()) {
+      throw new BadRequestException('This job posting has expired and is no longer accepting applications.');
+    }
 
     // 1. Validate if Email or Mobile exists in Employee records
     const employeeExists = await this.employeeRepo.findOne({

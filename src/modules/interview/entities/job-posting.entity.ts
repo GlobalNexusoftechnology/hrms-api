@@ -78,6 +78,13 @@ export class JobPosting extends TenantAwareEntity {
   })
   status!: JobStatusEnum;
 
+  @Column({
+    type: 'timestamp',
+    name: 'last_date_to_apply',
+    nullable: true,
+  })
+  lastDateToApply!: Date;
+
   @OneToMany(() => CandidateApplication, (app) => app.job)
   applications!: CandidateApplication[];
 

@@ -116,27 +116,30 @@ export class PayrollService {
         employeeId,
         month,
         year,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
+        ...this.tenantQueryService.getTenantWhereClause(),                                     
+      },
     });
 
-    if (existing) {
-      throw new BadRequestException('Payroll already generated');
+    if (existing && existing.isPaid) {
+      throw new BadRequestException('Payroll already paid and finalized');
     }
 
     const employee = await this.employeeRepo.findOne({
-      where: { id: employeeId,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
+      where: {
+        id: employeeId,
+        ...this.tenantQueryService.getTenantWhereClause(),
+      },
       relations: { shift: true },
     });
 
     if (!employee) throw new NotFoundException('Employee not found');
 
     const salary = await this.salaryRepo.findOne({
-      where: { employeeId, isActive: true,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
+      where: {
+        employeeId,
+        isActive: true,
+        ...this.tenantQueryService.getTenantWhereClause(),
+      },
       relations: { components: { salaryComponent: true } },
     });
 
@@ -508,9 +511,11 @@ export class PayrollService {
         lateDeduction,
     );
 
-    // SAVE
+    // SAVE / RECALCULATE
     const payroll = await this.payrollRepo.save({
+      ...(existing ? { id: existing.id } : {}),
       employeeId,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
 
       month,
 
@@ -807,7 +812,10 @@ export class PayrollService {
           );
           generated++;
         } catch (error: any) {
-          if (error.message === 'Payroll already generated') {
+          if (
+            error.message?.includes('already paid') ||
+            error.message?.includes('already generated')
+          ) {
             skipped++;
           } else {
             failed++;

@@ -78,18 +78,25 @@ export class AttendanceService {
 
       const shift = this.validationService.getEffectiveShift(employee);
       const [startHour, startMinute] = shift.startTime.split(':').map(Number);
-      const shiftStartTime = dayjs(nowDate)
+      const [endHour] = shift.endTime.split(':').map(Number);
+      const nowDayjs = dayjs(nowDate);
+
+      let shiftStartTime = dayjs(nowDate)
         .hour(startHour)
         .minute(startMinute)
         .second(0)
         .millisecond(0);
+
+      const isCrossMidnight = shift.crossMidnight || endHour < startHour;
+      if (isCrossMidnight && nowDayjs.hour() < startHour && nowDayjs.hour() < 12) {
+        shiftStartTime = shiftStartTime.subtract(1, 'day');
+      }
+
       const graceTime = shiftStartTime.add(shift.lateGraceMinutes, 'minute');
       const halfDayTime = shiftStartTime.add(
         shift.halfDayThresholdMinutes,
         'minute',
       );
-
-      const nowDayjs = dayjs(nowDate);
 
       if (nowDayjs.isAfter(halfDayTime)) {
         attendance.status = AttendanceStatus.HALF_DAY;

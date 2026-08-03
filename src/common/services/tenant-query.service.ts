@@ -34,14 +34,11 @@ export class TenantQueryService {
    */
   getTenantWhereClause(): { tenantId: string } {
     const context = this.cls.get<TenantContext>('tenantContext');
-    
+
     if (!context || !context.tenantId) {
       throw new UnauthorizedException('Tenant context is missing for this operation.');
     }
-    
-    // If it's the platform tenant, returning empty object or omitting might be tricky depending on how it's used.
-    // Usually, Platform tenant shouldn't query standard tables without explicit filters, but we can return tenantId if they act as a regular tenant.
-    // For safety, we always return the context's tenantId.
+
     return { tenantId: context.tenantId };
   }
 

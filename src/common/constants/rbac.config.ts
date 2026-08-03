@@ -64,6 +64,11 @@ export const RBAC_CONFIG = {
     PermissionEnum.INTERVIEW_UPDATE,
     PermissionEnum.INTERVIEW_DELETE,
 
+    PermissionEnum.TEAM_CREATE,
+    PermissionEnum.TEAM_READ,
+    PermissionEnum.TEAM_UPDATE,
+    PermissionEnum.TEAM_DELETE,
+
     PermissionEnum.ACTIVITY_LOG_READ,
     PermissionEnum.ACTIVITY_LOG_EXPORT,
 
@@ -125,6 +130,8 @@ export const RBAC_CONFIG = {
     PermissionEnum.PAYROLL_READ,
 
     PermissionEnum.SALARY_READ,
+
+    PermissionEnum.TEAM_READ,
 
     PermissionEnum.TRAINING_READ,
     PermissionEnum.TRAINING_UPDATE,

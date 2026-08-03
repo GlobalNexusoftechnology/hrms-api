@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, IsDateString } from 'class-validator';
 import { EmploymentTypeEnum } from '../../../common/enums/employment-type.enum';
 
 export class CreateJobPostingDto {
@@ -27,4 +27,8 @@ export class CreateJobPostingDto {
   @IsOptional()
   @IsString()
   experienceLevel?: string;
+
+  @IsOptional()
+  @IsDateString()
+  lastDateToApply?: string;
 }

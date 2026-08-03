@@ -63,8 +63,8 @@ export class SalaryStructureController {
   @Permissions(PermissionEnum.SALARY_READ)
   @Get('hr/salary-components')
   getComponents(
-    @Query('organizationId', ParseUUIDPipe)
-    organizationId: string,
+    @Query('organizationId', new ParseUUIDPipe({ optional: true }))
+    organizationId?: string,
   ) {
     return this.salaryService.getComponents(organizationId);
   }

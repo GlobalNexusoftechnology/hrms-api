@@ -175,11 +175,18 @@ export class SalaryStructureService {
     } });
   }
 
-  async getComponents(organizationId: string) {
+  async getComponents(organizationId?: string) {
+    const whereClause: any = {
+      isActive: true,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+    };
+    
+    if (organizationId) {
+      whereClause.organizationId = organizationId;
+    }
+
     return this.componentRepo.find({
-      where: { organizationId, isActive: true,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
+      where: whereClause,
       order: { displayOrder: 'ASC' },
     });
   }
