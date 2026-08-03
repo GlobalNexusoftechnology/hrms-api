@@ -109,12 +109,19 @@ export class AttendanceValidationService {
     const shift = this.getEffectiveShift(employee);
     if (!shift.isFlexible) {
       const [startHour, startMinute] = shift.startTime.split(':').map(Number);
-      const shiftStartTime = dayjs(nowDate)
+      const [endHour] = shift.endTime.split(':').map(Number);
+      const now = dayjs(nowDate);
+
+      let shiftStartTime = dayjs(nowDate)
         .hour(startHour)
         .minute(startMinute)
         .second(0)
         .millisecond(0);
-      const now = dayjs(nowDate);
+
+      const isCrossMidnight = shift.crossMidnight || endHour < startHour;
+      if (isCrossMidnight && now.hour() < startHour && now.hour() < 12) {
+        shiftStartTime = shiftStartTime.subtract(1, 'day');
+      }
 
       const earliestTime = shiftStartTime.subtract(
         shift.earliestCheckInMinutes,

@@ -96,12 +96,14 @@ export class CreateShiftDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(480)
   lateGraceMinutes?: number;
 
   @ApiPropertyOptional({ example: 5, description: 'Early departure grace period in minutes (default: 5)' })
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(480)
   earlyLeaveGraceMinutes?: number;
 
   @ApiPropertyOptional({ example: 240, description: 'Minutes worked to count as half-day (default: 240 = 4 hrs)' })

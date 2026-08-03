@@ -115,13 +115,15 @@ export class AttendanceCronService {
             );
           } else {
             const [endHour, endMinute] = shift.endTime.split(':').map(Number);
+            const [startHour] = shift.startTime.split(':').map(Number);
             officialShiftEndTime = dayjs(attendance.date)
               .hour(endHour)
               .minute(endMinute)
               .second(0)
               .millisecond(0);
 
-            if (shift.crossMidnight && endHour < 12) {
+            const isCrossMidnight = shift.crossMidnight || endHour < startHour;
+            if (isCrossMidnight) {
               officialShiftEndTime = officialShiftEndTime.add(1, 'day');
             }
 
@@ -515,13 +517,15 @@ export class AttendanceCronService {
           );
         } else {
           const [endHour, endMinute] = shift.endTime.split(':').map(Number);
+          const [startHour] = shift.startTime.split(':').map(Number);
           officialShiftEndTime = dayjs(attendance.date)
             .hour(endHour)
             .minute(endMinute)
             .second(0)
             .millisecond(0);
 
-          if (shift.crossMidnight && endHour < 12) {
+          const isCrossMidnight = shift.crossMidnight || endHour < startHour;
+          if (isCrossMidnight) {
             officialShiftEndTime = officialShiftEndTime.add(1, 'day');
           }
         }

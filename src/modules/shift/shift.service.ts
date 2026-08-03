@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import dayjs from 'dayjs';
 import { Shift } from './entities/shift.entity';
 import { CreateShiftDto } from './dto/create-shift.dto';
@@ -23,6 +24,14 @@ export class ShiftService {
     start?: string | null,
     end?: string | null,
   ): number | undefined {
+    if (start === null && end === null) {
+      return 0;
+    }
+    if ((start && !end) || (!start && end)) {
+      throw new BadRequestException(
+        'Both breakStartTime and breakEndTime must be provided together, or both cleared.',
+      );
+    }
     if (start && end) {
       const [startHour, startMin] = start.split(':').map(Number);
       const [endHour, endMin] = end.split(':').map(Number);
@@ -31,9 +40,27 @@ export class ShiftService {
       if (endDate.isBefore(startDate)) {
         endDate = endDate.add(1, 'day');
       }
-      return endDate.diff(startDate, 'minute');
+      const duration = endDate.diff(startDate, 'minute');
+      if (duration <= 0) {
+        throw new BadRequestException('breakEndTime must be after breakStartTime.');
+      }
+      return duration;
     }
     return undefined;
+  }
+
+  private validateBreakAndShiftBounds(
+    standardWorkingMinutes: number,
+    totalBreakMinutes?: number,
+  ) {
+    if (
+      totalBreakMinutes !== undefined &&
+      totalBreakMinutes >= standardWorkingMinutes
+    ) {
+      throw new BadRequestException(
+        'Total break duration cannot equal or exceed standard working minutes.',
+      );
+    }
   }
 
   async create(createShiftDto: CreateShiftDto, userId?: string) {
@@ -48,7 +75,7 @@ export class ShiftService {
     });
     if (existing) {
       throw new ConflictException(
-        'A shift with this name or code already exists.',
+        'A shift with this name or code already exists in your organization.',
       );
     }
 
@@ -59,6 +86,9 @@ export class ShiftService {
     if (calculatedBreak !== undefined) {
       createShiftDto.totalBreakMinutes = calculatedBreak;
     }
+
+    const workingMinutes = createShiftDto.standardWorkingMinutes ?? 480;
+    this.validateBreakAndShiftBounds(workingMinutes, createShiftDto.totalBreakMinutes);
 
     const shift = this.shiftRepo.create({
       ...createShiftDto,
@@ -81,7 +111,23 @@ export class ShiftService {
   }
 
   async update(id: string, updateShiftDto: UpdateShiftDto, userId?: string) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
     const shift = await this.findOne(id); // already tenant-scoped
+
+    // Tenant-scoped duplicate check for update (excluding current shift id)
+    if (updateShiftDto.code || updateShiftDto.name) {
+      const existing = await this.shiftRepo.findOne({
+        where: [
+          { name: updateShiftDto.name ?? shift.name, tenantId, id: Not(id) },
+          { code: updateShiftDto.code ?? shift.code, tenantId, id: Not(id) },
+        ],
+      });
+      if (existing) {
+        throw new ConflictException(
+          'A shift with this name or code already exists in your organization.',
+        );
+      }
+    }
 
     Object.assign(shift, updateShiftDto, { updatedByUserId: userId });
 
@@ -93,11 +139,47 @@ export class ShiftService {
       shift.totalBreakMinutes = calculatedBreak;
     }
 
+    this.validateBreakAndShiftBounds(shift.standardWorkingMinutes, shift.totalBreakMinutes);
+
     return this.shiftRepo.save(shift);
   }
 
   async remove(id: string) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
     const shift = await this.findOne(id); // already tenant-scoped
+
+    // Verify shift is not assigned to active employees, branches, or organizations
+    const assignedEmployees = await this.shiftRepo.manager.query(
+      `SELECT 1 FROM employees WHERE shift_id = $1 AND tenant_id = $2 LIMIT 1`,
+      [id, tenantId],
+    );
+    if (assignedEmployees.length > 0) {
+      throw new BadRequestException(
+        'Cannot delete shift: it is currently assigned to active employees.',
+      );
+    }
+
+    const assignedBranches = await this.shiftRepo.manager.query(
+      `SELECT 1 FROM branches WHERE default_shift_id = $1 AND tenant_id = $2 LIMIT 1`,
+      [id, tenantId],
+    );
+    if (assignedBranches.length > 0) {
+      throw new BadRequestException(
+        'Cannot delete shift: it is currently set as default shift for a branch.',
+      );
+    }
+
+    const assignedOrgs = await this.shiftRepo.manager.query(
+      `SELECT 1 FROM organizations WHERE default_shift_id = $1 AND tenant_id = $2 LIMIT 1`,
+      [id, tenantId],
+    );
+    if (assignedOrgs.length > 0) {
+      throw new BadRequestException(
+        'Cannot delete shift: it is currently set as default shift for an organization.',
+      );
+    }
+
     return this.shiftRepo.remove(shift);
   }
 }
+
