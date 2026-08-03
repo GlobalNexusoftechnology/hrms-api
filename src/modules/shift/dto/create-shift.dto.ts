@@ -50,18 +50,6 @@ export class CreateShiftDto {
   @Matches(TIME_REGEX, { message: `endTime ${TIME_MSG}` })
   endTime!: string;
 
-  @ApiPropertyOptional({ example: '13:00', description: `Break start time. ${TIME_MSG}. Send null to clear.` })
-  @ValidateIf((o) => o.breakStartTime !== null && o.breakStartTime !== undefined)
-  @IsString()
-  @Matches(TIME_REGEX, { message: `breakStartTime ${TIME_MSG}` })
-  breakStartTime?: string | null;
-
-  @ApiPropertyOptional({ example: '14:00', description: `Break end time. ${TIME_MSG}. Send null to clear.` })
-  @ValidateIf((o) => o.breakEndTime !== null && o.breakEndTime !== undefined)
-  @IsString()
-  @Matches(TIME_REGEX, { message: `breakEndTime ${TIME_MSG}` })
-  breakEndTime?: string | null;
-
   @ApiPropertyOptional({
     example: false,
     description: 'Set true if the shift crosses midnight (e.g. 22:00 – 06:00)',
@@ -89,6 +77,17 @@ export class CreateShiftDto {
   @IsOptional()
   @IsBoolean()
   includeBreakInWorkingHours?: boolean;
+
+  @ApiPropertyOptional({ example: true, description: 'If true, employees on this shift are allowed to take breaks' })
+  @IsOptional()
+  @IsBoolean()
+  allowBreakTime?: boolean;
+
+  @ApiPropertyOptional({ example: 60, description: 'Maximum allowed break time in minutes for this shift' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  maxAllowedBreakMinutes?: number;
 
   // ─── Grace / threshold rules ─────────────────────────────────────────────────
 

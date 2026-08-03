@@ -20,35 +20,6 @@ export class ShiftService {
     private readonly tenantQueryService: TenantQueryService,
   ) {}
 
-  private calculateBreakMinutes(
-    start?: string | null,
-    end?: string | null,
-  ): number | undefined {
-    if (start === null && end === null) {
-      return 0;
-    }
-    if ((start && !end) || (!start && end)) {
-      throw new BadRequestException(
-        'Both breakStartTime and breakEndTime must be provided together, or both cleared.',
-      );
-    }
-    if (start && end) {
-      const [startHour, startMin] = start.split(':').map(Number);
-      const [endHour, endMin] = end.split(':').map(Number);
-      const startDate = dayjs().hour(startHour).minute(startMin).second(0);
-      let endDate = dayjs().hour(endHour).minute(endMin).second(0);
-      if (endDate.isBefore(startDate)) {
-        endDate = endDate.add(1, 'day');
-      }
-      const duration = endDate.diff(startDate, 'minute');
-      if (duration <= 0) {
-        throw new BadRequestException('breakEndTime must be after breakStartTime.');
-      }
-      return duration;
-    }
-    return undefined;
-  }
-
   private validateBreakAndShiftBounds(
     standardWorkingMinutes: number,
     totalBreakMinutes?: number,
@@ -79,19 +50,14 @@ export class ShiftService {
       );
     }
 
-    const calculatedBreak = this.calculateBreakMinutes(
-      createShiftDto.breakStartTime,
-      createShiftDto.breakEndTime,
-    );
-    if (calculatedBreak !== undefined) {
-      createShiftDto.totalBreakMinutes = calculatedBreak;
-    }
-
     const workingMinutes = createShiftDto.standardWorkingMinutes ?? 480;
-    this.validateBreakAndShiftBounds(workingMinutes, createShiftDto.totalBreakMinutes);
+    const breakMinutes = createShiftDto.maxAllowedBreakMinutes ?? createShiftDto.totalBreakMinutes ?? 60;
+    this.validateBreakAndShiftBounds(workingMinutes, breakMinutes);
 
     const shift = this.shiftRepo.create({
       ...createShiftDto,
+      maxAllowedBreakMinutes: breakMinutes,
+      totalBreakMinutes: breakMinutes,
       tenantId,
       createdByUserId: userId,
     });
@@ -131,15 +97,8 @@ export class ShiftService {
 
     Object.assign(shift, updateShiftDto, { updatedByUserId: userId });
 
-    const calculatedBreak = this.calculateBreakMinutes(
-      shift.breakStartTime,
-      shift.breakEndTime,
-    );
-    if (calculatedBreak !== undefined) {
-      shift.totalBreakMinutes = calculatedBreak;
-    }
-
-    this.validateBreakAndShiftBounds(shift.standardWorkingMinutes, shift.totalBreakMinutes);
+    const breakMinutes = shift.maxAllowedBreakMinutes ?? shift.totalBreakMinutes ?? 60;
+    this.validateBreakAndShiftBounds(shift.standardWorkingMinutes, breakMinutes);
 
     return this.shiftRepo.save(shift);
   }

@@ -16,6 +16,18 @@ export interface DataScopePathConfig {
 @Injectable()
 export class DataScopeService {
   /**
+   * Translates camelCase TypeORM property paths to snake_case database column paths for raw SQL fragments.
+   * e.g., 'department.branchId' -> 'department.branch_id'
+   */
+  private toColumnPath(path?: string): string | undefined {
+    if (!path) return undefined;
+    return path
+      .replace(/\.branchId$/, '.branch_id')
+      .replace(/\.departmentId$/, '.department_id')
+      .replace(/\.employeeId$/, '.employee_id');
+  }
+
+  /**
    * Applies data scope authorization to a query builder.
    * Ensures that the returned records belong to the user's allowed scope.
    *
@@ -41,26 +53,33 @@ export class DataScopeService {
       case DataScopeEnum.BRANCH:
         if (!currentUser.branchId || !paths.branch) {
           // If the user has no branch or path doesn't specify one, fallback to self if possible
-          if (paths.employee)
-            return qb.andWhere(`${paths.employee} = :userId_${pId}`, {
+          if (paths.employee) {
+            const empCol = this.toColumnPath(paths.employee)!;
+            return qb.andWhere(`${empCol} = :userId_${pId}`, {
               [`userId_${pId}`]: currentUser.id,
             });
-          return qb.andWhere('1 = 0');
+          }
+          // User has no branch specified, fallback to organization level
+          return qb;
         }
-        return qb.andWhere(`${paths.branch} = :branchId_${pId}`, {
+        const branchCol = this.toColumnPath(paths.branch)!;
+        return qb.andWhere(`(${branchCol} = :branchId_${pId} OR ${branchCol} IS NULL)`, {
           [`branchId_${pId}`]: currentUser.branchId,
         });
 
       case DataScopeEnum.DEPARTMENT:
         if (!currentUser.departmentId || !paths.department) {
           // Fallback to self if possible
-          if (paths.employee)
-            return qb.andWhere(`${paths.employee} = :userId_${pId}`, {
+          if (paths.employee) {
+            const empCol = this.toColumnPath(paths.employee)!;
+            return qb.andWhere(`${empCol} = :userId_${pId}`, {
               [`userId_${pId}`]: currentUser.id,
             });
-          return qb.andWhere('1 = 0');
+          }
+          return qb;
         }
-        return qb.andWhere(`${paths.department} = :departmentId_${pId}`, {
+        const deptCol = this.toColumnPath(paths.department)!;
+        return qb.andWhere(`(${deptCol} = :departmentId_${pId} OR ${deptCol} IS NULL)`, {
           [`departmentId_${pId}`]: currentUser.departmentId,
         });
 
@@ -68,9 +87,9 @@ export class DataScopeService {
         if (!paths.employee) {
           return qb.andWhere('1 = 0'); // TEAM scope requires an employee relationship
         }
+        const empColTeam = this.toColumnPath(paths.employee)!;
 
         // Access to employees sharing at least one team membership with the current user
-        // Using TypeORM's query builder to leverage metadata instead of hardcoded table names
         const teamSubQuery = qb.connection
           .createQueryBuilder(TeamMember, `tm1_${pId}`)
           .select(`tm1_${pId}.teamId`)
@@ -82,7 +101,7 @@ export class DataScopeService {
           .where(`tm2_${pId}.teamId IN (${teamSubQuery.getQuery()})`);
 
         return qb.andWhere(
-          `${paths.employee} IN (${employeeSubQuery.getQuery()})`,
+          `${empColTeam} IN (${employeeSubQuery.getQuery()})`,
           { [`userId_${pId}`]: currentUser.id },
         );
 
@@ -91,8 +110,9 @@ export class DataScopeService {
         if (!paths.employee) {
           return qb.andWhere('1 = 0'); // SELF scope requires an employee relationship
         }
+        const selfCol = this.toColumnPath(paths.employee)!;
         // Only their own record
-        return qb.andWhere(`${paths.employee} = :userId_${pId}`, {
+        return qb.andWhere(`${selfCol} = :userId_${pId}`, {
           [`userId_${pId}`]: currentUser.id,
         });
     }

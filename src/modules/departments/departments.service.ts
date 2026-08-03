@@ -94,7 +94,7 @@ export class DepartmentsService {
     queryBuilder.andWhere('department.deleted_at IS NULL');
 
     if (branchId) {
-      queryBuilder.andWhere('department.branch_id = :branchId', { branchId });
+      queryBuilder.andWhere('(department.branch_id = :branchId OR department.branch_id IS NULL)', { branchId });
     }
 
     if (search) {
@@ -114,7 +114,7 @@ export class DepartmentsService {
 
     if (currentUser) {
       this.dataScopeService.applyScope(queryBuilder, currentUser, {
-        branch: 'department.branchId',
+        branch: 'department.branch_id',
         department: 'department.id',
       });
     }
@@ -149,7 +149,7 @@ export class DepartmentsService {
 
     if (currentUser) {
       this.dataScopeService.applyScope(queryBuilder, currentUser, {
-        branch: 'department.branchId',
+        branch: 'department.branch_id',
         department: 'department.id',
       });
     }

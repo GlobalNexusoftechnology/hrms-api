@@ -70,6 +70,24 @@ export class AttendanceController {
     );
   }
 
+  @Permissions(PermissionEnum.ATTENDANCE_CREATE)
+  @Post('start-break')
+  startBreak(
+    @CurrentUser()
+    employee: any,
+  ) {
+    return this.attendanceService.startBreak(employee.id);
+  }
+
+  @Permissions(PermissionEnum.ATTENDANCE_CREATE)
+  @Post('end-break')
+  endBreak(
+    @CurrentUser()
+    employee: any,
+  ) {
+    return this.attendanceService.endBreak(employee.id);
+  }
+
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('me')
   getMyAttendance(

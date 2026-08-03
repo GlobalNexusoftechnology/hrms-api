@@ -17,6 +17,7 @@ import { WeekendSetting } from '../../weekend_settings/entities/weekend_setting.
 import { Leave } from '../entities/leave.entity';
 
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
+import { EmployeeWorkStatus } from '../../../common/enums/employee-work-status.enum';
 
 import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
 
@@ -136,14 +137,27 @@ export class AttendanceCronService {
           if (now.isAfter(absoluteMaxTime)) {
             const autoCheckoutTime = officialShiftEndTime;
 
+            // Finalize break if employee was left on break
+            if (attendance.workStatus === EmployeeWorkStatus.ON_BREAK && attendance.lastBreakStart) {
+              attendance.lastBreakEnd = autoCheckoutTime.toDate();
+              const breakDuration = Math.max(0, Math.floor(autoCheckoutTime.diff(dayjs(attendance.lastBreakStart), 'minute')));
+              attendance.totalBreakMinutes = (attendance.totalBreakMinutes || 0) + breakDuration;
+            }
+
+            let breakDeduction = 0;
+            if (!shift.includeBreakInWorkingHours) {
+              breakDeduction = attendance.totalBreakMinutes || 0;
+            }
+
             const totalWorkedMinutes = Math.max(
               0,
-              autoCheckoutTime.diff(dayjs(attendance.checkIn), 'minute'),
+              autoCheckoutTime.diff(dayjs(attendance.checkIn), 'minute') - breakDeduction,
             );
 
             attendance.checkOut = autoCheckoutTime.toDate();
             attendance.workedMinutes = totalWorkedMinutes;
             attendance.isAutoCheckout = true;
+            attendance.workStatus = EmployeeWorkStatus.NOT_WORKING;
 
             await manager.save(attendance);
           }

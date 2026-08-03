@@ -12,6 +12,7 @@ import {
 
 import { Employee } from '../../employees/entities/employee.entity';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
+import { EmployeeWorkStatus } from '../../../common/enums/employee-work-status.enum';
 import { AttendanceCorrection } from './correction.entity';
 
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
@@ -111,6 +112,34 @@ export class Attendance extends TenantAwareEntity {
     name: 'check_out_location',
   })
   checkOutLocation: string | null = null;
+
+  @Column({
+    type: 'enum',
+    enum: EmployeeWorkStatus,
+    default: EmployeeWorkStatus.NOT_WORKING,
+    name: 'work_status',
+  })
+  workStatus!: EmployeeWorkStatus;
+
+  @Column({
+    default: 0,
+    name: 'total_break_minutes',
+  })
+  totalBreakMinutes!: number;
+
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'last_break_start',
+  })
+  lastBreakStart: Date | null = null;
+
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'last_break_end',
+  })
+  lastBreakEnd: Date | null = null;
 
   @Column({
     default: false,

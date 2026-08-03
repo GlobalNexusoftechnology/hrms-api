@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, IsNull } from 'typeorm';
 import dayjs from 'dayjs';
@@ -7,8 +7,13 @@ import { nowIST, todayIST } from '../../../utils/time.util';
 import { Attendance } from '../entities/attendance.entity';
 import { AttendanceValidationService } from './attendance-validation.service';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
+import { EmployeeWorkStatus } from '../../../common/enums/employee-work-status.enum';
 import { formatAttendanceResponse } from '../helpers/attendance-response.helper';
 import { TenantQueryService } from '../../../common/services/tenant-query.service';
+import { NotificationService } from '../../notification/notification.service';
+import { NotificationType } from '../../../common/enums/NotificationType.enum';
+import { ActivityLogService } from '../../activity-log/activity-log.service';
+import { ActivityAction } from '../../activity-log/enums/activity-action.enum';
 
 @Injectable()
 export class AttendanceService {
@@ -18,6 +23,8 @@ export class AttendanceService {
     private readonly dataSource: DataSource,
     private readonly validationService: AttendanceValidationService,
     private readonly tenantQueryService: TenantQueryService,
+    private readonly notificationService: NotificationService,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   private readonly employeeRelations = {
@@ -67,6 +74,7 @@ export class AttendanceService {
       attendance.workedMinutes = 0;
       attendance.overtimeMinutes = 0;
       attendance.isAutoCheckout = false;
+      attendance.workStatus = EmployeeWorkStatus.WORKING;
 
       const shift = this.validationService.getEffectiveShift(employee);
       const [startHour, startMinute] = shift.startTime.split(':').map(Number);
@@ -96,6 +104,16 @@ export class AttendanceService {
 
       const saved = await manager.save(attendance, {
         reload: true,
+      });
+
+      this.activityLogService.logAction({
+        tenantId,
+        userId: employeeId,
+        module: 'ATTENDANCE',
+        entityType: 'ATTENDANCE',
+        entityId: saved.id,
+        action: ActivityAction.CREATE,
+        description: `Employee checked in at ${location || 'unknown location'}`,
       });
 
       const fullAttendance = await manager.findOne(Attendance, {
@@ -136,12 +154,19 @@ export class AttendanceService {
 
       this.validationService.validateCheckOut(attendance);
 
+      // Auto-finalize break if employee checked out while still on break
+      if (attendance!.workStatus === EmployeeWorkStatus.ON_BREAK && attendance!.lastBreakStart) {
+        attendance!.lastBreakEnd = nowDate;
+        const breakDuration = Math.max(0, Math.floor(now.diff(dayjs(attendance!.lastBreakStart), 'minute')));
+        attendance!.totalBreakMinutes = (attendance!.totalBreakMinutes || 0) + breakDuration;
+      }
+
       const checkInTime = dayjs(attendance!.checkIn);
       const shift = this.validationService.getEffectiveShift(employee);
 
       let breakMinutes = 0;
       if (!shift.includeBreakInWorkingHours) {
-        breakMinutes = shift.totalBreakMinutes || 0;
+        breakMinutes = attendance!.totalBreakMinutes || 0;
       }
 
       const workedMinutes =
@@ -176,9 +201,20 @@ export class AttendanceService {
       attendance!.checkOut = nowDate;
       attendance!.checkOutLocation = location?.trim() || null;
       attendance!.isAutoCheckout = false;
+      attendance!.workStatus = EmployeeWorkStatus.NOT_WORKING;
 
       const saved = await manager.save(attendance!, {
         reload: true,
+      });
+
+      this.activityLogService.logAction({
+        tenantId,
+        userId: employeeId,
+        module: 'ATTENDANCE',
+        entityType: 'ATTENDANCE',
+        entityId: saved.id,
+        action: ActivityAction.UPDATE,
+        description: `Employee checked out at ${location || 'unknown location'}`,
       });
 
       const fullAttendance = await manager.findOne(Attendance, {
@@ -195,6 +231,139 @@ export class AttendanceService {
         workedMinutes,
         overtimeMinutes: attendance!.overtimeMinutes,
         message: checkoutValidation.message,
+      };
+    });
+  }
+
+  async startBreak(employeeId: string) {
+    const employee = await this.validationService.validateEmployee(employeeId);
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
+    return this.dataSource.transaction(async (manager) => {
+      const today = todayIST();
+      const now = nowIST();
+      const nowDate = now.toDate();
+
+      const attendance = await manager.findOne(Attendance, {
+        where: { employeeId, date: today, checkOut: IsNull(), tenantId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!attendance) {
+        throw new BadRequestException('Must check in before starting a break.');
+      }
+
+      if (attendance.workStatus === EmployeeWorkStatus.ON_BREAK) {
+        throw new BadRequestException('Employee is already on break.');
+      }
+
+      const shift = this.validationService.getEffectiveShift(employee);
+      if (shift.allowBreakTime === false) {
+        throw new BadRequestException('Break time is not allowed for your assigned shift.');
+      }
+
+      const maxBreak = shift.maxAllowedBreakMinutes ?? 60;
+      if ((attendance.totalBreakMinutes || 0) >= maxBreak) {
+        throw new BadRequestException(`Maximum allowed break time (${maxBreak} mins) reached for today.`);
+      }
+
+      attendance.workStatus = EmployeeWorkStatus.ON_BREAK;
+      attendance.lastBreakStart = nowDate;
+
+      const saved = await manager.save(attendance);
+
+      const remainingBreak = maxBreak - (attendance.totalBreakMinutes || 0);
+
+      // Trigger Notification
+      await this.notificationService.createNotification({
+        employeeId,
+        title: 'Break Started',
+        message: `Your break has started at ${dayjs(nowDate).format('HH:mm')}. You have ${remainingBreak} minutes remaining for today.`,
+        type: NotificationType.ATTENDANCE,
+        referenceId: saved.id,
+      });
+
+      // Audit / Activity Log
+      this.activityLogService.logAction({
+        tenantId,
+        userId: employeeId,
+        module: 'ATTENDANCE',
+        entityType: 'ATTENDANCE',
+        entityId: saved.id,
+        action: ActivityAction.UPDATE,
+        description: 'Employee started break',
+      });
+
+      return {
+        message: 'Break started successfully',
+        workStatus: saved.workStatus,
+        lastBreakStart: saved.lastBreakStart,
+        totalBreakMinutes: saved.totalBreakMinutes,
+        maxAllowedBreakMinutes: maxBreak,
+      };
+    });
+  }
+
+  async endBreak(employeeId: string) {
+    const employee = await this.validationService.validateEmployee(employeeId);
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
+    return this.dataSource.transaction(async (manager) => {
+      const today = todayIST();
+      const now = nowIST();
+      const nowDate = now.toDate();
+
+      const attendance = await manager.findOne(Attendance, {
+        where: { employeeId, date: today, checkOut: IsNull(), tenantId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!attendance || attendance.workStatus !== EmployeeWorkStatus.ON_BREAK) {
+        throw new BadRequestException('Employee is not currently on break.');
+      }
+
+      attendance.lastBreakEnd = nowDate;
+      const sessionMinutes = attendance.lastBreakStart
+        ? Math.max(0, Math.floor(now.diff(dayjs(attendance.lastBreakStart), 'minute')))
+        : 0;
+
+      attendance.totalBreakMinutes = (attendance.totalBreakMinutes || 0) + sessionMinutes;
+      attendance.workStatus = EmployeeWorkStatus.WORKING;
+
+      const saved = await manager.save(attendance);
+
+      const shift = this.validationService.getEffectiveShift(employee);
+      const maxBreak = shift.maxAllowedBreakMinutes ?? 60;
+      const overBreakMsg = (saved.totalBreakMinutes > maxBreak)
+        ? ` Note: Total break duration (${saved.totalBreakMinutes} mins) has exceeded your shift allowance of ${maxBreak} mins.`
+        : '';
+
+      // Trigger Notification
+      await this.notificationService.createNotification({
+        employeeId,
+        title: 'Break Ended',
+        message: `Your break has ended. Session duration: ${sessionMinutes} minutes.${overBreakMsg} Work session resumed.`,
+        type: NotificationType.ATTENDANCE,
+        referenceId: saved.id,
+      });
+
+      // Audit / Activity Log
+      this.activityLogService.logAction({
+        tenantId,
+        userId: employeeId,
+        module: 'ATTENDANCE',
+        entityType: 'ATTENDANCE',
+        entityId: saved.id,
+        action: ActivityAction.UPDATE,
+        description: `Employee ended break after ${sessionMinutes} minutes`,
+      });
+
+      return {
+        message: 'Break ended successfully',
+        workStatus: saved.workStatus,
+        lastBreakEnd: saved.lastBreakEnd,
+        totalBreakMinutes: saved.totalBreakMinutes,
+        sessionBreakMinutes: sessionMinutes,
       };
     });
   }

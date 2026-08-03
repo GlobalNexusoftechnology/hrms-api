@@ -106,6 +106,14 @@ export class AttendanceDashboardService {
         ? {
             status: todayAttendance.status,
 
+            workStatus: todayAttendance.workStatus,
+
+            totalBreakMinutes: todayAttendance.totalBreakMinutes,
+
+            lastBreakStart: formatIST(todayAttendance.lastBreakStart),
+
+            lastBreakEnd: formatIST(todayAttendance.lastBreakEnd),
+
             checkIn: formatIST(todayAttendance.checkIn),
 
             checkOut: formatIST(todayAttendance.checkOut),

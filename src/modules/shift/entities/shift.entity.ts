@@ -24,12 +24,6 @@ export class Shift extends TenantAwareEntity {
   @Column({ type: 'time', name: 'end_time' })
   endTime!: string;
 
-  @Column({ type: 'time', name: 'break_start_time', nullable: true })
-  breakStartTime!: string | null;
-
-  @Column({ type: 'time', name: 'break_end_time', nullable: true })
-  breakEndTime!: string | null;
-
   @Column({ type: 'boolean', default: false, name: 'cross_midnight' })
   crossMidnight!: boolean;
 
@@ -45,6 +39,20 @@ export class Shift extends TenantAwareEntity {
     name: 'include_break_in_working_hours',
   })
   includeBreakInWorkingHours!: boolean;
+
+  @Column({
+    type: 'boolean',
+    default: true,
+    name: 'allow_break_time',
+  })
+  allowBreakTime!: boolean;
+
+  @Column({
+    type: 'int',
+    default: 60,
+    name: 'max_allowed_break_minutes',
+  })
+  maxAllowedBreakMinutes!: number;
 
   @Column({ type: 'int', default: 15, name: 'late_grace_minutes' })
   lateGraceMinutes!: number;

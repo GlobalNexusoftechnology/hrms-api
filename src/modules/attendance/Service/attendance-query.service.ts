@@ -95,6 +95,10 @@ export class AttendanceQueryService {
       qb.andWhere('attendance.status = :status', { status });
     }
 
+    if (query.workStatus) {
+      qb.andWhere('attendance.work_status = :workStatus', { workStatus: query.workStatus });
+    }
+
     if (date) {
       qb.andWhere('attendance.date = :date', { date });
     }
@@ -189,6 +193,10 @@ export class AttendanceQueryService {
 
     if (status) {
       qb.andWhere('attendance.status = :status', { status });
+    }
+
+    if (query.workStatus) {
+      qb.andWhere('attendance.work_status = :workStatus', { workStatus: query.workStatus });
     }
 
     if (search) {

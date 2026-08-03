@@ -35,6 +35,7 @@ import { LeaveEngineModule } from '../leave-engine/leave-engine.module';
 import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
 import { LeavePolicyModule } from '../leave-policy/leave-policy.module';
 import { NotificationModule } from '../notification/notification.module';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { NotificationModule } from '../notification/notification.module';
     LeaveEngineModule,
     LeavePolicyModule,
     NotificationModule,
+    ActivityLogModule,
   ],
 
   controllers: [

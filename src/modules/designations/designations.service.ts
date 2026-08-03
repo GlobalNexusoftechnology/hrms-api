@@ -117,15 +117,16 @@ export class DesignationsService {
     }
 
     if (branchId) {
-      queryBuilder.andWhere('department.branch_id = :branchId', {
-        branchId,
-      });
+      queryBuilder.andWhere(
+        '(department.branch_id = :branchId OR department.branch_id IS NULL)',
+        { branchId },
+      );
     }
 
     if (currentUser) {
       this.dataScopeService.applyScope(queryBuilder, currentUser, {
-        branch: 'department.branchId',
-        department: 'designation.departmentId',
+        branch: 'department.branch_id',
+        department: 'designation.department_id',
       });
     }
 
