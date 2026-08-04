@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LeaveBalance } from './entities/leave-balance.entity';
@@ -64,6 +64,8 @@ export class LeaveBalanceService {
     const qb = this.leaveBalanceRepo.createQueryBuilder('balance');
     qb.leftJoinAndSelect('balance.employee', 'employee');
     qb.leftJoinAndSelect('balance.leaveType', 'leaveType');
+    qb.leftJoinAndSelect('employee.department', 'department');
+    qb.leftJoinAndSelect('employee.designation', 'designation');
     qb.where('balance.year = :year', { year });
     qb.andWhere('balance.tenantId = :tenantId', { tenantId });
     qb.orderBy('employee.first_name', 'ASC');
@@ -88,16 +90,7 @@ export class LeaveBalanceService {
     };
 
     return {
-      data: data.map((item) => ({
-        employeeId: item.employeeId,
-        employeeName: `${item.employee.firstName} ${item.employee.lastName}`,
-        employeeCode: item.employee.employeeCode,
-        leaveType: item.leaveType.name,
-        accrued: Number(item.accrued),
-        used: Number(item.used),
-        carriedForward: Number(item.carriedForward),
-        remaining: calculateRemaining(item.accrued, item.carriedForward, item.used),
-      })),
+      data,
       meta: {
         total,
         page,

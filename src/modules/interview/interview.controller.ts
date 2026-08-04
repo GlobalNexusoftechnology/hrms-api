@@ -27,7 +27,7 @@ export class InterviewController {
   // ------------------- PUBLIC ENDPOINTS -------------------
   @Public()
   @Get('public/jobs')
-  getPublicJobs(@Query('tenantId', ParseUUIDPipe) tenantId: string) {
+  getPublicJobs(@Query('tenantId', new ParseUUIDPipe({ optional: true })) tenantId?: string) {
     return this.interviewService.getPublicJobPostings(tenantId);
   }
 

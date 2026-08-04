@@ -95,12 +95,18 @@ export class InterviewService {
     return this.jobRepo.save(job);
   }
   // ------------------- PUBLIC ENDPOINTS -------------------
-  async getPublicJobPostings(tenantId: string) {
+  async getPublicJobPostings(tenantId?: string) {
     await this.autoCloseExpiredJobs(tenantId);
+    
+    const baseWhere: any = { status: JobStatusEnum.OPEN };
+    if (tenantId) {
+      baseWhere.tenantId = tenantId;
+    }
+
     return this.jobRepo.find({
       where: [
-        { tenantId, lastDateToApply: IsNull() },
-        { tenantId, lastDateToApply: MoreThanOrEqual(new Date()) }
+        { ...baseWhere, lastDateToApply: IsNull() },
+        { ...baseWhere, lastDateToApply: MoreThanOrEqual(new Date()) }
       ],
       relations: { department: true, branch: true },
       order: { createdAt: 'DESC' },
