@@ -34,20 +34,7 @@ export class PayslipService {
   // DOWNLOAD PAYSLIP
   // =====================
 
-  private getComponentAmount(salary: any, possibleNames: string[]): number {
-    if (!salary || !salary.components) return 0;
-    const match = salary.components.find(
-      (c: any) =>
-        possibleNames.some((name) =>
-          c.componentName.toLowerCase().includes(name.toLowerCase()),
-        ) ||
-        possibleNames.some(
-          (name) =>
-            c.salaryComponent?.code?.toLowerCase() === name.toLowerCase(),
-        ),
-    );
-    return match ? Number(match.calculatedAmount) : 0;
-  }
+
 
   async downloadPayslip(
     payrollId: string,

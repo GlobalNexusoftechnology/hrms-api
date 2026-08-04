@@ -12,18 +12,8 @@ import { PercentageBaseEnum } from '../../../common/enums/percentage-base.enum';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('salary_components')
-@Index(['tenantId', 'organizationId'])
+@Index(['tenantId'])
 export class SalaryComponent extends TenantAwareEntity {
-
-  @Column({ name: 'organization_id' })
-  organizationId!: string;
-
-  @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
-  @JoinColumn([
-    { name: 'tenant_id', referencedColumnName: 'tenantId' },
-    { name: 'organization_id', referencedColumnName: 'id' },
-  ])
-  organization!: Organization;
 
   @Column()
   name!: string;

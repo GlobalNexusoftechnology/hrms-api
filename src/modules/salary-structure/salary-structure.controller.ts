@@ -15,8 +15,6 @@ import { SalaryStructureService } from './salary-structure.service';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionEnum } from '../../common/enums/permission.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RoleEnum } from '../../common/enums/role.enum';
 import { CreateSalaryStructureDto } from './dto/create-salary-structure.dto';
 import { UpdateSalaryStructureDto } from './dto/update-salary-structure.dto';
 import { CreateSalaryComponentDto } from './dto/create-salary-component.dto';
@@ -62,11 +60,8 @@ export class SalaryStructureController {
 
   @Permissions(PermissionEnum.SALARY_READ)
   @Get('hr/salary-components')
-  getComponents(
-    @Query('organizationId', new ParseUUIDPipe({ optional: true }))
-    organizationId?: string,
-  ) {
-    return this.salaryService.getComponents(organizationId);
+  getComponents() {
+    return this.salaryService.getComponents();
   }
 
   // =====================

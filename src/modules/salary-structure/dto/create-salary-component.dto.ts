@@ -6,15 +6,12 @@ import {
   IsOptional,
   Min,
   Max,
-  IsUUID,
 } from 'class-validator';
 import { SalaryComponentTypeEnum } from '../../../common/enums/salary-component-type.enum';
 import { CalculationTypeEnum } from '../../../common/enums/calculation-type.enum';
 import { PercentageBaseEnum } from '../../../common/enums/percentage-base.enum';
 
 export class CreateSalaryComponentDto {
-  @IsUUID()
-  organizationId!: string;
 
   @IsString()
   name!: string;

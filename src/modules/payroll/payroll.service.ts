@@ -81,24 +81,6 @@ export class PayrollService {
     return Math.round(value * 100) / 100;
   }
 
-  private getComponentAmount(
-    salary: SalaryStructure,
-    possibleNames: string[],
-  ): number {
-    if (!salary.components) return 0;
-    const match = salary.components.find(
-      (c) =>
-        possibleNames.some((name) =>
-          c.componentName.toLowerCase().includes(name.toLowerCase()),
-        ) ||
-        possibleNames.some(
-          (name) =>
-            c.salaryComponent?.code?.toLowerCase() === name.toLowerCase(),
-        ),
-    );
-    return match ? Number(match.calculatedAmount) : 0;
-  }
-
   async generatePayroll(
     employeeId: string,
     month: number,
@@ -525,18 +507,6 @@ export class PayrollService {
       netSalary: this.roundCurrency(proratedGross - proratedDeductions),
 
       baseBasicSalary: salary.basicSalary ? Number(salary.basicSalary) : 0,
-      baseHra: this.getComponentAmount(salary, ['HRA', 'House Rent Allowance']),
-      baseAllowance: this.getComponentAmount(salary, [
-        'Allowance',
-        'Special Allowance',
-      ]),
-      baseBonus: this.getComponentAmount(salary, ['Bonus', 'Fixed Bonus']),
-      basePf: this.getComponentAmount(salary, ['PF', 'Provident Fund']),
-      baseEsic: this.getComponentAmount(salary, ['ESIC', 'ESI']),
-      baseProfessionalTax: this.getComponentAmount(salary, [
-        'Professional Tax',
-        'PT',
-      ]),
 
       presentDays,
 

@@ -18,6 +18,7 @@ import { CreateSalaryComponentDto } from './dto/create-salary-component.dto';
 import { UpdateSalaryComponentDto } from './dto/update-salary-component.dto';
 
 import { DataScopeEnum } from '../../common/enums/data-scope.enum';
+import { RoleEnum } from '../../common/enums/role.enum';
 import { SalaryComponentTypeEnum } from '../../common/enums/salary-component-type.enum';
 import { CalculationTypeEnum } from '../../common/enums/calculation-type.enum';
 import { TenantQueryService } from "../../common/services/tenant-query.service";
@@ -38,6 +39,10 @@ export class SalaryStructureService {
   ) {}
 
   private validateRoleAccess(currentUser: any, targetEmployee: Employee) {
+    if (currentUser.role?.name === RoleEnum.SUPER_ADMIN) {
+      return; // SUPER_ADMIN can manage anyone, including themselves
+    }
+
     if (targetEmployee.id === currentUser.id) {
       throw new ForbiddenException(
         'You cannot manage your own salary structure',
@@ -91,35 +96,31 @@ export class SalaryStructureService {
   // =====================
 
   async createComponent(dto: CreateSalaryComponentDto) {
-    if (!dto.organizationId) {
-      throw new BadRequestException('organizationId is required');
-    }
     if (!dto.code) {
       throw new BadRequestException('code is required');
     }
 
     const existingCode = await this.componentRepo.findOne({
-      where: { organizationId: dto.organizationId, code: dto.code,
+      where: { code: dto.code,
           tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
     },
     });
     if (existingCode) {
       throw new BadRequestException(
-        `Component with code ${dto.code} already exists in this organization`,
+        `Component with code ${dto.code} already exists`,
       );
     }
 
     if (dto.displayOrder !== undefined && dto.displayOrder !== null) {
       const existingOrder = await this.componentRepo.findOne({
         where: {
-          organizationId: dto.organizationId,
           displayOrder: dto.displayOrder,
             tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
       if (existingOrder) {
         throw new BadRequestException(
-          `Component with display order ${dto.displayOrder} already exists in this organization`,
+          `Component with display order ${dto.displayOrder} already exists`,
         );
       }
     }
@@ -139,13 +140,13 @@ export class SalaryStructureService {
 
     if (dto.code && dto.code !== existing.code) {
       const existingCode = await this.componentRepo.findOne({
-        where: { organizationId: existing.organizationId, code: dto.code,
+        where: { code: dto.code,
             tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
       if (existingCode) {
         throw new BadRequestException(
-          `Component with code ${dto.code} already exists in this organization`,
+          `Component with code ${dto.code} already exists`,
         );
       }
     }
@@ -157,14 +158,13 @@ export class SalaryStructureService {
     ) {
       const existingOrder = await this.componentRepo.findOne({
         where: {
-          organizationId: existing.organizationId,
           displayOrder: dto.displayOrder,
             tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
       if (existingOrder) {
         throw new BadRequestException(
-          `Component with display order ${dto.displayOrder} already exists in this organization`,
+          `Component with display order ${dto.displayOrder} already exists`,
         );
       }
     }
@@ -175,15 +175,11 @@ export class SalaryStructureService {
     } });
   }
 
-  async getComponents(organizationId?: string) {
+  async getComponents() {
     const whereClause: any = {
       isActive: true,
       tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
     };
-    
-    if (organizationId) {
-      whereClause.organizationId = organizationId;
-    }
 
     return this.componentRepo.find({
       where: whereClause,
@@ -282,7 +278,7 @@ export class SalaryStructureService {
         employee.branch?.organizationId || currentUser?.branch?.organizationId;
       if (orgId) {
         const mandatoryComponents = await manager.find(SalaryComponent, {
-          where: { organizationId: orgId, isMandatory: true, isActive: true },
+          where: { isMandatory: true, isActive: true },
         });
         for (const mandatory of mandatoryComponents) {
           if (!componentIds.includes(mandatory.id)) {
@@ -501,7 +497,7 @@ export class SalaryStructureService {
         currentUser?.branch?.organizationId;
       if (orgId) {
         const mandatoryComponents = await manager.find(SalaryComponent, {
-          where: { organizationId: orgId, isMandatory: true, isActive: true },
+          where: { isMandatory: true, isActive: true },
         });
         for (const mandatory of mandatoryComponents) {
           if (!componentIds.includes(mandatory.id)) {
