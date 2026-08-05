@@ -37,8 +37,9 @@ export class ActivityLogService {
   /**
    * Searches and filters activity logs with pagination.
    */
-  async searchLogs(searchDto: SearchActivityLogDto, currentUser?: Employee) {
+  async searchLogs(searchDto: SearchActivityLogDto & { search?: string }, currentUser?: Employee) {
     const {
+      search,
       userId,
       module,
       entityType,
@@ -49,16 +50,17 @@ export class ActivityLogService {
       ipAddress,
       startDate,
       endDate,
-      page,
-      limit,
-      sortBy,
-      sortOrder,
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
     } = searchDto;
 
     const queryBuilder: SelectQueryBuilder<ActivityLog> =
       this.activityLogRepository.createQueryBuilder('log');
 
     this.tenantQueryService.applyTenantFilter(queryBuilder, 'log');
+    queryBuilder.leftJoinAndSelect(Employee, 'employee', 'employee.id = log.userId OR employee.id = log.employeeId');
 
     if (currentUser) {
       this.dataScopeService.applyScope(queryBuilder, currentUser, {
@@ -67,11 +69,18 @@ export class ActivityLogService {
       });
     }
 
+    if (search) {
+      queryBuilder.andWhere(
+        '(log.description ILIKE :search OR log.requestPath ILIKE :search OR log.module ILIKE :search OR log.ipAddress ILIKE :search OR employee.first_name ILIKE :search OR employee.last_name ILIKE :search OR employee.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
     if (userId) {
       queryBuilder.andWhere('log.userId = :userId', { userId });
     }
     if (module) {
-      queryBuilder.andWhere('log.module = :module', { module });
+      queryBuilder.andWhere('log.module ILIKE :module', { module: `%${module}%` });
     }
     if (entityType) {
       queryBuilder.andWhere('log.entityType = :entityType', { entityType });
@@ -101,22 +110,83 @@ export class ActivityLogService {
     }
 
     // Pagination
-    const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit);
+    const skip = (Number(page) - 1) * Number(limit);
+    queryBuilder.skip(skip).take(Number(limit));
 
     // Sorting
-    queryBuilder.orderBy(`log.${sortBy}`, sortOrder);
+    queryBuilder.orderBy(`log.${sortBy}`, sortOrder as 'ASC' | 'DESC');
 
     const [items, total] = await queryBuilder.getManyAndCount();
 
+    // Map employee into user field for frontend compatibility
+    const mappedItems = items.map((item: any) => {
+      const emp = item.employee;
+      return {
+        ...item,
+        user: emp ? {
+          id: emp.id,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          email: emp.email,
+          employeeCode: emp.employeeCode,
+        } : null,
+        userEmail: emp?.email || null,
+        userName: emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.trim() : null,
+      };
+    });
+
     return {
-      data: items,
+      data: mappedItems,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit)),
       },
+    };
+  }
+
+  async getApprovalLogs(searchDto: any, currentUser?: Employee) {
+    const qb = this.activityLogRepository.createQueryBuilder('log');
+    this.tenantQueryService.applyTenantFilter(qb, 'log');
+
+    qb.leftJoinAndSelect(Employee, 'employee', 'employee.id = log.userId OR employee.id = log.employeeId');
+    qb.andWhere("(log.action IN ('APPROVE', 'REJECT', 'EXECUTE') OR log.description ILIKE '%approve%' OR log.description ILIKE '%reject%' OR log.description ILIKE '%resignation%' OR log.description ILIKE '%movement%')");
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'log.branchId',
+        employee: 'log.userId',
+      });
+    }
+
+    const page = Number(searchDto.page || 1);
+    const limit = Number(searchDto.limit || 10);
+    qb.skip((page - 1) * limit).take(limit);
+    qb.orderBy('log.createdAt', 'DESC');
+
+    const [items, total] = await qb.getManyAndCount();
+
+    const mappedItems = items.map((item: any) => {
+      const emp = item.employee;
+      return {
+        ...item,
+        user: emp ? {
+          id: emp.id,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          email: emp.email,
+        } : null,
+        userName: emp ? `${emp.firstName || ''} ${emp.lastName || ''}`.trim() : 'System Evaluator',
+      };
+    });
+
+    return {
+      data: mappedItems,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 }

@@ -142,33 +142,41 @@ export class LeaveEngineService {
 
   // Run on the 1st of every month at midnight
   @Cron('0 0 1 * *', { timeZone: 'Asia/Kolkata' })
-  async executeMonthlyAccrual() {
-    await this.tenantExecutionService.forEachActiveTenant('Monthly Leave Accrual', async () => {
-      const currentTenantId = this.tenantQueryService.getTenantWhereClause().tenantId;
-      const policies = await this.leavePolicyRepo.find({
-        where: {
-          isActive: true,
-          accrualFrequency: 'MONTHLY' as any,
-          tenantId: currentTenantId,
-        },
+  async executeMonthlyAccrual(options?: { tenantId?: string, branchId?: string }) {
+    if (options?.tenantId) {
+      await this.runMonthlyAccrualForTenant(options.tenantId, options.branchId);
+    } else {
+      await this.tenantExecutionService.forEachActiveTenant('Monthly Leave Accrual', async () => {
+        const currentTenantId = this.tenantQueryService.getTenantWhereClause().tenantId;
+        await this.runMonthlyAccrualForTenant(currentTenantId);
       });
+    }
+  }
 
-      for (const policy of policies) {
-        if (policy.accrualRate <= 0) continue;
-
-        const eligibleEmployeeIds = await this.getEligibleEmployeesForPolicy(policy);
-
-        for (const empId of eligibleEmployeeIds) {
-          await this.processTransaction({
-            employeeId: empId,
-            leaveTypeId: policy.leaveTypeId,
-            transactionType: LeaveTransactionType.ACCRUAL,
-            days: policy.accrualRate,
-            remarks: 'Automated Monthly Accrual',
-          });
-        }
-      }
+  private async runMonthlyAccrualForTenant(tenantId: string, branchId?: string) {
+    const policies = await this.leavePolicyRepo.find({
+      where: {
+        isActive: true,
+        accrualFrequency: 'MONTHLY' as any,
+        tenantId: tenantId,
+      },
     });
+
+    for (const policy of policies) {
+      if (policy.accrualRate <= 0) continue;
+
+      const eligibleEmployeeIds = await this.getEligibleEmployeesForPolicy(policy, branchId);
+
+      for (const empId of eligibleEmployeeIds) {
+        await this.processTransaction({
+          employeeId: empId,
+          leaveTypeId: policy.leaveTypeId,
+          transactionType: LeaveTransactionType.ACCRUAL,
+          days: policy.accrualRate,
+          remarks: 'Monthly Accrual',
+        });
+      }
+    }
   }
 
   @Cron('0 0 1 1 *', { timeZone: 'Asia/Kolkata' })
@@ -203,14 +211,21 @@ export class LeaveEngineService {
 
   private async getEligibleEmployeesForPolicy(
     policy: LeavePolicy,
+    branchId?: string,
   ): Promise<string[]> {
-    const currentTenantId = this.tenantQueryService.getTenantWhereClause().tenantId;
+    const currentTenantId = policy.tenantId;
+    const whereClause: any = {
+      isActive: true,
+      tenantId: currentTenantId,
+    };
+
+    if (branchId && branchId !== 'ALL') {
+      whereClause.branchId = branchId;
+    }
+
     const employees = await this.employeeRepo.find({
       select: { id: true },
-      where: {
-        isActive: true,
-        tenantId: currentTenantId,
-      },
+      where: whereClause,
     });
     return employees.map((e) => e.id);
   }

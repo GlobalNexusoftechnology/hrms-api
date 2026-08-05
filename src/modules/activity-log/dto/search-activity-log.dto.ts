@@ -12,6 +12,11 @@ import { Type } from 'class-transformer';
 import { ActivityAction } from '../enums/activity-action.enum';
 
 export class SearchActivityLogDto {
+  @ApiPropertyOptional({ description: 'General search keyword' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ description: 'User ID who performed the action' })
   @IsOptional()
   @IsUUID()

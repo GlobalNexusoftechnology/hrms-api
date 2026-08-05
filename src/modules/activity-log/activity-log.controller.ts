@@ -27,4 +27,14 @@ export class ActivityLogController {
   ) {
     return this.activityLogService.searchLogs(searchDto, currentUser);
   }
+
+  @Permissions(PermissionEnum.ACTIVITY_LOG_READ)
+  @Get('approvals')
+  @ApiOperation({ summary: 'Get approval workflow logs' })
+  async getApprovals(
+    @Query() query: any,
+    @CurrentUser() currentUser: Employee,
+  ) {
+    return this.activityLogService.getApprovalLogs(query, currentUser);
+  }
 }
