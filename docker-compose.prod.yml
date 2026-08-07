@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   backend:
     image: mubasshir090/hrms-backend:latest
@@ -7,6 +5,9 @@ services:
 
     ports:
       - "6543:6543"
+
+    volumes:
+      - ./uploads:/usr/src/app/uploads
 
     env_file:
       - ./.env
