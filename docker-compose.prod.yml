@@ -18,6 +18,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     depends_on:
       - redis
 
@@ -25,9 +28,6 @@ services:
 
     networks:
       - hrms-network
-
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
     logging:
       driver: json-file
@@ -40,9 +40,6 @@ services:
     container_name: hrms_redis_prod
 
     command: redis-server --appendonly yes
-
-    expose:
-      - "6379"
 
     volumes:
       - redis_data:/data
