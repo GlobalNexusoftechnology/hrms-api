@@ -1,6 +1,10 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  ValidationPipe,
+  BadRequestException,
+} from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -15,6 +19,7 @@ async function bootstrap() {
   const uploadsDir = join(process.cwd(), 'uploads');
   const profilesDir = join(uploadsDir, 'profiles');
   const documentsDir = join(uploadsDir, 'documents');
+  const organizationDir = join(uploadsDir, 'organization');
   const logsDir = join(process.cwd(), 'logs');
 
   if (!fs.existsSync(uploadsDir)) {
@@ -25,6 +30,9 @@ async function bootstrap() {
   }
   if (!fs.existsSync(documentsDir)) {
     fs.mkdirSync(documentsDir, { recursive: true });
+  }
+  if (!fs.existsSync(organizationDir)) {
+    fs.mkdirSync(organizationDir, { recursive: true });
   }
   if (!fs.existsSync(logsDir)) {
     fs.mkdirSync(logsDir);
@@ -65,6 +73,7 @@ async function bootstrap() {
   app.use(
     helmet({
       contentSecurityPolicy: false, // Disables CSP so Swagger UI assets load without blockages
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
 
@@ -77,6 +86,13 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      exceptionFactory: (errors) => {
+        const formattedErrors = errors.map((error) => ({
+          field: error.property,
+          message: Object.values(error.constraints || {}).join(', '),
+        }));
+        return new BadRequestException({ message: formattedErrors });
+      },
     }),
   );
 
@@ -105,6 +121,10 @@ async function bootstrap() {
 
   SwaggerModule.setup('api/docs', app, document);
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  await app.listen(process.env.PORT ?? 6543);
+  const port = process.env.PORT;
+  if (!port) {
+    throw new Error('PORT environment variable is not defined in .env');
+  }
+  await app.listen(port);
 }
 bootstrap();

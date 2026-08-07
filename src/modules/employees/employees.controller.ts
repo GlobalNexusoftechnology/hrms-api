@@ -16,6 +16,7 @@ import {
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { AssignRoleDto } from './dto/assign-role.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { GetEmployeesDto } from './dto/get-employees.dto';
@@ -31,30 +32,27 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('employees')
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) { }
+  constructor(private readonly employeesService: EmployeesService) {}
 
-
-  @Permissions('employee.create')
   @Permissions(PermissionEnum.EMPLOYEE_CREATE)
   @Post()
-  create(@Body() dto: CreateEmployeeDto) {
-    return this.employeesService.create(dto);
+  create(@Body() dto: CreateEmployeeDto, @CurrentUser() user: any) {
+    return this.employeesService.create(dto, user);
   }
 
   // @Public()
   // @Permissions(PermissionEnum.EMPLOYEE_READ)
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.EMPLOYEE_READ)
   @Get()
   findAll(
     @Query()
     query: GetEmployeesDto,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.employeesService.findAll(query);
+    return this.employeesService.findAll(query, currentUser);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
@@ -62,8 +60,9 @@ export class EmployeesController {
   findOne(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() currentUser: any,
   ) {
-    return this.employeesService.findOne(id);
+    return this.employeesService.findOne(id, currentUser);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_READ)
@@ -81,15 +80,22 @@ export class EmployeesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEmployeeDto,
-    @CurrentUser() user: any, // 👈 1. Get the logged-in user
+    @CurrentUser() user: any,
   ) {
-    // 2 & 3. If the user is a regular employee, verify the IDs match
-    if (user.role === RoleEnum.EMPLOYEE && user.id !== id) {
-      // 4. Deny access
+    if (user.role?.name === RoleEnum.EMPLOYEE && user.id !== id) {
       throw new ForbiddenException('You can only update your own details.');
     }
-    // 5. Proceed with update
-    return this.employeesService.update(id, dto);
+    return this.employeesService.update(id, dto, user);
+  }
+
+  @Permissions('role.assign')
+  @Patch(':id/role')
+  assignRole(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignRoleDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.employeesService.assignRole(id, dto.roleId, user);
   }
 
   // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -138,20 +144,23 @@ export class EmployeesController {
     file: Express.Multer.File,
     @CurrentUser() user: any,
   ) {
-    if (user.role === RoleEnum.EMPLOYEE && user.id !== id) {
-      throw new ForbiddenException('You can only update your own profile photo.');
+    if (user.role?.name === RoleEnum.EMPLOYEE && user.id !== id) {
+      throw new ForbiddenException(
+        'You can only update your own profile photo.',
+      );
     }
     return this.employeesService.uploadProfilePhoto(id, file);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.EMPLOYEE_DELETE)
   @Delete(':id')
   remove(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() user: any,
   ) {
-    return this.employeesService.remove(id);
+    return this.employeesService.remove(id, user);
   }
 
   @Roles(RoleEnum.SUPER_ADMIN)

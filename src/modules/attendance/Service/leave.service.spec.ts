@@ -4,7 +4,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Leave } from '../entities/leave.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 import { Attendance } from '../entities/attendance.entity';
-import { LeaveBalanceService } from '../../leave-balance/leave-balance.service';
+import { LeavePolicy } from '../../leave-policy/entities/leave-policy.entity';
+import { LeaveBalance } from '../../leave-balance/entities/leave-balance.entity';
+import { Holiday } from '../../holiday/entities/holiday.entity';
+import { WeekendSetting } from '../../weekend_settings/entities/weekend_setting.entity';
+import { LeaveEngineService } from '../../leave-engine/leave-engine.service';
+import { DataScopeService } from '../../../common/services/data-scope.service';
+import { NotificationService } from '../../notification/notification.service';
 import { DataSource } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
@@ -12,25 +18,46 @@ import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
 describe('LeaveService', () => {
   let service: LeaveService;
   let leaveRepo: any;
+  let employeeRepo: any;
   let attendanceRepo: any;
-  let leaveBalanceService: any;
+  let leavePolicyRepo: any;
+  let leaveBalanceRepo: any;
+  let holidayRepo: any;
+  let weekendRepo: any;
+  let leaveEngineService: any;
+  let notificationService: any;
   let mockEntityManager: any;
   let localLeave: any;
 
   const mockLeaveTemplate = {
     id: 'leave-123',
     employeeId: 'emp-123',
-    startDate: '2026-06-30',
-    endDate: '2026-07-02',
-    type: 'Sick',
-    reason: 'Flu',
+    leaveTypeId: 'type-123',
+    startDate: '2026-08-10',
+    endDate: '2026-08-12',
+    reason: 'Vacation',
     status: LeaveStatusEnum.PENDING,
+  };
+
+  const mockPolicy = {
+    id: 'policy-123',
+    leaveTypeId: 'type-123',
+    isActive: true,
+    noticeDays: 0,
+    gender: 'ALL',
+    minimumServiceDays: 0,
+    requiresApproval: true,
+    allowNegativeBalance: false,
+    maxNegativeBalance: 0,
+    countWeekend: false,
+    countHoliday: false,
   };
 
   const mockRepository = () => ({
     create: jest.fn().mockImplementation((dto) => ({ ...localLeave, ...dto })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
     findOne: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
     createQueryBuilder: jest.fn(),
   });
 
@@ -46,12 +73,16 @@ describe('LeaveService', () => {
       transaction: jest.fn().mockImplementation((cb) => cb(mockEntityManager)),
     };
 
-    const mockLeaveBalanceService = {
-      deductLeave: jest.fn().mockResolvedValue({
-        paidLeaves: 3,
-        unpaidLeaves: 0,
-        remainingLeaves: 12,
-      }),
+    const mockLeaveEngineService = {
+      processTransaction: jest.fn().mockResolvedValue({ id: 'ledger-123' }),
+    };
+
+    const mockDataScopeService = {
+      applyScope: jest.fn(),
+    };
+
+    const mockNotificationService = {
+      createNotification: jest.fn().mockResolvedValue({}),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -60,15 +91,36 @@ describe('LeaveService', () => {
         { provide: getRepositoryToken(Leave), useFactory: mockRepository },
         { provide: getRepositoryToken(Employee), useFactory: mockRepository },
         { provide: getRepositoryToken(Attendance), useFactory: mockRepository },
-        { provide: LeaveBalanceService, useValue: mockLeaveBalanceService },
+        {
+          provide: getRepositoryToken(LeavePolicy),
+          useFactory: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(LeaveBalance),
+          useFactory: mockRepository,
+        },
+        { provide: getRepositoryToken(Holiday), useFactory: mockRepository },
+        {
+          provide: getRepositoryToken(WeekendSetting),
+          useFactory: mockRepository,
+        },
+        { provide: LeaveEngineService, useValue: mockLeaveEngineService },
+        { provide: DataScopeService, useValue: mockDataScopeService },
+        { provide: NotificationService, useValue: mockNotificationService },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
     service = module.get<LeaveService>(LeaveService);
     leaveRepo = module.get(getRepositoryToken(Leave));
+    employeeRepo = module.get(getRepositoryToken(Employee));
     attendanceRepo = module.get(getRepositoryToken(Attendance));
-    leaveBalanceService = module.get<LeaveBalanceService>(LeaveBalanceService);
+    leavePolicyRepo = module.get(getRepositoryToken(LeavePolicy));
+    leaveBalanceRepo = module.get(getRepositoryToken(LeaveBalance));
+    holidayRepo = module.get(getRepositoryToken(Holiday));
+    weekendRepo = module.get(getRepositoryToken(WeekendSetting));
+    leaveEngineService = module.get<LeaveEngineService>(LeaveEngineService);
+    notificationService = module.get<NotificationService>(NotificationService);
   });
 
   afterEach(() => {
@@ -81,10 +133,10 @@ describe('LeaveService', () => {
 
   describe('requestLeave', () => {
     const createDto = {
-      startDate: '2026-06-30',
-      endDate: '2026-07-02',
-      type: 'Sick',
-      reason: 'Flu',
+      leaveTypeId: 'type-123',
+      startDate: '2026-08-10',
+      endDate: '2026-08-12',
+      reason: 'Vacation',
     };
 
     it('should successfully create leave if dates are valid and no overlaps exist', async () => {
@@ -94,8 +146,21 @@ describe('LeaveService', () => {
         getOne: jest.fn().mockResolvedValue(null),
       };
       leaveRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+      leavePolicyRepo.findOne.mockResolvedValue(mockPolicy);
+      employeeRepo.findOne.mockResolvedValue({
+        id: 'emp-123',
+        gender: 'ALL',
+        joiningDate: '2025-01-01',
+      });
+      leaveBalanceRepo.findOne.mockResolvedValue({
+        accrued: 10,
+        carriedForward: 0,
+        used: 0,
+      });
+      weekendRepo.find.mockResolvedValue([]);
+      holidayRepo.find.mockResolvedValue([]);
 
-      const result = await service.requestLeave('emp-123', createDto as any);
+      const result = await service.requestLeave('emp-123', createDto);
       expect(result.employeeId).toBe('emp-123');
     });
 
@@ -154,8 +219,12 @@ describe('LeaveService', () => {
 
   describe('reviewLeave', () => {
     it('should approve leave, deduct balance, and create attendance records within transaction', async () => {
-      mockEntityManager.findOne.mockResolvedValue(localLeave);
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(localLeave) // leave
+        .mockResolvedValueOnce(mockPolicy); // policy
       attendanceRepo.findOne.mockResolvedValue(null);
+      weekendRepo.find.mockResolvedValue([]);
+      holidayRepo.find.mockResolvedValue([]);
 
       const result = await service.reviewLeave(
         'leave-123',
@@ -164,7 +233,7 @@ describe('LeaveService', () => {
         'Fine',
       );
 
-      expect(leaveBalanceService.deductLeave).toHaveBeenCalled();
+      expect(leaveEngineService.processTransaction).toHaveBeenCalled();
       expect(mockEntityManager.save).toHaveBeenCalled();
     });
 

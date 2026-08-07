@@ -9,21 +9,16 @@ import {
   ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
-
 import { JwtAuthGuard } from './../auth/guards/jwt-auth.guard';
-
 import { RolesGuard } from './../../common/guards/roles.guard';
-
 import { Roles } from './../../common/decorators/roles.decorator';
-
 import { CurrentUser } from './../auth/decorators/current-user.decorator';
-
 import { Permissions } from './../auth/decorators/permissions.decorator';
-
 import { PermissionEnum } from './../../common/enums/permission.enum';
-
 import { RoleEnum } from './../../common/enums/role.enum';
 import { PayrollService } from './payroll.service';
+
+import { CreatePayrollDto } from './dto/create-payroll.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
@@ -39,37 +34,37 @@ export class PayrollController {
     return this.payrollService.getMyPayroll(employee.id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.PAYROLL_CREATE)
   @Post('hr/payroll/generate')
   generate(
     @Body()
-    body: {
-      employeeId: string;
-      month: number;
-      year: number;
-    },
+    body: CreatePayrollDto,
   ) {
     return this.payrollService.generatePayroll(
       body.employeeId,
-
       body.month,
-
       body.year,
+      {
+        bonusAmount: body.bonusAmount,
+        bonusReason: body.bonusReason,
+        deductionAmount: body.deductionAmount,
+        deductionReason: body.deductionReason,
+      },
     );
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.PAYROLL_READ)
   @Get('hr/payroll')
   findAll(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.payrollService.findAll(query);
+    return this.payrollService.findAll(query, employee);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.PAYROLL_UPDATE)
   @Patch('hr/payroll/:id/pay')
   markPaid(
@@ -79,7 +74,7 @@ export class PayrollController {
     return this.payrollService.markAsPaid(id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.PAYROLL_UPDATE)
   @Post('hr/payroll/pay-all')
   payAll(
@@ -92,7 +87,7 @@ export class PayrollController {
     return this.payrollService.payAll(body.month, body.year);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.PAYROLL_CREATE)
   @Post('hr/payroll/generate-all')
   generateAll(

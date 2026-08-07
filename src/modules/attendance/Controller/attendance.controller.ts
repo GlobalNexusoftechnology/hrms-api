@@ -20,8 +20,8 @@ import { CorrectionService } from '../Service/correction.service';
 import { CheckInDto } from '../dto/check-In.dto';
 
 import { CheckOutDto } from '../dto/check-out.dto';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { RoleEnum } from 'src/common/enums/role.enum';
+import { Roles } from '../../../common/decorators/roles.decorator';
+import { RoleEnum } from '../../../common/enums/role.enum';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('attendance')
@@ -70,6 +70,24 @@ export class AttendanceController {
     );
   }
 
+  @Permissions(PermissionEnum.ATTENDANCE_CREATE)
+  @Post('start-break')
+  startBreak(
+    @CurrentUser()
+    employee: any,
+  ) {
+    return this.attendanceService.startBreak(employee.id);
+  }
+
+  @Permissions(PermissionEnum.ATTENDANCE_CREATE)
+  @Post('end-break')
+  endBreak(
+    @CurrentUser()
+    employee: any,
+  ) {
+    return this.attendanceService.endBreak(employee.id);
+  }
+
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('me')
   getMyAttendance(
@@ -79,14 +97,15 @@ export class AttendanceController {
     return this.attendanceQueryService.getMyAttendance(employee.id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get()
   getFilteredAttendance(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.attendanceQueryService.getFilteredAttendance(query);
+    return this.attendanceQueryService.getFilteredAttendance(query, employee);
   }
 
   @Permissions(PermissionEnum.EMPLOYEE_DASHBOARD_READ)
@@ -98,17 +117,18 @@ export class AttendanceController {
     return this.attendanceDashboardService.getEmployeeDashboard(employee.id);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('today')
   getTodayAttendance(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.attendanceQueryService.getTodayAttendance(query);
+    return this.attendanceQueryService.getTodayAttendance(query, employee);
   }
 
-  @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+  // @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
   @Permissions(PermissionEnum.ATTENDANCE_READ)
   @Get('calendar')
   getAttendanceCalendar(

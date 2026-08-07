@@ -3,12 +3,13 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
-
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, IsNull, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Employee } from './entities/employee.entity';
+import { Organization } from '../organization/entities/organization.entity';
 import type { Response } from 'express';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { GetEmployeesDto } from './dto/get-employees.dto';
@@ -16,12 +17,18 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { Department } from '../departments/entities/department.entity';
 import { Designation } from '../designations/entities/designation.entity';
 import { Role } from '../roles/entities/role.entity';
+import { Branch } from '../organization/entities/branch.entity';
+import { Shift } from '../shift/entities/shift.entity';
 import { extname } from 'path';
 import * as fs from 'fs';
 import { createCanvas, loadImage } from 'canvas';
 import * as QRCode from 'qrcode';
 import * as path from 'path';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { DataScopeService } from '../../common/services/data-scope.service';
+import { ActivityLogService } from '../activity-log/activity-log.service';
+import { ActivityAction } from '../activity-log/enums/activity-action.enum';
+import { TenantQueryService } from '../../common/services/tenant-query.service';
 
 @Injectable()
 export class EmployeesService {
@@ -30,55 +37,80 @@ export class EmployeesService {
     private employeeRepository: Repository<Employee>,
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
-
     @InjectRepository(Designation)
     private readonly designationRepository: Repository<Designation>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
+    @InjectRepository(Branch)
+    private readonly branchRepository: Repository<Branch>,
+    @InjectRepository(Shift)
+    private readonly shiftRepository: Repository<Shift>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
-  ) { }
+    private readonly dataScopeService: DataScopeService,
+    private readonly activityLogService: ActivityLogService,
+    private readonly tenantQueryService: TenantQueryService,
+  ) {}
 
-  async generateEmployeeCode(): Promise<string> {
-    const latest = await this.employeeRepository
+  async generateEmployeeCode(tenantId: string): Promise<string> {
+    const result = await this.employeeRepository
       .createQueryBuilder('employee')
-      .withDeleted()
-      .orderBy(
-        "CAST(SUBSTRING(employee.employee_code FROM 5) AS INTEGER)",
-        'DESC',
+      .select(
+        `MAX(CAST(SUBSTRING(employee.employee_code FROM 5) AS INTEGER))`,
+        'maxNum',
       )
-      .getOne();
+      .where('employee.employee_code LIKE :prefix', { prefix: 'EMP-%' })
+      .andWhere('employee.tenant_id = :tenantId', { tenantId })
+      .withDeleted()
+      .getRawOne<{ maxNum: string | null }>();
 
-    const nextNumber = latest
-      ? Number(latest.employeeCode.replace('EMP-', '')) + 1
-      : 1;
-
-    return `EMP-${nextNumber.toString().padStart(3, '0')}`;
+    const maxNumber = result?.maxNum ? parseInt(result.maxNum, 10) : 0;
+    const nextNumber = maxNumber + 1;
+    return `EMP-${String(nextNumber).padStart(3, '0')}`;
   }
 
-  async create(dto: CreateEmployeeDto) {
+  private validateAuthorityLevel(
+    currentUser: Employee | undefined,
+    targetAuthorityLevel: number,
+    action: string,
+  ) {
+    if (!currentUser || !currentUser.role) return;
+    if (currentUser.role.authorityLevel >= 100) return; // Super Admin bypass
+
+    if (targetAuthorityLevel >= currentUser.role.authorityLevel) {
+      throw new ForbiddenException(
+        `You cannot ${action} an employee with an equal or higher authority level`,
+      );
+    }
+  }
+
+  async create(dto: CreateEmployeeDto, currentUser?: Employee) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     dto.email = dto.email.trim().toLowerCase();
 
     const existingEmail = await this.employeeRepository.findOne({
       where: {
         email: dto.email,
         deletedAt: IsNull(),
+        tenantId,
       },
     });
 
     if (existingEmail) {
-      throw new ConflictException(`Email '${dto.email}' already exists`);
+      throw new ConflictException(`Email '${dto.email}' already exists in this tenant`);
     }
 
     const existingMobile = await this.employeeRepository.findOne({
       where: {
         mobile: dto.mobile,
         deletedAt: IsNull(),
+        tenantId,
       },
     });
 
     if (existingMobile) {
-      throw new ConflictException(`Mobile '${dto.mobile}' already exists`);
+      throw new ConflictException(`Mobile '${dto.mobile}' already exists in this tenant`);
     }
 
     const role = await this.roleRepository.findOne({
@@ -86,11 +118,34 @@ export class EmployeesService {
         id: dto.roleId,
         deletedAt: IsNull(),
         isActive: true,
+        tenantId,
       },
     });
 
     if (!role) {
-      throw new NotFoundException('Role not found');
+      throw new NotFoundException('Role not found in this tenant');
+    }
+
+    if (currentUser) {
+      this.validateAuthorityLevel(currentUser, role.authorityLevel, 'create');
+    }
+
+    if (dto.branchId) {
+      const branch = await this.branchRepository.findOne({
+        where: { id: dto.branchId, tenantId },
+      });
+      if (!branch) {
+        throw new NotFoundException('Branch not found in this tenant');
+      }
+    }
+
+    if (dto.shiftId) {
+      const shift = await this.shiftRepository.findOne({
+        where: { id: dto.shiftId, tenantId },
+      });
+      if (!shift) {
+        throw new NotFoundException('Shift not found in this tenant');
+      }
     }
 
     if (dto.designationId && !dto.departmentId) {
@@ -102,16 +157,29 @@ export class EmployeesService {
     let department: Department | null = null;
 
     if (dto.departmentId) {
+      if (!dto.branchId) {
+        throw new BadRequestException(
+          'Branch is required when department is selected',
+        );
+      }
+
       department = await this.departmentRepository.findOne({
         where: {
           id: dto.departmentId,
           deletedAt: IsNull(),
           isActive: true,
+          tenantId,
         },
       });
 
       if (!department) {
-        throw new NotFoundException('Department not found');
+        throw new NotFoundException('Department not found in this tenant');
+      }
+
+      if (department.branchId && department.branchId !== dto.branchId) {
+        throw new BadRequestException(
+          'Selected department does not belong to the selected branch',
+        );
       }
     }
 
@@ -123,6 +191,7 @@ export class EmployeesService {
           id: dto.designationId,
           deletedAt: IsNull(),
           isActive: true,
+          tenantId,
         },
         relations: {
           department: true,
@@ -130,7 +199,7 @@ export class EmployeesService {
       });
 
       if (!designation) {
-        throw new NotFoundException('Designation not found');
+        throw new NotFoundException('Designation not found in this tenant');
       }
 
       if (dto.departmentId && designation.departmentId !== dto.departmentId) {
@@ -142,41 +211,36 @@ export class EmployeesService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    const employeeCode = await this.generateEmployeeCode();
+    const employeeCode = await this.generateEmployeeCode(tenantId);
 
     const employee = this.employeeRepository.create({
       firstName: dto.firstName,
-
       lastName: dto.lastName,
-
+      middleName: dto.middleName,
+      displayName: dto.displayName,
       email: dto.email,
-
+      personalEmail: dto.personalEmail,
       mobile: dto.mobile,
-
-      currentAddress: dto.currentAddress,
-
+      alternatePhone: dto.alternatePhone,
       password: hashedPassword,
-
       roleId: dto.roleId,
-
+      branchId: dto.branchId,
       departmentId: dto.departmentId,
-
       designationId: dto.designationId,
-
+      shiftId: dto.shiftId,
       joiningDate: dto.joiningDate,
-
       employmentType: dto.employmentType,
-
+      employmentStatus: dto.employmentStatus,
+      workLocation: dto.workLocation,
+      maritalStatus: dto.maritalStatus,
       gender: dto.gender,
-
       dateOfBirth: dto.dateOfBirth,
-
       employeeCode,
+      tenantId,
     });
 
     try {
       await this.employeeRepository.save(employee);
-
       return this.findOne(employee.id);
     } catch (error: any) {
       if (error.code === '23505') {
@@ -199,27 +263,65 @@ export class EmployeesService {
     }
   }
 
+  async assignRole(id: string, roleId: string, currentUser?: Employee) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
+    const employee = await this.employeeRepository.findOne({
+      where: { id, tenantId, deletedAt: IsNull() },
+      relations: { role: true },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    if (currentUser && employee.role) {
+      this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'change role of');
+    }
+
+    const role = await this.roleRepository.findOne({
+      where: { id: roleId, tenantId, deletedAt: IsNull(), isActive: true },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Role not found or is inactive');
+    }
+
+    if (currentUser) {
+      this.validateAuthorityLevel(currentUser, role.authorityLevel, 'assign role of');
+    }
+
+    employee.roleId = roleId;
+    await this.employeeRepository.save(employee);
+
+    return {
+      message: 'Role assigned successfully',
+      employeeId: employee.id,
+      roleId: role.id,
+    };
+  }
+
   async findByIdentifier(identifier: string) {
     return this.employeeRepository.findOne({
       where: [
-        {
-          email: identifier,
-        },
-        {
-          employeeCode: identifier,
-        },
+        { email: identifier },
+        { employeeCode: identifier },
       ],
-
       relations: {
         role: {
           permissions: true,
         },
       },
-
       select: {
         id: true,
+        tenantId: true,
         email: true,
         employeeCode: true,
+        firstName: true,
+        lastName: true,
+        middleName: true,
+        displayName: true,
+        profilePhoto: true,
         password: true,
         passwordVersion: true,
         roleId: true,
@@ -234,25 +336,63 @@ export class EmployeesService {
   }
 
   async findById(id: string) {
-    return this.employeeRepository.findOne({
-      where: {
-        id,
-      },
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
+    return this.employeeRepository.findOne({
+      where: { id, tenantId },
       relations: {
         role: {
+          permissions: true,
+        },
+        addresses: true,
+        emergencyContacts: true,
+        families: true,
+        educations: true,
+        experiences: true,
+        skills: true,
+        banks: true,
+        department: true,
+        designation: true,
+        branch: true,
+      },
+    });
+  }
+
+  async findByIdForAuth(id: string) {
+    return this.employeeRepository.findOne({
+      where: { id },
+      relations: {
+        role: {
+          permissions: true,
+        },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        employeeCode: true,
+        isActive: true,
+        roleId: true,
+        branchId: true,
+        departmentId: true,
+        role: {
+          id: true,
+          name: true,
+          dataScope: true,
+          authorityLevel: true,
           permissions: true,
         },
       },
     });
   }
 
-  async findAll(query: GetEmployeesDto) {
+  async findAll(query: GetEmployeesDto, currentUser: Employee) {
     const {
       page = '1',
       limit = '10',
       search,
       roleId,
+      branchId,
       isActive,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
@@ -263,20 +403,14 @@ export class EmployeesService {
     } = query;
 
     const pageNumber = Math.max(Number(page), 1);
-
     const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
 
     const sortableColumns = {
       createdAt: 'employee.created_at',
-
       firstName: 'employee.first_name',
-
       lastName: 'employee.last_name',
-
       email: 'employee.email',
-
       employeeCode: 'employee.employee_code',
-
       mobile: 'employee.mobile',
     };
 
@@ -284,16 +418,14 @@ export class EmployeesService {
 
     const queryBuilder = this.employeeRepository
       .createQueryBuilder('employee')
-
       .distinct(true)
-
       .leftJoinAndSelect('employee.role', 'role')
-
       .leftJoinAndSelect('employee.department', 'department')
-
       .leftJoinAndSelect('employee.designation', 'designation')
-
+      .leftJoinAndSelect('employee.branch', 'branch')
       .leftJoinAndSelect('role.permissions', 'permissions');
+
+    this.tenantQueryService.applyTenantFilter(queryBuilder, 'employee');
 
     if (search) {
       queryBuilder.andWhere(
@@ -312,6 +444,10 @@ export class EmployeesService {
 
     if (roleId) {
       queryBuilder.andWhere('role.id = :roleId', { roleId });
+    }
+
+    if (branchId) {
+      queryBuilder.andWhere('employee.branch_id = :branchId', { branchId });
     }
 
     if (departmentId) {
@@ -333,64 +469,68 @@ export class EmployeesService {
     }
 
     if (employmentType) {
-      queryBuilder.andWhere(
-        `
-      employee.employment_type =
-      :employmentType
-      `,
-        {
-          employmentType,
-        },
-      );
+      queryBuilder.andWhere('employee.employment_type = :employmentType', {
+        employmentType,
+      });
     }
 
     if (isActive !== undefined) {
-      queryBuilder.andWhere(
-        `
-      employee.is_active =
-      :isActive
-      `,
-        {
-          isActive: isActive === 'true',
-        },
-      );
+      queryBuilder.andWhere('employee.is_active = :isActive', {
+        isActive: isActive === 'true',
+      });
     }
 
+    this.dataScopeService.applyScope(queryBuilder, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id',
+    });
+
     queryBuilder.orderBy(orderBy, sortOrder);
-
     queryBuilder.skip((pageNumber - 1) * limitNumber);
-
     queryBuilder.take(limitNumber);
 
     const [employees, total] = await queryBuilder.getManyAndCount();
 
     return {
       data: employees,
-
       meta: {
         page: pageNumber,
-
         limit: limitNumber,
-
         total,
-
         totalPages: Math.ceil(total / limitNumber),
       },
     };
   }
 
-  async findOne(id: string) {
-    const employee = await this.employeeRepository.findOne({
-      where: {
-        id,
-      },
+  async findOne(id: string, currentUser?: Employee) {
+    const queryBuilder = this.employeeRepository
+      .createQueryBuilder('employee')
+      .leftJoinAndSelect('employee.role', 'role')
+      .leftJoinAndSelect('role.permissions', 'permissions')
+      .leftJoinAndSelect('employee.addresses', 'addresses')
+      .leftJoinAndSelect('employee.emergencyContacts', 'emergencyContacts')
+      .leftJoinAndSelect('employee.families', 'families')
+      .leftJoinAndSelect('employee.educations', 'educations')
+      .leftJoinAndSelect('employee.experiences', 'experiences')
+      .leftJoinAndSelect('employee.skills', 'skills')
+      .leftJoinAndSelect('employee.banks', 'banks')
+      .leftJoinAndSelect('employee.department', 'department')
+      .leftJoinAndSelect('employee.designation', 'designation')
+      .leftJoinAndSelect('employee.branch', 'branch')
+      .where('employee.id = :id', { id });
 
-      relations: {
-        role: {
-          permissions: true,
-        },
-      },
-    });
+    this.tenantQueryService.applyTenantFilter(queryBuilder, 'employee');
+
+    if (currentUser) {
+      this.dataScopeService.applyScope(queryBuilder, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+        employee: 'employee.id',
+      });
+    }
+
+    const employee = await queryBuilder.getOne();
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
@@ -399,27 +539,38 @@ export class EmployeesService {
     return employee;
   }
 
-  async update(id: string, dto: UpdateEmployeeDto) {
+  async update(id: string, dto: UpdateEmployeeDto, currentUser?: Employee) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const employee = await this.employeeRepository.findOne({
-      where: {
-        id,
-        deletedAt: IsNull(),
-      },
+      where: { id, tenantId, deletedAt: IsNull() },
+      relations: { role: true },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
     }
 
-    // EMAIL DUPLICATE CHECK
+    if (currentUser && employee.role) {
+      this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'modify');
+    }
+
+    const targetRoleId = (dto as any).roleId;
+    if (targetRoleId && targetRoleId !== employee.roleId) {
+      const newRole = await this.roleRepository.findOne({
+        where: { id: targetRoleId, tenantId, deletedAt: IsNull(), isActive: true },
+      });
+      if (!newRole) throw new NotFoundException('Role not found');
+      if (currentUser) {
+        this.validateAuthorityLevel(currentUser, newRole.authorityLevel, 'assign role of');
+      }
+    }
+
     if (dto.email) {
       dto.email = dto.email.trim().toLowerCase();
 
       const existingEmail = await this.employeeRepository.findOne({
-        where: {
-          email: dto.email,
-          deletedAt: IsNull(),
-        },
+        where: { email: dto.email, tenantId, deletedAt: IsNull() },
       });
 
       if (existingEmail && existingEmail.id !== id) {
@@ -427,13 +578,9 @@ export class EmployeesService {
       }
     }
 
-    // MOBILE DUPLICATE CHECK
     if (dto.mobile) {
       const existingMobile = await this.employeeRepository.findOne({
-        where: {
-          mobile: dto.mobile,
-          deletedAt: IsNull(),
-        },
+        where: { mobile: dto.mobile, tenantId, deletedAt: IsNull() },
       });
 
       if (existingMobile && existingMobile.id !== id) {
@@ -441,25 +588,56 @@ export class EmployeesService {
       }
     }
 
-    // PASSWORD HASH
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
+    }
+
+    const branchId =
+      dto.branchId !== undefined ? dto.branchId : employee.branchId;
+    const departmentId =
+      dto.departmentId !== undefined ? dto.departmentId : employee.departmentId;
+    const shiftId =
+      dto.shiftId !== undefined ? dto.shiftId : employee.shiftId;
+
+    if (branchId) {
+      const branch = await this.branchRepository.findOne({
+        where: { id: branchId, tenantId },
+      });
+      if (!branch) throw new NotFoundException('Branch not found in this tenant');
+    }
+
+    if (shiftId) {
+      const shift = await this.shiftRepository.findOne({
+        where: { id: shiftId, tenantId },
+      });
+      if (!shift) throw new NotFoundException('Shift not found in this tenant');
+    }
+
+    if (departmentId) {
+      if (!branchId) {
+        throw new BadRequestException(
+          'Branch is required when department is selected',
+        );
+      }
+      const department = await this.departmentRepository.findOne({
+        where: { id: departmentId, tenantId, deletedAt: IsNull(), isActive: true },
+      });
+      if (!department) throw new NotFoundException('Department not found in this tenant');
+      if (department.branchId && department.branchId !== branchId) {
+        throw new BadRequestException(
+          'Selected department does not belong to the selected branch',
+        );
+      }
     }
 
     Object.assign(employee, dto);
 
     await this.employeeRepository.save(employee);
 
-    // REVOKE TOKENS AFTER SUCCESSFUL DEACTIVATION
     if (dto.isActive === false) {
       await this.refreshTokenRepository.update(
-        {
-          employeeId: employee.id,
-          isRevoked: false,
-        },
-        {
-          isRevoked: true,
-        },
+        { employeeId: employee.id, isRevoked: false },
+        { isRevoked: true },
       );
     }
 
@@ -475,9 +653,7 @@ export class EmployeesService {
 
     const extension = extname(file.originalname);
     const newFileName = `${employee.employeeCode}_profile_${Date.now()}${extension}`;
-
     const oldPath = file.path;
-
     const newPath = `uploads/profiles/${newFileName}`;
 
     fs.renameSync(oldPath, newPath);
@@ -488,21 +664,24 @@ export class EmployeesService {
 
     return {
       message: 'Profile photo uploaded successfully',
-
       profilePhoto: employee.profilePhoto,
     };
   }
 
-  async remove(id: string) {
+  async remove(id: string, currentUser?: Employee) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const employee = await this.employeeRepository.findOne({
-      where: {
-        id,
-        deletedAt: IsNull(),
-      },
+      where: { id, tenantId, deletedAt: IsNull() },
+      relations: { role: true },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
+    }
+
+    if (currentUser && employee.role) {
+      this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'delete');
     }
 
     await this.employeeRepository.softDelete(id);
@@ -513,8 +692,10 @@ export class EmployeesService {
   }
 
   async restore(id: string) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const employee = await this.employeeRepository.findOne({
-      where: { id },
+      where: { id, tenantId },
       withDeleted: true,
     });
 
@@ -529,20 +710,23 @@ export class EmployeesService {
     };
   }
 
-  async generateIdCard(
-    id: string,
+  async updateLastLogin(id: string): Promise<void> {
+    await this.employeeRepository.update(id, {
+      lastLoginAt: new Date(),
+    });
+  }
 
-    res: Response<any>,
-  ) {
+  async generateIdCard(id: string, res: Response<any>) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const employee = await this.employeeRepository.findOne({
-      where: {
-        id,
-      },
-
+      where: { id, tenantId },
       relations: {
         department: true,
-
         designation: true,
+        branch: {
+          organization: true,
+        },
       },
     });
 
@@ -550,79 +734,169 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
-    const canvas = createCanvas(800, 500);
-
+    const canvas = createCanvas(600, 950);
     const ctx = canvas.getContext('2d');
+
+    let orgName = employee.branch?.organization?.name;
+    let orgLogoUrl = employee.branch?.organization?.logoUrl;
+
+    if (!orgName) {
+      const org = await this.employeeRepository.manager.findOne(Organization, {
+        where: { tenantId },
+        order: { createdAt: 'ASC' },
+      });
+      if (org) {
+        orgName = org.name;
+        orgLogoUrl = org.logoUrl;
+      } else {
+        orgName = 'GIGA SYSTEM';
+      }
+    }
 
     // BACKGROUND
     ctx.fillStyle = '#ffffff';
-
-    ctx.fillRect(0, 0, 800, 500);
+    ctx.fillRect(0, 0, 600, 950);
 
     // HEADER
     ctx.fillStyle = '#1E40AF';
-
-    ctx.fillRect(0, 0, 800, 100);
+    ctx.fillRect(0, 0, 600, 200);
 
     ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
 
-    ctx.font = 'bold 36px Arial';
+    if (orgLogoUrl) {
+      try {
+        const logoPath = path.join(process.cwd(), orgLogoUrl);
+        const logoImage = await loadImage(logoPath);
 
-    ctx.fillText('GIGA SYSTEM', 280, 60);
+        const maxLogoWidth = 200;
+        const maxLogoHeight = 90;
+        const ratio = Math.min(
+          maxLogoWidth / logoImage.width,
+          maxLogoHeight / logoImage.height,
+        );
 
-    // PROFILE PHOTO
-    if (employee.profilePhoto) {
-      const imagePath = path.join(process.cwd(), employee.profilePhoto);
+        const logoWidth = logoImage.width * ratio;
+        const logoHeight = logoImage.height * ratio;
+        const logoX = (600 - logoWidth) / 2;
+        const logoY = 30;
 
-      const image = await loadImage(imagePath);
+        ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
 
-      ctx.drawImage(image, 40, 140, 140, 140);
+        ctx.font = 'bold 26px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(orgName.toUpperCase(), 300, logoY + logoHeight + 40);
+      } catch (err) {
+        ctx.font = 'bold 36px Arial';
+        ctx.fillText(orgName.toUpperCase(), 300, 115);
+      }
+    } else {
+      ctx.font = 'bold 36px Arial';
+      ctx.fillText(orgName.toUpperCase(), 300, 115);
     }
 
-    // QR CODE
-    const qrData = await QRCode.toDataURL(
-      JSON.stringify({
-        employeeId: employee.id,
+    // PROFILE PHOTO (CIRCULAR)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(300, 310, 110, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
 
-        employeeCode: employee.employeeCode,
-      }),
-    );
+    if (employee.profilePhoto) {
+      try {
+        const imagePath = path.join(process.cwd(), employee.profilePhoto);
+        const profileImage = await loadImage(imagePath);
+        ctx.drawImage(profileImage, 190, 200, 220, 220);
+      } catch (err) {
+        ctx.fillStyle = '#CBD5E1';
+        ctx.fillRect(190, 200, 220, 220);
+        ctx.fillStyle = '#64748B';
+        ctx.font = 'bold 80px Arial';
+        ctx.fillText(employee.firstName.charAt(0).toUpperCase(), 300, 340);
+      }
+    } else {
+      ctx.fillStyle = '#CBD5E1';
+      ctx.fillRect(190, 200, 220, 220);
+      ctx.fillStyle = '#64748B';
+      ctx.font = 'bold 80px Arial';
+      ctx.fillText(employee.firstName.charAt(0).toUpperCase(), 300, 340);
+    }
+    ctx.restore();
 
-    const qrImage = await loadImage(qrData);
+    // CIRCULAR BORDER
+    ctx.beginPath();
+    ctx.arc(300, 310, 110, 0, Math.PI * 2, true);
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#1E40AF';
+    ctx.stroke();
 
-    ctx.drawImage(qrImage, 620, 300, 120, 120);
+    // NAME & DESIGNATION
+    const fullName = `${employee.firstName} ${employee.lastName}`.trim();
+    ctx.fillStyle = '#1E293B';
+    ctx.font = 'bold 32px Arial';
+    ctx.fillText(fullName, 300, 460);
 
-    // TEXT
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = '#2563EB';
+    ctx.font = 'bold 22px Arial';
+    ctx.fillText((employee.designation?.name || 'Employee').toUpperCase(), 300, 495);
 
-    ctx.font = 'bold 28px Arial';
+    // DETAILS LIST
+    const startY = 550;
+    const lineHeight = 45;
+    ctx.textAlign = 'left';
+    ctx.font = '18px Arial';
 
-    ctx.fillText(`${employee.firstName} ${employee.lastName}`, 220, 160);
+    const details = [
+      { label: 'Employee ID', value: employee.employeeCode },
+      { label: 'Department', value: employee.department?.name || 'N/A' },
+      { label: 'Branch', value: employee.branch?.name || 'N/A' },
+      { label: 'Mobile', value: employee.mobile || 'N/A' },
+    ];
 
-    ctx.font = '22px Arial';
+    details.forEach((item, index) => {
+      const currentY = startY + index * lineHeight;
+      ctx.fillStyle = '#64748B';
+      ctx.fillText(`${item.label}:`, 100, currentY);
 
-    ctx.fillText(`ID: ${employee.employeeCode}`, 220, 210);
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 18px Arial';
+      ctx.fillText(item.value, 260, currentY);
+      ctx.font = '18px Arial';
+    });
 
-    ctx.fillText(`Department: ${employee.department?.name ?? 'N/A'}`, 220, 250);
+    // QR CODE GENERATION
+    try {
+      const qrData = JSON.stringify({
+        id: employee.id,
+        code: employee.employeeCode,
+        name: fullName,
+        email: employee.email,
+      });
 
-    ctx.fillText(
-      `Designation: ${employee.designation?.name ?? 'N/A'}`,
-      220,
-      290,
-    );
+      const qrDataUrl = await QRCode.toDataURL(qrData, {
+        width: 120,
+        margin: 1,
+      });
+      const qrImage = await loadImage(qrDataUrl);
+      ctx.drawImage(qrImage, 240, 740, 120, 120);
+    } catch (err) {
+      // Fallback if QR fails
+    }
 
-    ctx.fillText(`DOB: ${employee.dateOfBirth ?? 'N/A'}`, 220, 330);
+    // FOOTER
+    ctx.fillStyle = '#F1F5F9';
+    ctx.fillRect(0, 880, 600, 70);
 
-    ctx.fillText(`Address: ${employee.currentAddress ?? 'N/A'}`, 220, 370);
+    ctx.fillStyle = '#64748B';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('If found, please return to company head office.', 300, 920);
 
     res.setHeader('Content-Type', 'image/png');
-
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="id_card_${employee.employeeCode}.png"`,
+    );
     canvas.createPNGStream().pipe(res);
-  }
-
-  async updateLastLogin(employeeId: string) {
-    await this.employeeRepository.update(employeeId, {
-      lastLoginAt: new Date(),
-    });
   }
 }

@@ -1,5 +1,5 @@
 import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
-import { LeaveTypeEnum } from '../../..//common/enums/leave-type.enum';
+import { LeaveType } from '../../leave-type/entities/leave-type.entity';
 import { Employee } from '../../employees/entities/employee.entity';
 import {
   Column,
@@ -11,10 +11,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+
 @Entity('leaves')
-export class Leave {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class Leave extends TenantAwareEntity {
 
   @Column({
     name: 'employee_id',
@@ -29,11 +29,12 @@ export class Leave {
   })
   employee!: Employee;
 
-  @Column({
-    type: 'enum',
-    enum: LeaveTypeEnum,
-  })
-  type!: LeaveTypeEnum;
+  @Column({ name: 'leave_type_id' })
+  leaveTypeId!: string;
+
+  @ManyToOne(() => LeaveType, { eager: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'leave_type_id' })
+  leaveType!: LeaveType;
 
   @Column({
     type: 'date',
@@ -96,13 +97,4 @@ export class Leave {
   })
   reviewedAt: Date | null = null;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

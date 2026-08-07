@@ -5,18 +5,17 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 import { Employee } from '../../employees/entities/employee.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 import { DocumentTypeEnum } from '../../../common/enums/document-type.enum';
 
 @Entity('employee_documents')
-export class EmployeeDocument {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class EmployeeDocument extends TenantAwareEntity {
 
   @Column({
     name: 'employee_id',
@@ -24,9 +23,10 @@ export class EmployeeDocument {
   employeeId!: string;
 
   @ManyToOne(() => Employee, (employee) => employee.documents)
-  @JoinColumn({
-    name: 'employee_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({
@@ -59,18 +59,4 @@ export class EmployeeDocument {
   })
   fileSize!: number;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
-
-  @DeleteDateColumn({
-    name: 'deleted_at',
-  })
-  deletedAt!: Date;
 }

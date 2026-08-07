@@ -1,28 +1,53 @@
 import { Injectable } from '@nestjs/common';
-
 import { MailerService } from '@nestjs-modules/mailer';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Organization } from '../organization/entities/organization.entity';
+import { Branch } from '../organization/entities/branch.entity';
 
 @Injectable()
 export class MailService {
-  constructor(private readonly mailerService: MailerService) {}
+  constructor(
+    private readonly mailerService: MailerService,
+    @InjectRepository(Organization)
+    private readonly organizationRepo: Repository<Organization>,
+    @InjectRepository(Branch)
+    private readonly branchRepo: Repository<Branch>,
+  ) {}
 
   async sendResetPasswordEmail(
     email: string,
-
     firstName: string,
-
     resetLink: string,
+    tenantId?: string,
+    branchId?: string,
   ) {
+    let headerText = 'Password Reset Request';
+    let footerText = 'HRMS Team';
+
+    if (tenantId) {
+      const org = await this.organizationRepo.findOne({ where: { tenantId } });
+      if (org) {
+        headerText = `${org.name} - Password Reset Request`;
+        footerText = `${org.name} Team`;
+      }
+    }
+
+    if (branchId) {
+      const branch = await this.branchRepo.findOne({ where: { id: branchId } });
+      if (branch) {
+        footerText = `${branch.name} Team`;
+      }
+    }
+
     await this.mailerService.sendMail({
       to: email,
-
       subject: 'Reset Your Password',
-
       html: `
 <div style="font-family: Arial, sans-serif; background:#111827; color:#ffffff; padding:30px; border-radius:12px;">
 
   <h2 style="color:#ffffff;">
-    Password Reset Request
+    ${headerText}
   </h2>
 
   <p>
@@ -93,7 +118,7 @@ export class MailService {
   <br />
 
   <p>
-    HRMS Team
+    ${footerText}
   </p>
 </div>
 `,

@@ -11,14 +11,23 @@ import {
 
 import { Employee } from '../../employees/entities/employee.entity';
 
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+
+export interface PayrollComponentSnapshot {
+  componentId: string;
+  componentCode: string | null;
+  componentName: string;
+  type: string;
+  calculationType: string;
+  percentageValue: number | null;
+  amount: number;
+}
+
 @Entity('payrolls')
-@Index(['employeeId', 'month', 'year'], {
+@Index(['tenantId', 'employeeId', 'month', 'year'], {
   unique: true,
 })
-export class Payroll {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Payroll extends TenantAwareEntity {
   // =====================
   // EMPLOYEE
   // =====================
@@ -50,6 +59,9 @@ export class Payroll {
   // SALARY SNAPSHOT
   // =====================
 
+  @Column({ type: 'jsonb', nullable: true, name: 'components_data' })
+  componentsData!: PayrollComponentSnapshot[];
+
   @Column({
     type: 'decimal',
     precision: 12,
@@ -68,22 +80,67 @@ export class Payroll {
   })
   netSalary!: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_basic_salary', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'base_basic_salary',
+    default: 0,
+  })
   baseBasicSalary!: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_hra', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'base_hra',
+    default: 0,
+  })
   baseHra!: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_allowance', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'base_allowance',
+    default: 0,
+  })
   baseAllowance!: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_pf', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'base_bonus',
+    default: 0,
+  })
+  baseBonus!: number;
+
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'base_pf',
+    default: 0,
+  })
   basePf!: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_esic', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'base_esic',
+    default: 0,
+  })
   baseEsic!: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'base_professional_tax', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'base_professional_tax',
+    default: 0,
+  })
   baseProfessionalTax!: number;
 
   // =====================
@@ -169,7 +226,13 @@ export class Payroll {
   })
   leaveDeduction!: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, name: 'late_deduction' })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    name: 'late_deduction',
+  })
   lateDeduction!: number;
 
   @Column({
@@ -183,17 +246,38 @@ export class Payroll {
   })
   overtimeAmount!: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, name: 'bonus_amount' })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    name: 'bonus_amount',
+  })
   bonusAmount!: number;
 
   @Column({ type: 'text', nullable: true, name: 'bonus_reason' })
   bonusReason!: string | null;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, name: 'deduction_amount' })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    name: 'deduction_amount',
+  })
   deductionAmount!: number;
 
   @Column({ type: 'text', nullable: true, name: 'deduction_reason' })
   deductionReason!: string | null;
+
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    name: 'encashment_amount',
+  })
+  encashmentAmount!: number;
 
   @Column({
     type: 'decimal',
@@ -223,14 +307,4 @@ export class Payroll {
     name: 'paid_at',
   })
   paidAt!: Date | null;
-
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

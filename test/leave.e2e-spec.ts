@@ -30,17 +30,13 @@ describe('LeaveController (Integration)', () => {
 
   describe('/api/leave/request (POST)', () => {
     it('should return 401 Unauthorized when requesting without token', async () => {
-      await request(app.getHttpServer())
-        .post('/api/leave/request')
-        .expect(401);
+      await request(app.getHttpServer()).post('/api/leave/request').expect(401);
     });
   });
 
   describe('/api/leave/me (GET)', () => {
     it('should return 401 Unauthorized when requesting without token', async () => {
-      await request(app.getHttpServer())
-        .get('/api/leave/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/leave/me').expect(401);
     });
   });
 });

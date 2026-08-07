@@ -71,7 +71,10 @@ describe('SalaryStructureController', () => {
       const currentUser = { id: 'admin-1' };
       const result = await controller.create(dto, currentUser);
       expect(result).toEqual(mockSalaryResponse);
-      expect(mockSalaryStructureService.create).toHaveBeenCalledWith(dto, currentUser);
+      expect(mockSalaryStructureService.create).toHaveBeenCalledWith(
+        dto,
+        currentUser,
+      );
     });
   });
 

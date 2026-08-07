@@ -1,18 +1,31 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, OneToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  OneToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 import { Course } from './course.entity';
 import { CourseTopic } from './course-topic.entity';
 import { Assessment } from './assessment.entity';
 
 @Entity('course_modules')
-export class CourseModule {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class CourseModule extends TenantAwareEntity {
 
   @Column({ name: 'course_id' })
   courseId!: string;
 
-  @ManyToOne(() => Course, course => course.modules, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'course_id' })
+  @ManyToOne(() => Course, (course) => course.modules, { onDelete: 'CASCADE' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'course_id', referencedColumnName: 'id' },
+  ])
   course!: Course;
 
   @Column()
@@ -24,15 +37,9 @@ export class CourseModule {
   @Column({ name: 'sort_order', default: 1 })
   sortOrder!: number;
 
-  @OneToMany(() => CourseTopic, topic => topic.module)
+  @OneToMany(() => CourseTopic, (topic) => topic.module)
   topics!: CourseTopic[];
 
-  @OneToOne(() => Assessment, assessment => assessment.module)
+  @OneToOne(() => Assessment, (assessment) => assessment.module)
   assessment!: Assessment;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

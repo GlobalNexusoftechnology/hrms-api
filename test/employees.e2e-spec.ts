@@ -30,9 +30,7 @@ describe('EmployeesController (Integration)', () => {
 
   describe('/api/employees (GET)', () => {
     it('should return 401 Unauthorized when requesting without token', async () => {
-      await request(app.getHttpServer())
-        .get('/api/employees')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/employees').expect(401);
     });
   });
 

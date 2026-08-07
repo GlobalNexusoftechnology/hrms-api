@@ -1,22 +1,21 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
 
 import { Interview } from './interview.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 import { Employee } from '../../employees/entities/employee.entity';
 
 import { InterviewRecommendationEnum } from '../../../common/enums/interview-recommendation.enum';
 
 @Entity('interview_feedbacks')
-export class InterviewFeedback {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'interviewId'])
+export class InterviewFeedback extends TenantAwareEntity {
 
   @Column({
     name: 'interview_id',
@@ -26,9 +25,10 @@ export class InterviewFeedback {
   @ManyToOne(() => Interview, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'interview_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'interview_id', referencedColumnName: 'id' },
+  ])
   interview!: Interview;
 
   @Column({
@@ -37,9 +37,10 @@ export class InterviewFeedback {
   createdBy!: string;
 
   @ManyToOne(() => Employee)
-  @JoinColumn({
-    name: 'created_by',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'created_by', referencedColumnName: 'id' },
+  ])
   creator!: Employee;
 
   @Column({
@@ -71,8 +72,4 @@ export class InterviewFeedback {
   })
   recommendation!: InterviewRecommendationEnum;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
 }

@@ -136,10 +136,7 @@ describe('InterviewService', () => {
       employeeRepo.save.mockResolvedValue(mockEmployee);
       candidateRepo.save.mockResolvedValue(mockCandidate);
 
-      const result = await service.convertToEmployee(
-        'cand-123',
-        convertDto as any,
-      );
+      const result = await service.convertToEmployee('cand-123', convertDto);
       expect(result.success).toBe(true);
       expect(result.employee).toEqual(mockEmployee);
     });

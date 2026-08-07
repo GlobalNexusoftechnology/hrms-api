@@ -1,17 +1,29 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 import { Assessment } from './assessment.entity';
 import { AssessmentOption } from './assessment-option.entity';
 
 @Entity('assessment_questions')
-export class AssessmentQuestion {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class AssessmentQuestion extends TenantAwareEntity {
 
   @Column({ name: 'assessment_id' })
   assessmentId!: string;
 
-  @ManyToOne(() => Assessment, a => a.questions, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'assessment_id' })
+  @ManyToOne(() => Assessment, (a) => a.questions, { onDelete: 'CASCADE' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'assessment_id', referencedColumnName: 'id' },
+  ])
   assessment!: Assessment;
 
   @Column({ type: 'text' })
@@ -20,12 +32,6 @@ export class AssessmentQuestion {
   @Column({ name: 'sort_order', default: 1 })
   sortOrder!: number;
 
-  @OneToMany(() => AssessmentOption, opt => opt.question)
+  @OneToMany(() => AssessmentOption, (opt) => opt.question)
   options!: AssessmentOption[];
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 }

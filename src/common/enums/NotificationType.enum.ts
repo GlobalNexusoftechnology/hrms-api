@@ -1,0 +1,26 @@
+export enum NotificationType {
+  TASK = 'TASK',
+
+  LEAVE = 'LEAVE',
+
+  ATTENDANCE = 'ATTENDANCE',
+
+  PAYROLL = 'PAYROLL',
+
+  PROJECT = 'PROJECT',
+
+  TEAM = 'TEAM',
+
+  STANDUP = 'STANDUP',
+
+  GENERAL = 'GENERAL',
+
+  INTERVIEW = 'INTERVIEW',
+
+  HOLIDAY = 'HOLIDAY',
+
+  TRAINING = 'TRAINING',
+
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
+  
+}

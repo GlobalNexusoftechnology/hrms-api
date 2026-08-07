@@ -31,6 +31,12 @@ import { LeaveService } from './Service/leave.service';
 import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
 import { LeaveBalanceModule } from '../leave-balance/leave-balance.module';
 
+import { LeaveEngineModule } from '../leave-engine/leave-engine.module';
+import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
+import { LeavePolicyModule } from '../leave-policy/leave-policy.module';
+import { NotificationModule } from '../notification/notification.module';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -41,8 +47,13 @@ import { LeaveBalanceModule } from '../leave-balance/leave-balance.module';
       Holiday,
       WeekendSetting,
       LeaveBalance,
+      LeavePolicy,
     ]),
     LeaveBalanceModule,
+    LeaveEngineModule,
+    LeavePolicyModule,
+    NotificationModule,
+    ActivityLogModule,
   ],
 
   controllers: [

@@ -1,15 +1,14 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
-import { Candidate } from './candidate.entity';
+import { CandidateApplication } from './candidate-application.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 import { Employee } from '../../employees/entities/employee.entity';
 
@@ -18,22 +17,23 @@ import { InterviewFeedback } from './interview-feedback.entity';
 import { InterviewRoundEnum } from '../../../common/enums/interview-round.enum';
 
 @Entity('interviews')
-export class Interview {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'applicationId', 'interviewerId'])
+export class Interview extends TenantAwareEntity {
 
   @Column({
-    name: 'candidate_id',
+    name: 'application_id',
+    type: 'uuid',
   })
-  candidateId!: string;
+  applicationId!: string;
 
-  @ManyToOne(() => Candidate, {
+  @ManyToOne(() => CandidateApplication, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'candidate_id',
-  })
-  candidate!: Candidate;
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'application_id', referencedColumnName: 'id' },
+  ])
+  application!: CandidateApplication;
 
   @Column({
     name: 'interviewer_id',
@@ -41,9 +41,10 @@ export class Interview {
   interviewerId!: string;
 
   @ManyToOne(() => Employee)
-  @JoinColumn({
-    name: 'interviewer_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'interviewer_id', referencedColumnName: 'id' },
+  ])
   interviewer!: Employee;
 
   @Column({
@@ -82,13 +83,4 @@ export class Interview {
   })
   status!: InterviewStatusEnum;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

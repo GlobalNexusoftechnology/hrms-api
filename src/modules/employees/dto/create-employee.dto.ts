@@ -4,7 +4,6 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
-  IsPhoneNumber,
   IsString,
   IsUUID,
   MinLength,
@@ -13,6 +12,9 @@ import {
 import { GenderEnum } from '../../../common/enums/gender.enum';
 
 import { EmploymentTypeEnum } from '../../../common/enums/employment-type.enum';
+import { WorkLocationEnum } from '../../../common/enums/work-location.enum';
+import { MaritalStatusEnum } from '../../../common/enums/marital-status.enum';
+import { EmploymentStatusEnum } from '../../../common/enums/employment-status.enum';
 
 export class CreateEmployeeDto {
   @IsString()
@@ -23,26 +25,46 @@ export class CreateEmployeeDto {
   @IsNotEmpty()
   lastName!: string;
 
+  @IsOptional()
+  @IsString()
+  middleName?: string;
+
+  @IsOptional()
+  @IsString()
+  displayName?: string;
+
   @IsEmail()
   email!: string;
 
   @IsOptional()
-  @IsString()
-  currentAddress?: string;
+  @IsEmail()
+  personalEmail?: string;
 
   @IsString()
   mobile!: string;
+
+  @IsOptional()
+  @IsString()
+  alternatePhone?: string;
 
   @IsUUID()
   roleId!: string;
 
   @IsOptional()
   @IsUUID()
-  departmentId?: string;
+  branchId!: string;
 
   @IsOptional()
   @IsUUID()
-  designationId?: string;
+  departmentId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  shiftId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  designationId!: string;
 
   @IsOptional()
   @IsDateString()
@@ -50,7 +72,19 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsEnum(EmploymentTypeEnum)
-  employmentType?: EmploymentTypeEnum;
+  employmentType!: EmploymentTypeEnum;
+
+  @IsOptional()
+  @IsEnum(EmploymentStatusEnum)
+  employmentStatus!: EmploymentStatusEnum;
+
+  @IsOptional()
+  @IsEnum(WorkLocationEnum)
+  workLocation?: WorkLocationEnum;
+
+  @IsOptional()
+  @IsEnum(MaritalStatusEnum)
+  maritalStatus?: MaritalStatusEnum;
 
   @IsOptional()
   @IsEnum(GenderEnum)
@@ -58,7 +92,7 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsDateString()
-  dateOfBirth?: Date;
+dateOfBirth!: Date;
 
   @IsString()
   @MinLength(6)

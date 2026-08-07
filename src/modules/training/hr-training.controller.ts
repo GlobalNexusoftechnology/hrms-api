@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { TrainingService } from './training.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -11,7 +21,12 @@ import { CreateCourseTopicDto } from './dto/create-topic.dto';
 import { CreateCourseMaterialDto } from './dto/create-material.dto';
 import { CreateAssessmentDto } from './dto/create-assessment.dto';
 import { AssignCourseDto } from './dto/assign-course.dto';
-import { UpdateCourseDto, UpdateCourseModuleDto, UpdateCourseTopicDto, UpdateCourseMaterialDto } from './dto/update-training.dto';
+import {
+  UpdateCourseDto,
+  UpdateCourseModuleDto,
+  UpdateCourseTopicDto,
+  UpdateCourseMaterialDto,
+} from './dto/update-training.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -25,27 +40,42 @@ export class HrTrainingController {
   }
 
   @Post('course/:id/module')
-  addModule(@Param('id', ParseUUIDPipe) courseId: string, @Body() dto: CreateCourseModuleDto) {
+  addModule(
+    @Param('id', ParseUUIDPipe) courseId: string,
+    @Body() dto: CreateCourseModuleDto,
+  ) {
     return this.trainingService.addModule(courseId, dto);
   }
 
   @Post('module/:id/topic')
-  addTopic(@Param('id', ParseUUIDPipe) moduleId: string, @Body() dto: CreateCourseTopicDto) {
+  addTopic(
+    @Param('id', ParseUUIDPipe) moduleId: string,
+    @Body() dto: CreateCourseTopicDto,
+  ) {
     return this.trainingService.addTopic(moduleId, dto);
   }
 
   @Post('topic/:id/material')
-  addMaterial(@Param('id', ParseUUIDPipe) topicId: string, @Body() dto: CreateCourseMaterialDto) {
+  addMaterial(
+    @Param('id', ParseUUIDPipe) topicId: string,
+    @Body() dto: CreateCourseMaterialDto,
+  ) {
     return this.trainingService.addMaterial(topicId, dto);
   }
 
   @Post('module/:id/assessment')
-  createAssessment(@Param('id', ParseUUIDPipe) moduleId: string, @Body() dto: CreateAssessmentDto) {
+  createAssessment(
+    @Param('id', ParseUUIDPipe) moduleId: string,
+    @Body() dto: CreateAssessmentDto,
+  ) {
     return this.trainingService.createAssessment(moduleId, dto);
   }
 
   @Post('course/:id/assign')
-  assignCourse(@Param('id', ParseUUIDPipe) courseId: string, @Body() dto: AssignCourseDto) {
+  assignCourse(
+    @Param('id', ParseUUIDPipe) courseId: string,
+    @Body() dto: AssignCourseDto,
+  ) {
     return this.trainingService.assignCourse(courseId, dto);
   }
 
@@ -83,7 +113,10 @@ export class HrTrainingController {
   }
 
   @Patch('course/:id')
-  updateCourse(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCourseDto) {
+  updateCourse(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCourseDto,
+  ) {
     return this.trainingService.updateCourse(id, dto);
   }
 
@@ -93,7 +126,10 @@ export class HrTrainingController {
   }
 
   @Patch('module/:id')
-  updateModule(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCourseModuleDto) {
+  updateModule(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCourseModuleDto,
+  ) {
     return this.trainingService.updateModule(id, dto);
   }
 
@@ -103,7 +139,10 @@ export class HrTrainingController {
   }
 
   @Patch('topic/:id')
-  updateTopic(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCourseTopicDto) {
+  updateTopic(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCourseTopicDto,
+  ) {
     return this.trainingService.updateTopic(id, dto);
   }
 
@@ -113,7 +152,10 @@ export class HrTrainingController {
   }
 
   @Patch('material/:id')
-  updateMaterial(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCourseMaterialDto) {
+  updateMaterial(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCourseMaterialDto,
+  ) {
     return this.trainingService.updateMaterial(id, dto);
   }
 

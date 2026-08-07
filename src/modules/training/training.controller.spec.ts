@@ -41,9 +41,7 @@ describe('TrainingController', () => {
       const mockUser = { id: 'emp-123' } as any;
       const result = await controller.getMyCourses(mockUser);
       expect(result).toEqual([]);
-      expect(mockTrainingService.getMyCourses).toHaveBeenCalledWith(
-        'emp-123',
-      );
+      expect(mockTrainingService.getMyCourses).toHaveBeenCalledWith('emp-123');
     });
   });
 
@@ -75,7 +73,11 @@ describe('TrainingController', () => {
     it('should call service.submitAssessment', async () => {
       const mockUser = { id: 'emp-123' } as any;
       const dto = { answers: [] };
-      const result = await controller.submitAssessment('mod-123', dto as any, mockUser);
+      const result = await controller.submitAssessment(
+        'mod-123',
+        dto as any,
+        mockUser,
+      );
       expect(result).toEqual({ success: true });
       expect(mockTrainingService.submitAssessment).toHaveBeenCalledWith(
         'mod-123',

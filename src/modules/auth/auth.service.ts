@@ -25,19 +25,25 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Employee } from '../employees/entities/employee.entity';
+import { AuthLogService } from '../auth-log/auth-log.service';
+import { AuthEvent, AuthStatus } from '../auth-log/entities/auth-log.entity';
+import { ClsService } from 'nestjs-cls';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
     private readonly mailService: MailService,
-
     private employeesService: EmployeesService,
     private configService: ConfigService,
+    private authLogService: AuthLogService,
+    private cls: ClsService,
 
     @InjectRepository(Employee)
     private employeeRepository: Repository<Employee>,
     @InjectRepository(RefreshToken)
-    private refreshTokenRepository: Repository<RefreshToken>,
+    private refreshTokenRepository: Repository<RefreshToken>, private readonly tenantQueryService: TenantQueryService
   ) {}
 
   private parseDurationToMs(duration: string): number {
@@ -47,11 +53,16 @@ export class AuthService {
     const value = parseInt(match[1], 10);
     const unit = match[2];
     switch (unit) {
-      case 's': return value * 1000;
-      case 'm': return value * 60 * 1000;
-      case 'h': return value * 60 * 60 * 1000;
-      case 'd': return value * 24 * 60 * 60 * 1000;
-      default: return 7 * 24 * 60 * 60 * 1000;
+      case 's':
+        return value * 1000;
+      case 'm':
+        return value * 60 * 1000;
+      case 'h':
+        return value * 60 * 60 * 1000;
+      case 'd':
+        return value * 24 * 60 * 60 * 1000;
+      default:
+        return 7 * 24 * 60 * 60 * 1000;
     }
   }
 
@@ -94,6 +105,8 @@ export class AuthService {
       employeeId: employee.id,
       employeeCode: employee.employeeCode,
       roleId: employee.roleId,
+      tenantId: employee.tenantId,
+      sessionId: randomUUID(), // Unique per login session for revocation support
     };
 
     // Access token
@@ -135,8 +148,21 @@ export class AuthService {
     await this.refreshTokenRepository.save({
       employeeId: employee.id,
       tokenHash: hashedRefreshToken,
-      expiresAt: new Date(Date.now() + this.parseDurationToMs(refreshExpiresIn)),
+      expiresAt: new Date(
+        Date.now() + this.parseDurationToMs(refreshExpiresIn),
+      ),
       isRevoked: false,
+    });
+
+    // Log Auth Event
+    this.authLogService.logEvent({
+      userId: employee.id,
+      tenantId: employee.tenantId,
+      branchId: employee.branchId || undefined,
+      event: AuthEvent.LOGIN,
+      status: AuthStatus.SUCCESS,
+      ipAddress: this.cls.get('ipAddress'),
+      device: this.cls.get('device'),
     });
 
     return {
@@ -146,7 +172,12 @@ export class AuthService {
       employee: {
         id: employee.id,
         employeeCode: employee.employeeCode,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        middleName: employee.middleName,
+        displayName: employee.displayName,
         email: employee.email,
+        profilePhoto: employee.profilePhoto,
         role: employee.role,
       },
     };
@@ -162,6 +193,7 @@ export class AuthService {
         where: {
           employeeId: payload.employeeId,
           isRevoked: false,
+            
         },
       });
 
@@ -195,11 +227,17 @@ export class AuthService {
         throw new UnauthorizedException('Employee not found');
       }
 
+      if (!employee.isActive) {
+        throw new ForbiddenException('Account is deactivated');
+      }
+
       const newPayload = {
         sub: employee.id,
         employeeId: employee.id,
         employeeCode: employee.employeeCode,
         roleId: employee.roleId,
+        tenantId: employee.tenantId,
+        sessionId: randomUUID(), // New session on each refresh
       };
 
       // Generate access token
@@ -225,20 +263,29 @@ export class AuthService {
       // Save new token
       const hashedRefreshToken = await bcrypt.hash(newRefreshToken, 10);
 
-      const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
+      const refreshExpiresIn =
+        this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
 
       await this.refreshTokenRepository.save({
         employeeId: employee.id,
         tokenHash: hashedRefreshToken,
-        expiresAt: new Date(Date.now() + this.parseDurationToMs(refreshExpiresIn)),
+        expiresAt: new Date(
+          Date.now() + this.parseDurationToMs(refreshExpiresIn),
+        ),
         isRevoked: false,
       });
 
       return {
         accessToken,
-        // refreshToken: newRefreshToken,
+        refreshToken: newRefreshToken,
       };
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -255,6 +302,7 @@ export class AuthService {
         where: {
           employeeId: payload.employeeId,
           isRevoked: false,
+            
         },
       });
 
@@ -288,10 +336,27 @@ export class AuthService {
 
       await this.refreshTokenRepository.save(matchedToken);
 
+      // Log Auth Event for Logout
+      this.authLogService.logEvent({
+        userId: payload.employeeId,
+        tenantId: payload.tenantId,
+        branchId: this.cls.get('branchId'),
+        event: AuthEvent.LOGOUT,
+        status: AuthStatus.SUCCESS,
+        ipAddress: this.cls.get('ipAddress'),
+        device: this.cls.get('device'),
+      });
+
       return {
         message: 'Logged out successfully',
       };
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -304,13 +369,16 @@ export class AuthService {
     const employee = await this.employeeRepository.findOne({
       where: {
         email: dto.email,
-      },
+          
+    },
 
       select: {
         id: true,
         email: true,
         firstName: true,
         passwordVersion: true,
+        tenantId: true,
+        branchId: true,
       },
     });
 
@@ -341,10 +409,10 @@ export class AuthService {
 
     await this.mailService.sendResetPasswordEmail(
       employee.email,
-
       employee.firstName,
-
       resetLink,
+      employee.tenantId!,
+      employee.branchId!,
     );
 
     return {
@@ -373,6 +441,7 @@ export class AuthService {
       const employee = await this.employeeRepository.findOne({
         where: {
           id: payload.employeeId,
+            
         },
 
         select: {

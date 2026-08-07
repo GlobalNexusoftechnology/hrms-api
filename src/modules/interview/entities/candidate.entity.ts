@@ -1,17 +1,18 @@
-import { CandidateStatusEnum } from '../../../common/enums/candidate-status.enum';
+import { CandidateApplication } from './candidate-application.entity';
 import {
   Column,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
+  OneToMany,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('candidates')
-export class Candidate {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'email'], { unique: true })
+export class Candidate extends TenantAwareEntity {
 
   @Column({
     name: 'first_name',
@@ -23,9 +24,7 @@ export class Candidate {
   })
   lastName!: string;
 
-  @Column({
-    unique: true,
-  })
+  @Column()
   email!: string;
 
   @Column()
@@ -84,26 +83,7 @@ export class Candidate {
   })
   source!: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: CandidateStatusEnum,
-    default: CandidateStatusEnum.APPLIED,
-  })
-  status!: CandidateStatusEnum;
+  @OneToMany(() => CandidateApplication, (app) => app.candidate)
+  applications!: CandidateApplication[];
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
-
-  @DeleteDateColumn({
-    type: 'text',
-    name: 'deleted_at',
-  })
-  deletedAt!: Date | null;
 }

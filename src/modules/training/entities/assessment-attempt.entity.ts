@@ -1,24 +1,38 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 import { Employee } from '../../employees/entities/employee.entity';
 import { Assessment } from './assessment.entity';
 
 @Entity('assessment_attempts')
-export class AssessmentAttempt {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class AssessmentAttempt extends TenantAwareEntity {
 
   @Column({ name: 'employee_id' })
   employeeId!: string;
 
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'employee_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({ name: 'assessment_id' })
   assessmentId!: string;
 
   @ManyToOne(() => Assessment, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'assessment_id' })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'assessment_id', referencedColumnName: 'id' },
+  ])
   assessment!: Assessment;
 
   @Column({ type: 'numeric', name: 'score_percentage', default: 0 })

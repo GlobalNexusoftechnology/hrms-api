@@ -15,18 +15,31 @@ import { Role } from '../../roles/entities/role.entity';
 import { Designation } from '../../designations/entities/designation.entity';
 import { EmploymentTypeEnum } from '../../../common/enums/employment-type.enum';
 import { GenderEnum } from '../../../common/enums/gender.enum';
+import { WorkLocationEnum } from '../../../common/enums/work-location.enum';
+import { MaritalStatusEnum } from '../../../common/enums/marital-status.enum';
+import { EmploymentStatusEnum } from '../../../common/enums/employment-status.enum';
 import { EmployeeDocument } from '../../employee-documents/entities/employee-document.entity';
 import { Attendance } from '../../attendance/entities/attendance.entity';
 import { AttendanceCorrection } from '../../attendance/entities/correction.entity';
 import { SalaryStructure } from '../../salary-structure/entities/salary-structure.entity';
+import { Branch } from '../../organization/entities/branch.entity';
+import { Shift } from '../../shift/entities/shift.entity';
+import { EmployeeAddress } from '../../employee-address/entities/employee-address.entity';
+import { EmployeeEmergencyContact } from '../../employee-emergency-contact/entities/employee-emergency-contact.entity';
+import { EmployeeFamily } from '../../employee-family/entities/employee-family.entity';
+import { EmployeeEducation } from '../../employee-education/entities/employee-education.entity';
+import { EmployeeExperience } from '../../employee-experience/entities/employee-experience.entity';
+import { EmployeeSkill } from '../../employee-skill/entities/employee-skill.entity';
+import { EmployeeBank } from '../../employee-bank/entities/employee-bank.entity';
+import { EmployeeCareerMovement } from '../../career-movements/entities/career-movement.entity';
+
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+import { Index } from 'typeorm';
 
 @Entity('employees')
-export class Employee {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Index(['tenantId', 'employeeCode'], { unique: true })
+export class Employee extends TenantAwareEntity {
   @Column({
-    unique: true,
     name: 'employee_code',
   })
   employeeCode!: string;
@@ -37,9 +50,23 @@ export class Employee {
   firstName!: string;
 
   @Column({
+    type: 'varchar',
+    name: 'middle_name',
+    nullable: true,
+  })
+  middleName: string | null = null;
+
+  @Column({
     name: 'last_name',
   })
   lastName!: string;
+
+  @Column({
+    type: 'varchar',
+    name: 'display_name',
+    nullable: true,
+  })
+  displayName: string | null = null;
 
   @Column({
     unique: true,
@@ -47,9 +74,23 @@ export class Employee {
   email!: string;
 
   @Column({
+    type: 'varchar',
+    name: 'personal_email',
+    nullable: true,
+  })
+  personalEmail: string | null = null;
+
+  @Column({
     unique: true,
   })
   mobile!: string;
+
+  @Column({
+    type: 'varchar',
+    name: 'alternate_phone',
+    nullable: true,
+  })
+  alternatePhone: string | null = null;
 
   @Column({
     select: false,
@@ -57,11 +98,28 @@ export class Employee {
   password!: string;
 
   @Column({
-    type: 'text',
-    nullable: true,
-    name: 'current_address',
+    type: 'enum',
+    enum: EmploymentStatusEnum,
+    name: 'employment_status',
+    default: EmploymentStatusEnum.ACTIVE,
   })
-  currentAddress: string | null = null;
+  employmentStatus!: EmploymentStatusEnum;
+
+  @Column({
+    type: 'enum',
+    enum: WorkLocationEnum,
+    name: 'work_location',
+    nullable: true,
+  })
+  workLocation!: WorkLocationEnum | null;
+
+  @Column({
+    type: 'enum',
+    enum: MaritalStatusEnum,
+    name: 'marital_status',
+    nullable: true,
+  })
+  maritalStatus!: MaritalStatusEnum | null;
 
   @Column({
     type: 'text',
@@ -98,6 +156,20 @@ export class Employee {
   })
   department!: Department;
 
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId!: string | null;
+
+  @ManyToOne(() => Branch, { nullable: true })
+  @JoinColumn({ name: 'branch_id' })
+  branch!: Branch;
+
+  @Column({ name: 'shift_id', type: 'uuid', nullable: true })
+  shiftId!: string | null;
+
+  @ManyToOne(() => Shift, { nullable: true })
+  @JoinColumn({ name: 'shift_id' })
+  shift!: Shift;
+
   @OneToMany(
     () => SalaryStructure,
     (salaryStructure) => salaryStructure.employee,
@@ -118,6 +190,30 @@ export class Employee {
 
   @OneToMany(() => Attendance, (attendance) => attendance.employee)
   attendances!: Attendance[];
+
+  @OneToMany(() => EmployeeAddress, (address) => address.employee)
+  addresses!: EmployeeAddress[];
+
+  @OneToMany(() => EmployeeEmergencyContact, (contact) => contact.employee)
+  emergencyContacts!: EmployeeEmergencyContact[];
+
+  @OneToMany(() => EmployeeFamily, (family) => family.employee)
+  families!: EmployeeFamily[];
+
+  @OneToMany(() => EmployeeEducation, (education) => education.employee)
+  educations!: EmployeeEducation[];
+
+  @OneToMany(() => EmployeeExperience, (experience) => experience.employee)
+  experiences!: EmployeeExperience[];
+
+  @OneToMany(() => EmployeeSkill, (skill) => skill.employee)
+  skills!: EmployeeSkill[];
+
+  @OneToMany(() => EmployeeBank, (bank) => bank.employee)
+  banks!: EmployeeBank[];
+
+  @OneToMany(() => EmployeeCareerMovement, (movement) => movement.employee)
+  careerMovements!: EmployeeCareerMovement[];
 
   @OneToMany(() => AttendanceCorrection, (correction) => correction.employee)
   attendanceCorrections!: AttendanceCorrection[];
@@ -168,21 +264,6 @@ export class Employee {
     name: 'is_active',
   })
   isActive!: boolean;
-
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
-
-  @DeleteDateColumn({
-    name: 'deleted_at',
-  })
-  deletedAt!: Date | null;
 
   @Column({
     type: 'timestamp',

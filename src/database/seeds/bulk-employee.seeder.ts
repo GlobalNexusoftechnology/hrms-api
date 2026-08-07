@@ -15,7 +15,9 @@ export async function seedBulkEmployees(dataSource: DataSource) {
   const designationRepository = dataSource.getRepository(Designation);
   const employeeRepository = dataSource.getRepository(Employee);
 
-  const employeeRole = await roleRepository.findOne({ where: { name: 'EMPLOYEE' } });
+  const employeeRole = await roleRepository.findOne({
+    where: { name: 'EMPLOYEE' },
+  });
   if (!employeeRole) {
     console.log('EMPLOYEE role not found, skipping bulk employee seed');
     return;
@@ -30,8 +32,10 @@ export async function seedBulkEmployees(dataSource: DataSource) {
   }
 
   const hashedPassword = await bcrypt.hash('123456', 10);
-  
-  const allEmployees = await employeeRepository.find({ select: { employeeCode: true } });
+
+  const allEmployees = await employeeRepository.find({
+    select: { employeeCode: true },
+  });
   let lastNumber = 0;
   for (const emp of allEmployees) {
     if (emp.employeeCode) {
@@ -44,17 +48,20 @@ export async function seedBulkEmployees(dataSource: DataSource) {
       }
     }
   }
-  
+
   const targetNewCount = 50;
-
-
 
   const employeesToSave: any[] = [];
 
   for (let i = 1; i <= targetNewCount; i++) {
     const dept = departments[i % departments.length];
-    const deptDesignations = designations.filter(d => d.departmentId === dept.id);
-    const desig = deptDesignations.length > 0 ? deptDesignations[i % deptDesignations.length] : designations[i % designations.length];
+    const deptDesignations = designations.filter(
+      (d) => d.departmentId === dept.id,
+    );
+    const desig =
+      deptDesignations.length > 0
+        ? deptDesignations[i % deptDesignations.length]
+        : designations[i % designations.length];
 
     const empCodeNumber = lastNumber + i;
     const paddedCode = empCodeNumber.toString().padStart(3, '0');

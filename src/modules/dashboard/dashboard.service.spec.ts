@@ -40,7 +40,10 @@ describe('DashboardService', () => {
         { provide: getRepositoryToken(Candidate), useFactory: mockRepository },
         { provide: getRepositoryToken(Course), useFactory: mockRepository },
         { provide: getRepositoryToken(Payroll), useFactory: mockRepository },
-        { provide: getRepositoryToken(LeaveBalance), useFactory: mockRepository },
+        {
+          provide: getRepositoryToken(LeaveBalance),
+          useFactory: mockRepository,
+        },
         { provide: getRepositoryToken(Holiday), useFactory: mockRepository },
       ],
     }).compile();

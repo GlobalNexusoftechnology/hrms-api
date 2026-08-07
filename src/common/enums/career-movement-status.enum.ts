@@ -1,0 +1,7 @@
+export enum CareerMovementStatusEnum {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+  EXECUTED = 'EXECUTED',
+}

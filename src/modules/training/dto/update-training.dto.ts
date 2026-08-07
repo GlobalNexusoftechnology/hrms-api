@@ -7,4 +7,6 @@ import { CreateCourseMaterialDto } from './create-material.dto';
 export class UpdateCourseDto extends PartialType(CreateCourseDto) {}
 export class UpdateCourseModuleDto extends PartialType(CreateCourseModuleDto) {}
 export class UpdateCourseTopicDto extends PartialType(CreateCourseTopicDto) {}
-export class UpdateCourseMaterialDto extends PartialType(CreateCourseMaterialDto) {}
+export class UpdateCourseMaterialDto extends PartialType(
+  CreateCourseMaterialDto,
+) {}

@@ -2,16 +2,12 @@ import { WeekDayEnum } from '../../../common/enums/WeekDayEnum.enum';
 import { WeekNumberEnum } from '../../../common/enums/WeekNumberEnum.enum';
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('weekend_settings')
-export class WeekendSetting {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class WeekendSetting extends TenantAwareEntity {
 
   @Column({
     type: 'enum',
@@ -31,13 +27,4 @@ export class WeekendSetting {
   })
   isOff!: boolean;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

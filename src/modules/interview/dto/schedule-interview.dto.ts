@@ -1,9 +1,15 @@
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { InterviewRoundEnum } from '../../../common/enums/interview-round.enum';
 
 export class ScheduleInterviewDto {
   @IsUUID()
-  candidateId!: string;
+  applicationId!: string;
 
   @IsUUID()
   interviewerId!: string;

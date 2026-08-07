@@ -23,7 +23,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  // @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Public()
   @Post('login')
   login(

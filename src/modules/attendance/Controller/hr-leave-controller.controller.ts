@@ -15,18 +15,28 @@ import { PermissionEnum } from '../../../common/enums/permission.enum';
 import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
 import { LeaveService } from '../Service/leave.service';
 
-@Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
+// @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
 @Controller('hr/leave')
 export class HrLeaveController {
   constructor(private readonly leaveService: LeaveService) {}
+
+  @Permissions(PermissionEnum.LEAVE_READ)
+  @Get('report')
+  getReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.leaveService.getLeaveReport(startDate, endDate);
+  }
 
   @Permissions(PermissionEnum.LEAVE_READ)
   @Get()
   findAll(
     @Query()
     query: any,
+    @CurrentUser() employee: any,
   ) {
-    return this.leaveService.findAll(query);
+    return this.leaveService.findAll(query, employee);
   }
 
   @Permissions(PermissionEnum.LEAVE_APPROVAL)

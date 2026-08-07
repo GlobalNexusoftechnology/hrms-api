@@ -8,7 +8,10 @@ import { Employee } from './entities/employee.entity';
 import { Department } from '../departments/entities/department.entity';
 import { Designation } from '../designations/entities/designation.entity';
 import { Role } from '../roles/entities/role.entity';
+import { Branch } from '../organization/entities/branch.entity';
+import { Shift } from '../shift/entities/shift.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
@@ -17,14 +20,14 @@ import { RefreshToken } from '../auth/entities/refresh-token.entity';
       Department,
       Designation,
       Role,
+      Branch,
+      Shift,
       RefreshToken,
     ]),
+    ActivityLogModule,
   ],
-
   controllers: [EmployeesController],
-
   providers: [EmployeesService],
-
   exports: [EmployeesService, TypeOrmModule],
 })
 export class EmployeesModule {}

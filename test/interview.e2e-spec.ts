@@ -30,17 +30,13 @@ describe('HrInterviewController (Integration)', () => {
 
   describe('/api/hr/candidates (GET)', () => {
     it('should return 401 Unauthorized when requesting without token', async () => {
-      await request(app.getHttpServer())
-        .get('/api/hr/candidates')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/hr/candidates').expect(401);
     });
   });
 
   describe('/api/hr/interviews (GET)', () => {
     it('should return 401 Unauthorized when requesting without token', async () => {
-      await request(app.getHttpServer())
-        .get('/api/hr/interviews')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/hr/interviews').expect(401);
     });
   });
 });

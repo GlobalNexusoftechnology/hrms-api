@@ -3,7 +3,6 @@ import { LeaveBalanceService } from './leave-balance.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { LeaveBalance } from './entities/leave-balance.entity';
 import { Employee } from '../employees/entities/employee.entity';
-import { NotFoundException } from '@nestjs/common';
 
 describe('LeaveBalanceService', () => {
   let service: LeaveBalanceService;
@@ -13,14 +12,16 @@ describe('LeaveBalanceService', () => {
   const mockLeaveBalance = {
     id: 'bal-123',
     employeeId: 'emp-123',
-    month: 6,
+    leaveTypeId: 'type-123',
     year: 2026,
-    monthlyCredit: 2,
-    carryForward: 4,
-    usedLeaves: 0,
-    paidLeavesUsed: 0,
-    unpaidLeavesUsed: 0,
-    remainingLeaves: 6,
+    accrued: 10,
+    used: 2,
+    carriedForward: 2,
+    leaveType: {
+      id: 'type-123',
+      name: 'Casual Leave',
+      code: 'CL',
+    },
     employee: {
       id: 'emp-123',
       firstName: 'John',
@@ -33,7 +34,6 @@ describe('LeaveBalanceService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     save: jest.fn(),
-    findOneOrFail: jest.fn(),
     createQueryBuilder: jest.fn(),
   });
 
@@ -58,32 +58,38 @@ describe('LeaveBalanceService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('deductLeave', () => {
-    it('should deduct leave balance successfully', async () => {
-      const activeBalance = { ...mockLeaveBalance };
-      leaveBalanceRepo.findOne.mockResolvedValue(activeBalance);
-      leaveBalanceRepo.save.mockResolvedValue(activeBalance);
+  describe('getEmployeeBalance', () => {
+    it('should return calculated balance per leave type', async () => {
+      leaveBalanceRepo.find.mockResolvedValue([mockLeaveBalance]);
 
-      const result = await service.deductLeave('emp-123', 2);
-      expect(result.paidLeaves).toBe(2);
-      expect(result.remainingLeaves).toBe(4);
-      expect(leaveBalanceRepo.save).toHaveBeenCalled();
-    });
-
-    it('should throw NotFoundException if balance does not exist', async () => {
-      leaveBalanceRepo.findOne.mockResolvedValue(null);
-      await expect(service.deductLeave('emp-123', 2)).rejects.toThrow(
-        NotFoundException,
-      );
+      const result = await service.getEmployeeBalance('emp-123', 2026);
+      expect(result).toHaveLength(1);
+      expect(result[0].remaining).toBe(10); // (10 + 2) - 2 = 10
+      expect(result[0].leaveType.code).toBe('CL');
     });
   });
 
-  describe('getEmployeeBalance', () => {
-    it('should return balance if it already exists', async () => {
-      leaveBalanceRepo.findOne.mockResolvedValue(mockLeaveBalance);
+  describe('getAllBalances', () => {
+    it('should query all balances paginated', async () => {
+      const mockQueryBuilder = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[mockLeaveBalance], 1]),
+      };
+      leaveBalanceRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 
-      const result = await service.getEmployeeBalance('emp-123');
-      expect(result.remainingLeaves).toBe(6);
+      const result = await service.getAllBalances({
+        page: 1,
+        limit: 10,
+        year: 2026,
+      });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].employeeName).toBe('John Doe');
+      expect(result.data[0].remaining).toBe(10);
+      expect(result.meta.total).toBe(1);
     });
   });
 });

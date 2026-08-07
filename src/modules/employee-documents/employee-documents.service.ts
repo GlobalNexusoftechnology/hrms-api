@@ -11,6 +11,8 @@ import { Employee } from '../employees/entities/employee.entity';
 import { extname } from 'path';
 import { DocumentTypeEnum } from '../../common/enums/document-type.enum';
 import * as fs from 'fs';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class EmployeeDocumentsService {
@@ -19,7 +21,9 @@ export class EmployeeDocumentsService {
     private readonly employeeDocumentRepository: Repository<EmployeeDocument>,
 
     @InjectRepository(Employee)
-    private readonly employeeRepository: Repository<Employee>,
+    private readonly employeeRepository: Repository<Employee>, 
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService
   ) {}
 
   async uploadDocument(
@@ -28,14 +32,21 @@ export class EmployeeDocumentsService {
     documentType: DocumentTypeEnum,
 
     file: Express.Multer.File,
+    currentUser?: any,
   ) {
-    const employee = await this.employeeRepository.findOne({
-      where: {
-        id: employeeId,
+    const qb = this.employeeRepository.createQueryBuilder('employee')
+      .where('employee.id = :employeeId', { employeeId })
+      .andWhere('employee.deletedAt IS NULL')
+      .andWhere('employee.tenantId = :tenantId', { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId });
 
-        deletedAt: IsNull(),
-      },
-    });
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
+    const employee = await qb.getOne();
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
@@ -71,6 +82,7 @@ export class EmployeeDocumentsService {
           employeeId,
           documentType,
           deletedAt: IsNull(),
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
         },
       });
 
@@ -111,14 +123,20 @@ export class EmployeeDocumentsService {
     };
   }
 
-  async getEmployeeDocuments(employeeId: string) {
-    const employee = await this.employeeRepository.findOne({
-      where: {
-        id: employeeId,
+  async getEmployeeDocuments(employeeId: string, currentUser?: any) {
+    const qb = this.employeeRepository.createQueryBuilder('employee')
+      .where('employee.id = :employeeId', { employeeId })
+      .andWhere('employee.deletedAt IS NULL')
+      .andWhere('employee.tenantId = :tenantId', { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId });
 
-        deletedAt: IsNull(),
-      },
-    });
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
+    const employee = await qb.getOne();
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
@@ -129,7 +147,8 @@ export class EmployeeDocumentsService {
         employeeId,
 
         deletedAt: IsNull(),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
 
       order: {
         createdAt: 'DESC',
@@ -141,14 +160,21 @@ export class EmployeeDocumentsService {
     };
   }
 
-  async deleteDocument(documentId: string) {
-    const document = await this.employeeDocumentRepository.findOne({
-      where: {
-        id: documentId,
+  async deleteDocument(documentId: string, currentUser?: any) {
+    const qb = this.employeeDocumentRepository.createQueryBuilder('document')
+      .leftJoin('document.employee', 'employee')
+      .where('document.id = :documentId', { documentId })
+      .andWhere('document.deletedAt IS NULL')
+      .andWhere('document.tenantId = :tenantId', { tenantId: this.tenantQueryService.getTenantWhereClause().tenantId });
 
-        deletedAt: IsNull(),
-      },
-    });
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
+
+    const document = await qb.getOne();
 
     if (!document) {
       throw new NotFoundException('Document not found');

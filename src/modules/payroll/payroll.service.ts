@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import dayjs from 'dayjs';
 
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -14,12 +15,26 @@ import { Payroll } from './entities/payroll.entity';
 import { Employee } from './../employees/entities/employee.entity';
 
 import { Attendance } from './../attendance/entities/attendance.entity';
+import { Leave } from './../attendance/entities/leave.entity';
 
 import { SalaryStructure } from './../salary-structure/entities/salary-structure.entity';
-
-import { LeaveBalance } from './../leave-balance/entities/leave-balance.entity';
+import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
+import {
+  LeaveLedger,
+  LeaveTransactionType,
+} from '../leave-ledger/entities/leave-ledger.entity';
 import { WeekendSetting } from '../weekend_settings/entities/weekend_setting.entity';
+import { Holiday } from '../holiday/entities/holiday.entity';
 import { AttendanceStatus } from './../../common/enums/AttendanceStatus.enum';
+import { SalaryComponentTypeEnum } from '../../common/enums/salary-component-type.enum';
+import { CalculationTypeEnum } from '../../common/enums/calculation-type.enum';
+import { PercentageBaseEnum } from '../../common/enums/percentage-base.enum';
+import { DataScopeService } from './../../common/services/data-scope.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/NotificationType.enum';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { ClsService } from 'nestjs-cls';
+import { TenantExecutionService } from '../../common/services/tenant-execution.service';
 
 @Injectable()
 export class PayrollService {
@@ -36,11 +51,26 @@ export class PayrollService {
     @InjectRepository(SalaryStructure)
     private readonly salaryRepo: Repository<SalaryStructure>,
 
-    @InjectRepository(LeaveBalance)
-    private readonly leaveBalanceRepo: Repository<LeaveBalance>,
+    @InjectRepository(Leave)
+    private readonly leaveRequestRepo: Repository<Leave>,
+
+    @InjectRepository(LeavePolicy)
+    private readonly leavePolicyRepo: Repository<LeavePolicy>,
+
+    @InjectRepository(LeaveLedger)
+    private readonly leaveLedgerRepo: Repository<LeaveLedger>,
 
     @InjectRepository(WeekendSetting)
     private readonly weekendRepo: Repository<WeekendSetting>,
+
+    @InjectRepository(Holiday)
+    private readonly holidayRepo: Repository<Holiday>,
+
+    private readonly dataScopeService: DataScopeService,
+    private readonly notificationService: NotificationService, 
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly cls: ClsService,
+    private readonly tenantExecutionService: TenantExecutionService,
   ) {}
 
   // =====================
@@ -52,32 +82,47 @@ export class PayrollService {
   }
 
   async generatePayroll(
-    employeeId: string, 
-    month: number, 
+    employeeId: string,
+    month: number,
     year: number,
-    options?: { bonusAmount?: number; bonusReason?: string; deductionAmount?: number; deductionReason?: string },
-    precalculatedWeekends?: WeekendSetting[]
+    options?: {
+      bonusAmount?: number;
+      bonusReason?: string;
+      deductionAmount?: number;
+      deductionReason?: string;
+    },
+    precalculatedWeekends?: WeekendSetting[],
   ) {
     const existing = await this.payrollRepo.findOne({
       where: {
         employeeId,
         month,
         year,
+        ...this.tenantQueryService.getTenantWhereClause(),                                     
       },
     });
 
-    if (existing) {
-      throw new BadRequestException('Payroll already generated');
+    if (existing && existing.isPaid) {
+      throw new BadRequestException('Payroll already paid and finalized');
     }
 
     const employee = await this.employeeRepo.findOne({
-      where: { id: employeeId },
+      where: {
+        id: employeeId,
+        ...this.tenantQueryService.getTenantWhereClause(),
+      },
+      relations: { shift: true },
     });
 
     if (!employee) throw new NotFoundException('Employee not found');
 
     const salary = await this.salaryRepo.findOne({
-      where: { employeeId, isActive: true },
+      where: {
+        employeeId,
+        isActive: true,
+        ...this.tenantQueryService.getTenantWhereClause(),
+      },
+      relations: { components: { salaryComponent: true } },
     });
 
     if (!salary) throw new NotFoundException('Salary structure not found');
@@ -87,75 +132,337 @@ export class PayrollService {
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     // WORKING DAYS CALCULATION
-    const weekends = precalculatedWeekends ?? await this.weekendRepo.find({ where: { isOff: true } });
-    const workingDays = this.calculateWorkingDays(year, month, weekends, employee.joiningDate);
-    // Fallback just in case working days evaluates to 0
-    const effectiveWorkingDays = workingDays > 0 ? workingDays : lastDay;
+    const weekends =
+      precalculatedWeekends ??
+      (await this.weekendRepo.find({ where: { isOff: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } }));
+
+    // HOLIDAYS & LEAVES
+    const holidays = await this.holidayRepo.find({
+      where: { date: Between(startDate, endDate),
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
+    });
+    const holidayDates = holidays.map((h) => h.date);
+    const weekendDays = weekends.map((w) => w.day.toLowerCase());
+
+    // Calculate for FULL month to get accurate perDaySalary
+    const fullMonthWorkingDays = this.calculateWorkingDays(
+      year,
+      month,
+      weekends,
+      holidayDates,
+      null,
+    );
+    const actualWorkingDays = this.calculateWorkingDays(
+      year,
+      month,
+      weekends,
+      holidayDates,
+      employee.joiningDate,
+    );
+    const preJoinMissedDays = Math.max(
+      0,
+      fullMonthWorkingDays - actualWorkingDays,
+    );
+    const effectiveWorkingDays =
+      fullMonthWorkingDays > 0 ? fullMonthWorkingDays : lastDay;
+
+    const approvedLeaves = await this.leaveRequestRepo
+      .createQueryBuilder('leave')
+      .leftJoinAndSelect('leave.leaveType', 'leaveType')
+      .where('leave.employeeId = :employeeId', { employeeId })
+      .andWhere('leave.status = :status', { status: 'APPROVED' })
+      .andWhere(
+        '(leave.startDate <= :endDate AND leave.endDate >= :startDate)',
+        { startDate, endDate },
+      )
+      .getMany();
 
     // ATTENDANCE
     const attendances = await this.attendanceRepo.find({
       where: {
         employeeId,
-
         date: Between(startDate, endDate),
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     const presentDays = attendances.filter(
       (item) => item.status === AttendanceStatus.PRESENT,
     ).length;
-
     const lateDays = attendances.filter(
       (item) => item.status === AttendanceStatus.LATE,
     ).length;
-
     const halfDays = attendances.filter(
       (item) => item.status === AttendanceStatus.HALF_DAY,
     ).length;
 
-    const absentDays = attendances.filter(
-      (item) => item.status === AttendanceStatus.ABSENT,
-    ).length;
-    
-    const leaveDays = attendances.filter(
-      (item) => item.status === AttendanceStatus.LEAVE,
-    ).length;
+    const absentDays = attendances.filter((item) => {
+      if (item.status !== AttendanceStatus.ABSENT) return false;
+      const date = new Date(item.date);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayOfWeekStr = date
+        .toLocaleDateString('en-US', { weekday: 'long' })
+        .toUpperCase();
+      const occurrence = Math.ceil(date.getDate() / 7);
+      const occurrenceStr =
+        occurrence === 1
+          ? 'FIRST'
+          : occurrence === 2
+            ? 'SECOND'
+            : occurrence === 3
+              ? 'THIRD'
+              : occurrence === 4
+                ? 'FOURTH'
+                : occurrence === 5
+                  ? 'FIFTH'
+                  : 'UNKNOWN';
+      const isWeekend = weekends.some(
+        (w) =>
+          w.day === dayOfWeekStr &&
+          (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr),
+      );
+      if (isWeekend) return false;
 
-    // LEAVE BALANCE
-    const leaveBalance = await this.leaveBalanceRepo.findOne({
-      where: {
-        employeeId,
+      const isHoliday = holidayDates.includes(dateStr);
+      if (isHoliday) return false;
 
-        month,
+      const hasApprovedLeave = approvedLeaves.some((l) => {
+        const t = date.getTime();
+        return (
+          t >= new Date(l.startDate).getTime() &&
+          t <= new Date(l.endDate).getTime()
+        );
+      });
+      if (hasApprovedLeave) return false;
 
-        year,
-      },
-    });
+      return true;
+    }).length;
 
-    const paidLeaves = leaveBalance?.paidLeavesUsed ?? 0;
+    const leaveDays = attendances.filter((item) => {
+      if (item.status !== AttendanceStatus.LEAVE) return false;
+      const date = new Date(item.date);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayOfWeekStr = date
+        .toLocaleDateString('en-US', { weekday: 'long' })
+        .toUpperCase();
+      const occurrence = Math.ceil(date.getDate() / 7);
+      const occurrenceStr =
+        occurrence === 1
+          ? 'FIRST'
+          : occurrence === 2
+            ? 'SECOND'
+            : occurrence === 3
+              ? 'THIRD'
+              : occurrence === 4
+                ? 'FOURTH'
+                : occurrence === 5
+                  ? 'FIFTH'
+                  : 'UNKNOWN';
+      const isWeekend = weekends.some(
+        (w) =>
+          w.day === dayOfWeekStr &&
+          (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr),
+      );
+      if (isWeekend) return false;
 
-    const unpaidLeaves = leaveBalance?.unpaidLeavesUsed ?? 0;
+      const isHoliday = holidayDates.includes(dateStr);
+      if (isHoliday) return false;
+
+      return true;
+    }).length;
+
+    // LEAVE RECONCILIATION
+    let paidLeaves = 0;
+    let unpaidLeaves = 0;
+
+    // Variables are declared at the top already
+
+    for (const req of approvedLeaves) {
+      // Find overlap days in this month
+      const startOverlap = dayjs(
+        Math.max(
+          new Date(req.startDate).getTime(),
+          new Date(startDate).getTime(),
+        ),
+      );
+      const endOverlap = dayjs(
+        Math.min(new Date(req.endDate).getTime(), new Date(endDate).getTime()),
+      );
+
+      const policy = await this.leavePolicyRepo.findOne({
+        where: { leaveTypeId: req.leaveTypeId, isActive: true,
+            tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+        },
+      });
+
+      let overlapDays = 0;
+      if (policy) {
+        for (
+          let current = startOverlap.clone();
+          current.isBefore(endOverlap) || current.isSame(endOverlap, 'day');
+          current = current.add(1, 'day')
+        ) {
+          const dateStr = current.format('YYYY-MM-DD');
+          const dayName = current.format('dddd').toLowerCase();
+
+          // NOTE: for advanced week occurrence logic this could be improved, but this matches leave.service logic
+          const isWeekend = weekendDays.includes(dayName);
+          const isHoliday = holidayDates.includes(dateStr);
+
+          if (isWeekend && !policy.countWeekend) continue;
+          if (isHoliday && !policy.countHoliday) continue;
+
+          overlapDays++;
+        }
+      }
+
+      if (policy && policy.isPaid) {
+        paidLeaves += overlapDays;
+      } else {
+        unpaidLeaves += overlapDays;
+      }
+    }
 
     // UNIFIED RECONCILIATION FORMULA
-    const totalAttendanceMissing = absentDays + leaveDays + (halfDays * 0.5);
+    const totalAttendanceMissing = absentDays + leaveDays + halfDays * 0.5;
     const totalApprovedLeaves = paidLeaves + unpaidLeaves;
-    const unapprovedMissingDays = Math.max(0, totalAttendanceMissing - totalApprovedLeaves);
+    const unapprovedMissingDays = Math.max(
+      0,
+      totalAttendanceMissing - totalApprovedLeaves,
+    );
 
-    const perDaySalary = this.roundCurrency(Number(salary.netSalary) / effectiveWorkingDays);
-    const perHourSalary = this.roundCurrency(perDaySalary / 8); 
+    // DYNAMIC PRORATION LOGIC
+    const earnedDays = Math.max(
+      0,
+      effectiveWorkingDays -
+        preJoinMissedDays -
+        unapprovedMissingDays -
+        unpaidLeaves,
+    );
+    const prorationFactor =
+      effectiveWorkingDays > 0 ? earnedDays / effectiveWorkingDays : 0;
 
-    // Allocate deductions gracefully
+    const proratedBasic = this.roundCurrency(
+      Number(salary.basicSalary) * prorationFactor,
+    );
+    let proratedGross = proratedBasic;
+
+    const componentsData: any[] = [];
+
+    // Process Earnings
+    const earningComps =
+      salary.components?.filter(
+        (c) => c.salaryComponent?.type === SalaryComponentTypeEnum.EARNING,
+      ) || [];
+    for (const c of earningComps) {
+      let amount = Number(c.calculatedAmount);
+      if (
+        c.calculationType === CalculationTypeEnum.FIXED_AMOUNT &&
+        c.salaryComponent?.isProratable
+      ) {
+        amount = this.roundCurrency(amount * prorationFactor);
+      }
+      proratedGross += amount;
+      componentsData.push({
+        componentId: c.salaryComponentId,
+        componentCode: c.salaryComponent?.code || null,
+        componentName: c.componentName,
+        type: SalaryComponentTypeEnum.EARNING,
+        calculationType: c.calculationType,
+        percentageValue: c.percentageValue ? Number(c.percentageValue) : null,
+        amount,
+      });
+    }
+
+    // Process Deductions
+    let proratedDeductions = 0;
+    const deductionComps =
+      salary.components?.filter(
+        (c) => c.salaryComponent?.type === SalaryComponentTypeEnum.DEDUCTION,
+      ) || [];
+    for (const c of deductionComps) {
+      let amount = Number(c.calculatedAmount);
+      if (c.calculationType === CalculationTypeEnum.PERCENTAGE) {
+        const baseAmount =
+          c.salaryComponent?.percentageBase === PercentageBaseEnum.GROSS
+            ? proratedGross
+            : proratedBasic;
+        amount = this.roundCurrency(
+          baseAmount * (Number(c.percentageValue) / 100),
+        );
+      } else if (
+        c.calculationType === CalculationTypeEnum.FIXED_AMOUNT &&
+        c.salaryComponent?.isProratable
+      ) {
+        amount = this.roundCurrency(amount * prorationFactor);
+      }
+      proratedDeductions += amount;
+      componentsData.push({
+        componentId: c.salaryComponentId,
+        componentCode: c.salaryComponent?.code || null,
+        componentName: c.componentName,
+        type: SalaryComponentTypeEnum.DEDUCTION,
+        calculationType: c.calculationType,
+        percentageValue: c.percentageValue ? Number(c.percentageValue) : null,
+        amount,
+      });
+    }
+
+    // Per day calculations based on FULL Basic Salary (used for overtime/late rate)
+    const perDaySalary = this.roundCurrency(
+      Number(salary.basicSalary) / effectiveWorkingDays,
+    );
+    const shiftMinutes = employee.shift?.standardWorkingMinutes || 480;
+    const perHourSalary = this.roundCurrency(
+      perDaySalary / (shiftMinutes / 60),
+    );
+
+    // Audit metrics (tracking the "missing" amounts)
+    const preJoinDeduction = this.roundCurrency(
+      preJoinMissedDays * perDaySalary,
+    );
+
+    // ENCASHMENT RECONCILIATION
+    const encashments = await this.leaveLedgerRepo.find({
+      where: {
+        employeeId,
+        transactionType: LeaveTransactionType.ENCASHMENT,
+        createdAt: Between(
+          new Date(startDate + 'T00:00:00Z'),
+          new Date(endDate + 'T23:59:59Z'),
+        ),
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
+    });
+
+    const encashedDays = encashments.reduce(
+      (sum, e) => sum + Number(e.days),
+      0,
+    );
+    const encashmentAmount = this.roundCurrency(encashedDays * perDaySalary);
+
+    // Allocate deductions gracefully for audit
     let remainingUnapproved = unapprovedMissingDays;
-    
+
     const allocatedHalfDays = Math.min(remainingUnapproved, halfDays * 0.5);
-    const halfDayDeduction = this.roundCurrency(allocatedHalfDays * perDaySalary);
+    const halfDayDeduction = this.roundCurrency(
+      allocatedHalfDays * perDaySalary,
+    );
     remainingUnapproved -= allocatedHalfDays;
-    
-    const absentDeduction = this.roundCurrency(remainingUnapproved * perDaySalary);
+
+    const absentDeduction = this.roundCurrency(
+      remainingUnapproved * perDaySalary,
+    );
     const leaveDeduction = this.roundCurrency(unpaidLeaves * perDaySalary);
 
     // OVERTIME
-    const overtimeMinutes = attendances.reduce((acc, curr) => acc + (curr.overtimeMinutes ?? 0), 0);
+    const overtimeMinutes = attendances.reduce(
+      (acc, curr) => acc + (curr.overtimeMinutes ?? 0),
+      0,
+    );
     const overtimeHours = this.roundCurrency(overtimeMinutes / 60);
     const overtimeAmount = this.roundCurrency(overtimeHours * perHourSalary);
 
@@ -167,39 +474,39 @@ export class PayrollService {
     const lateDeduction = this.roundCurrency(lateHours * perHourSalary);
 
     // OVERRIDES
-    const bonusAmount = this.roundCurrency(options?.bonusAmount ? Number(options.bonusAmount) : 0);
+    const bonusAmount = this.roundCurrency(
+      options?.bonusAmount ? Number(options.bonusAmount) : 0,
+    );
     const bonusReason = options?.bonusReason || null;
-    const deductionAmount = this.roundCurrency(options?.deductionAmount ? Number(options.deductionAmount) : 0);
+    const deductionAmount = this.roundCurrency(
+      options?.deductionAmount ? Number(options.deductionAmount) : 0,
+    );
     const deductionReason = options?.deductionReason || null;
 
     const finalSalary = this.roundCurrency(
-      Number(salary.netSalary) -
-      absentDeduction -
-      halfDayDeduction -
-      leaveDeduction -
-      lateDeduction +
-      overtimeAmount +
-      bonusAmount -
-      deductionAmount
+      proratedGross -
+        proratedDeductions +
+        overtimeAmount +
+        bonusAmount -
+        deductionAmount +
+        encashmentAmount -
+        lateDeduction,
     );
 
-    // SAVE
+    // SAVE / RECALCULATE
     const payroll = await this.payrollRepo.save({
+      ...(existing ? { id: existing.id } : {}),
       employeeId,
+      tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
 
       month,
 
       year,
 
-      grossSalary: salary.grossSalary,
-      netSalary: salary.netSalary,
+      grossSalary: proratedGross,
+      netSalary: this.roundCurrency(proratedGross - proratedDeductions),
 
       baseBasicSalary: salary.basicSalary ? Number(salary.basicSalary) : 0,
-      baseHra: salary.hra ? Number(salary.hra) : 0,
-      baseAllowance: salary.allowance ? Number(salary.allowance) : 0,
-      basePf: salary.pf ? Number(salary.pf) : 0,
-      baseEsic: salary.esic ? Number(salary.esic) : 0,
-      baseProfessionalTax: salary.professionalTax ? Number(salary.professionalTax) : 0,
 
       presentDays,
 
@@ -217,17 +524,83 @@ export class PayrollService {
       bonusReason,
       deductionAmount,
       deductionReason,
+      encashmentAmount,
       finalSalary,
+      componentsData,
     });
 
-    return payroll;
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    await this.notificationService.createNotification({
+      employeeId: payroll.employeeId,
+      type: NotificationType.PAYROLL,
+      title: `Payslip Generated`,
+      message: `Your payslip for ${monthNames[month - 1]} ${year} has been generated. Net Salary: ₹${finalSalary}`,
+      referenceId: payroll.id,
+    });
+
+    return {
+      id: payroll.id,
+      employeeId: payroll.employeeId,
+      month: payroll.month,
+      year: payroll.year,
+
+      basicSalary: Number(proratedBasic),
+      totalEarnings: Number(proratedGross),
+      totalDeductions: Number(proratedDeductions),
+
+      grossSalary: Number(payroll.grossSalary),
+      finalSalary: Number(payroll.finalSalary),
+
+      attendance: {
+        presentDays: payroll.presentDays,
+        absentDays: payroll.absentDays,
+        halfDays: payroll.halfDays,
+        lateDays: payroll.lateDays,
+        paidLeaves: payroll.paidLeaves,
+        unpaidLeaves: payroll.unpaidLeaves,
+      },
+
+      deductions: {
+        absent: Number(payroll.absentDeduction),
+        halfDay: Number(payroll.halfDayDeduction),
+        leave: Number(payroll.leaveDeduction),
+        late: Number(payroll.lateDeduction),
+        other: Number(payroll.deductionAmount),
+      },
+
+      additions: {
+        overtime: Number(payroll.overtimeAmount),
+        bonus: Number(payroll.bonusAmount),
+        encashment: Number(payroll.encashmentAmount),
+      },
+
+      components: payroll.componentsData || [],
+
+      isPaid: payroll.isPaid,
+      paidAt: payroll.paidAt,
+      createdAt: payroll.createdAt,
+    };
   }
 
   async getMyPayroll(employeeId: string) {
     const data = await this.payrollRepo.find({
       where: {
         employeeId,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
 
       order: {
         year: 'DESC',
@@ -242,7 +615,7 @@ export class PayrollService {
     };
   }
 
-  async findAll(query: any) {
+  async findAll(query: any, currentUser: Employee) {
     const {
       month,
       year,
@@ -292,6 +665,14 @@ export class PayrollService {
       );
     }
 
+    this.tenantQueryService.applyTenantFilter(qb, 'payroll');
+
+    this.dataScopeService.applyScope(qb, currentUser, {
+      branch: 'employee.branchId',
+      department: 'employee.departmentId',
+      employee: 'employee.id',
+    });
+
     qb.orderBy('payroll.createdAt', 'DESC');
 
     qb.skip((parsedPage - 1) * parsedLimit);
@@ -319,7 +700,8 @@ export class PayrollService {
     const payroll = await this.payrollRepo.findOne({
       where: {
         id,
-      },
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (!payroll) {
@@ -341,15 +723,20 @@ export class PayrollService {
 
   async payAll(month: number, year: number) {
     const payrolls = await this.payrollRepo.find({
-      where: { month, year, isPaid: false },
+      where: { month, year, isPaid: false,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
     });
 
     if (payrolls.length === 0) {
-      return { message: 'No unpaid payrolls found for the specified month and year', paidCount: 0 };
+      return {
+        message: 'No unpaid payrolls found for the specified month and year',
+        paidCount: 0,
+      };
     }
 
     const paidAt = new Date();
-    payrolls.forEach(p => {
+    payrolls.forEach((p) => {
       p.isPaid = true;
       p.paidAt = paidAt;
     });
@@ -364,11 +751,15 @@ export class PayrollService {
 
   async generateAllPayroll(month: number, year: number) {
     const employees = await this.employeeRepo.find({
-      where: { isActive: true },
+      where: { isActive: true,
+          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    },
       select: { id: true },
     });
 
-    const weekends = await this.weekendRepo.find({ where: { isOff: true } });
+    const weekends = await this.weekendRepo.find({ where: { isOff: true,
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
+    } });
 
     let generated = 0;
     let skipped = 0;
@@ -379,13 +770,22 @@ export class PayrollService {
     const batchSize = 50;
     for (let i = 0; i < employees.length; i += batchSize) {
       const batch = employees.slice(i, i + batchSize);
-      
+
       const promises = batch.map(async (employee) => {
         try {
-          await this.generatePayroll(employee.id, month, year, undefined, weekends);
+          await this.generatePayroll(
+            employee.id,
+            month,
+            year,
+            undefined,
+            weekends,
+          );
           generated++;
         } catch (error: any) {
-          if (error.message === 'Payroll already generated') {
+          if (
+            error.message?.includes('already paid') ||
+            error.message?.includes('already generated')
+          ) {
             skipped++;
           } else {
             failed++;
@@ -413,45 +813,75 @@ export class PayrollService {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    
+
     // If tomorrow is the 1st, then today is the last day of the month
     if (tomorrow.getDate() === 1) {
       const month = today.getMonth() + 1;
       const year = today.getFullYear();
-      console.log(`[Payroll Cron] Auto-generating payrolls for ${month}/${year}`);
-      await this.generateAllPayroll(month, year);
+      
+      await this.tenantExecutionService.forEachActiveTenant('Monthly Payroll Generation', async () => {
+        await this.generateAllPayroll(month, year);
+      });
     }
   }
 
-  private calculateWorkingDays(year: number, month: number, weekends: WeekendSetting[], joiningDate?: Date | null) {
+  private calculateWorkingDays(
+    year: number,
+    month: number,
+    weekends: WeekendSetting[],
+    holidayDates: string[],
+    joiningDate?: Date | null,
+  ) {
     const lastDay = new Date(year, month, 0).getDate();
-    
+
     let startDay = 1;
     if (joiningDate) {
-       const jDate = new Date(joiningDate);
-       if (jDate.getFullYear() === year && (jDate.getMonth() + 1) === month) {
-         startDay = jDate.getDate();
-       } else if (jDate.getFullYear() > year || (jDate.getFullYear() === year && (jDate.getMonth() + 1) > month)) {
-         return 0; // Joined after this month
-       }
+      const jDate = new Date(joiningDate);
+      if (jDate.getFullYear() === year && jDate.getMonth() + 1 === month) {
+        startDay = jDate.getDate();
+      } else if (
+        jDate.getFullYear() > year ||
+        (jDate.getFullYear() === year && jDate.getMonth() + 1 > month)
+      ) {
+        return 0; // Joined after this month
+      }
     }
 
     let workingDays = 0;
-    
+
     for (let day = startDay; day <= lastDay; day++) {
       const date = new Date(year, month - 1, day);
-      const dayOfWeekStr = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-      
-      const occurrence = Math.ceil(day / 7);
-      const occurrenceStr = occurrence === 1 ? 'FIRST' : occurrence === 2 ? 'SECOND' : occurrence === 3 ? 'THIRD' : occurrence === 4 ? 'FOURTH' : occurrence === 5 ? 'FIFTH' : 'UNKNOWN';
+      const dayOfWeekStr = date
+        .toLocaleDateString('en-US', { weekday: 'long' })
+        .toUpperCase();
+      const dateStr = date.toISOString().split('T')[0];
 
-      const isWeekend = weekends.some(w => w.day === dayOfWeekStr && (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr));
-      
-      if (!isWeekend) {
+      const occurrence = Math.ceil(day / 7);
+      const occurrenceStr =
+        occurrence === 1
+          ? 'FIRST'
+          : occurrence === 2
+            ? 'SECOND'
+            : occurrence === 3
+              ? 'THIRD'
+              : occurrence === 4
+                ? 'FOURTH'
+                : occurrence === 5
+                  ? 'FIFTH'
+                  : 'UNKNOWN';
+
+      const isWeekend = weekends.some(
+        (w) =>
+          w.day === dayOfWeekStr &&
+          (w.weekNumber === 'ALL' || w.weekNumber === occurrenceStr),
+      );
+      const isHoliday = holidayDates.includes(dateStr);
+
+      if (!isWeekend && !isHoliday) {
         workingDays++;
       }
     }
-    
+
     return workingDays;
   }
 }

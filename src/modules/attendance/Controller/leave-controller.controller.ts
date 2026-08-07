@@ -21,8 +21,8 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { PermissionEnum } from '../../../common/enums/permission.enum';
 
 import { LeaveService } from '../Service/leave.service';
-
 import { CreateLeaveDto } from '../dto/create-leave.dto';
+import { EncashLeaveDto } from '../dto/encash-leave.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('leave')
@@ -43,6 +43,18 @@ export class LeaveController {
 
       dto,
     );
+  }
+
+  @Permissions(PermissionEnum.LEAVE_CREATE)
+  @Post('encash')
+  encashLeave(
+    @CurrentUser()
+    employee: any,
+
+    @Body()
+    dto: EncashLeaveDto,
+  ) {
+    return this.leaveService.requestEncashment(employee.id, dto);
   }
 
   @Permissions(PermissionEnum.LEAVE_READ)

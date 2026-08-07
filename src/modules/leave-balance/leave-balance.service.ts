@@ -1,285 +1,100 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-
-import { Repository, IsNull } from 'typeorm';
-
-import dayjs from 'dayjs';
-
-import { Cron } from '@nestjs/schedule';
+import { Repository } from 'typeorm';
 import { LeaveBalance } from './entities/leave-balance.entity';
 import { Employee } from '../employees/entities/employee.entity';
+import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { DataScopeService } from '../../common/services/data-scope.service';
 
 @Injectable()
 export class LeaveBalanceService {
   constructor(
     @InjectRepository(LeaveBalance)
     private readonly leaveBalanceRepo: Repository<LeaveBalance>,
-
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly dataScopeService: DataScopeService
   ) {}
 
-  private readonly MONTHLY_LEAVE = 2;
+  async getEmployeeBalance(employeeId: string, year?: number, currentUser?: any) {
+    const targetYear = year ?? new Date().getFullYear();
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
-  private readonly MAX_CARRY_FORWARD = 6;
+    const qb = this.leaveBalanceRepo.createQueryBuilder('balance')
+      .leftJoinAndSelect('balance.leaveType', 'leaveType')
+      .leftJoinAndSelect('balance.employee', 'employee')
+      .where('balance.employeeId = :employeeId', { employeeId })
+      .andWhere('balance.year = :targetYear', { targetYear })
+      .andWhere('balance.tenantId = :tenantId', { tenantId });
 
-  @Cron('1 0 1 * *', {
-    timeZone: 'Asia/Kolkata',
-  })
-  async creditMonthlyLeave() {
-    const month = dayjs().month() + 1;
-
-    const year = dayjs().year();
-
-    const previousMonth = month === 1 ? 12 : month - 1;
-
-    const previousYear = month === 1 ? year - 1 : year;
-
-    const employees = await this.employeeRepo.find({
-      where: {
-        isActive: true,
-
-        deletedAt: IsNull(),
-      },
-
-      select: {
-        id: true,
-      },
-    });
-
-    for (const employee of employees) {
-      const existing = await this.leaveBalanceRepo.findOne({
-        where: {
-          employeeId: employee.id,
-
-          month,
-
-          year,
-        },
-      });
-
-      if (existing) {
-        continue;
-      }
-
-      // PREVIOUS MONTH
-      const previousBalance = await this.leaveBalanceRepo.findOne({
-        where: {
-          employeeId: employee.id,
-
-          month: previousMonth,
-
-          year: previousYear,
-        },
-      });
-
-      const carryForward = Math.min(
-        previousBalance?.remainingLeaves ?? 0,
-
-        this.MAX_CARRY_FORWARD,
-      );
-
-      const remainingLeaves = this.MONTHLY_LEAVE + carryForward;
-
-      await this.leaveBalanceRepo.save({
-        employeeId: employee.id,
-
-        month,
-
-        year,
-
-        monthlyCredit: this.MONTHLY_LEAVE,
-
-        carryForward,
-
-        usedLeaves: 0,
-
-        remainingLeaves,
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
       });
     }
 
-    console.log('Monthly leave credited');
-  }
-
-  private async createMonthlyBalance(
-    employeeId: string,
-    month: number,
-    year: number,
-  ) {
-    const previousMonth = month === 1 ? 12 : month - 1;
-
-    const previousYear = month === 1 ? year - 1 : year;
-
-    const previousBalance = await this.leaveBalanceRepo.findOne({
-      where: {
-        employeeId,
-
-        month: previousMonth,
-
-        year: previousYear,
-      },
-    });
-
-    const carryForward = Math.min(
-      previousBalance?.remainingLeaves ?? 0,
-
-      this.MAX_CARRY_FORWARD,
-    );
-
-    const remainingLeaves = this.MONTHLY_LEAVE + carryForward;
-
-    const created = await this.leaveBalanceRepo.save({
-      employeeId,
-
-      month,
-
-      year,
-
-      monthlyCredit: this.MONTHLY_LEAVE,
-
-      carryForward,
-
-      usedLeaves: 0,
-
-      remainingLeaves,
-    });
-
-    return this.leaveBalanceRepo.findOneOrFail({
-      where: {
-        id: created.id,
-      },
-
-      relations: {
-        employee: true,
-      },
-    });
-  }
-
-  async deductLeave(employeeId: string, days: number) {
-    const month = dayjs().month() + 1;
-
-    const year = dayjs().year();
-
-    const balance = await this.leaveBalanceRepo.findOne({
-      where: {
-        employeeId,
-        month,
-        year,
-      },
-    });
-
-    if (!balance) {
-      throw new NotFoundException('Leave balance not found');
-    }
-
-    const available = balance.remainingLeaves;
-    const paidLeaves = Math.min(available, days);
-    const unpaidLeaves = Math.max(0, days - available);
-
-    balance.usedLeaves += days;
-    balance.paidLeavesUsed += paidLeaves;
-    balance.unpaidLeavesUsed += unpaidLeaves;
-    balance.remainingLeaves -= paidLeaves;
-
-    await this.leaveBalanceRepo.save(balance);
-
-    return {
-      totalLeaves: days,
-      paidLeaves,
-      unpaidLeaves,
-      remainingLeaves: balance.remainingLeaves,
+    const calculateRemaining = (accrued: number | string, carriedForward: number | string, used: number | string): number => {
+      const a = Math.round(Number(accrued || 0) * 100);
+      const c = Math.round(Number(carriedForward || 0) * 100);
+      const u = Math.round(Number(used || 0) * 100);
+      return (a + c - u) / 100;
     };
+
+    const balances = await qb.getMany();
+
+    return balances.map((b) => ({
+      id: b.id,
+      leaveType: b.leaveType,
+      year: b.year,
+      accrued: Number(b.accrued),
+      used: Number(b.used),
+      carriedForward: Number(b.carriedForward),
+      remaining: calculateRemaining(b.accrued, b.carriedForward, b.used),
+    }));
   }
 
-  async getEmployeeBalance(employeeId: string) {
-    const month = dayjs().month() + 1;
-
-    const year = dayjs().year();
-
-    let balance = await this.leaveBalanceRepo.findOne({
-      where: {
-        employeeId,
-        month,
-        year,
-      },
-
-      relations: {
-        employee: true,
-      },
-    });
-
-    if (!balance) {
-      balance = await this.createMonthlyBalance(employeeId, month, year);
-    }
-
-    return {
-      employee: {
-        id: balance.employee.id,
-
-        name: `${balance.employee.firstName} ${balance.employee.lastName}`,
-
-        employeeCode: balance.employee.employeeCode,
-      },
-
-      month,
-
-      year,
-
-      monthlyCredit: balance.monthlyCredit,
-      carryForward: balance.carryForward,
-      usedLeaves: balance.usedLeaves,
-      paidLeavesUsed: balance.paidLeavesUsed,
-      unpaidLeavesUsed: balance.unpaidLeavesUsed,
-      remainingLeaves: balance.remainingLeaves,
-    };
-  }
-
-  async getAllBalances(query: any) {
+  async getAllBalances(query: any, currentUser?: any) {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
-    const month = Number(query.month ?? dayjs().month() + 1);
-    const year = Number(query.year ?? dayjs().year());
+    const year = Number(query.year ?? new Date().getFullYear());
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+
     const qb = this.leaveBalanceRepo.createQueryBuilder('balance');
     qb.leftJoinAndSelect('balance.employee', 'employee');
-    qb.where('balance.month = :month', {
-      month,
-    });
-    qb.andWhere('balance.year = :year', {
-      year,
-    });
+    qb.leftJoinAndSelect('balance.leaveType', 'leaveType');
+    qb.leftJoinAndSelect('employee.department', 'department');
+    qb.leftJoinAndSelect('employee.designation', 'designation');
+    qb.where('balance.year = :year', { year });
+    qb.andWhere('balance.tenantId = :tenantId', { tenantId });
     qb.orderBy('employee.first_name', 'ASC');
 
-    qb.skip((page - 1) * limit);
+    if (currentUser) {
+      this.dataScopeService.applyScope(qb, currentUser, {
+        branch: 'employee.branchId',
+        department: 'employee.departmentId',
+      });
+    }
 
+    qb.skip((page - 1) * limit);
     qb.take(limit);
 
     const [data, total] = await qb.getManyAndCount();
 
+    const calculateRemaining = (accrued: number | string, carriedForward: number | string, used: number | string): number => {
+      const a = Math.round(Number(accrued || 0) * 100);
+      const c = Math.round(Number(carriedForward || 0) * 100);
+      const u = Math.round(Number(used || 0) * 100);
+      return (a + c - u) / 100;
+    };
+
     return {
-      data: data.map((item) => ({
-        employeeId: item.employeeId,
-
-        employeeName: `${item.employee.firstName} ${item.employee.lastName}`,
-
-        employeeCode: item.employee.employeeCode,
-
-        monthlyCredit: item.monthlyCredit,
-
-        carryForward: item.carryForward,
-
-        usedLeaves: item.usedLeaves,
-
-        remainingLeaves: item.remainingLeaves,
-      })),
-
+      data,
       meta: {
         total,
-
         page,
-
         limit,
-
         totalPages: Math.ceil(total / limit),
       },
     };

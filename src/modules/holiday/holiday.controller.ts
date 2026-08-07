@@ -37,6 +37,7 @@ export class HolidayController {
     return this.holidayService.findAll(query);
   }
 
+  @Permissions(PermissionEnum.HOLIDAY_READ)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.holidayService.findOne(id);

@@ -38,6 +38,14 @@ export function formatAttendanceResponse(attendance: Attendance) {
 
     status: attendance.status,
 
+    workStatus: attendance.workStatus,
+
+    totalBreakMinutes: attendance.totalBreakMinutes,
+
+    lastBreakStart: formatIST(attendance.lastBreakStart),
+
+    lastBreakEnd: formatIST(attendance.lastBreakEnd),
+
     checkInLocation: attendance.checkInLocation,
 
     checkOutLocation: attendance.checkOutLocation,

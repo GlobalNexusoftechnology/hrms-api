@@ -11,7 +11,7 @@ import {
 import { InterviewService } from './interview.service';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
-import { UpdateCandidateStatusDto } from './dto/update-candidate-status.dto';
+import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
 import { ScheduleInterviewDto } from './dto/schedule-interview.dto';
 import { InterviewFeedbackDto } from './dto/interview-feedback.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -22,6 +22,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { RoleEnum } from '../../common/enums/role.enum';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { CreateJobPostingDto } from './dto/create-job-posting.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RoleEnum.SUPER_ADMIN, RoleEnum.HR)
@@ -29,78 +30,110 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 export class HrInterviewController {
   constructor(private readonly interviewService: InterviewService) {}
 
+  // ------------------- JOB POSTINGS -------------------
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
-  @Post('candidates')
-  createCandidate(
+  @Post('jobs')
+  createJobPosting(
+    @Body()
+    dto: CreateJobPostingDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.interviewService.createJobPosting(dto, user);
+  }
+
+  @Permissions(PermissionEnum.INTERVIEW_READ)
+  @Get('jobs')
+  getJobPostings(@CurrentUser() user: any) {
+    return this.interviewService.getJobPostings(user);
+  }
+
+  @Permissions(PermissionEnum.INTERVIEW_READ)
+  @Get('jobs/:id')
+  getJobPosting(
+    @Param('id', ParseUUIDPipe)
+    id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.interviewService.getJobPosting(id, user);
+  }
+
+  // ------------------- APPLICATIONS -------------------
+  @Permissions(PermissionEnum.INTERVIEW_CREATE)
+  @Post('applications')
+  createApplication(
     @Body()
     dto: CreateCandidateDto,
   ) {
-    return this.interviewService.createCandidate(dto);
+    return this.interviewService.applyToJob(dto);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
-  @Get('candidates')
-  getCandidates() {
-    return this.interviewService.getCandidates();
+  @Get('applications')
+  getApplications(@CurrentUser() user: any) {
+    return this.interviewService.getApplications(user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
-  @Get('candidates/:id')
-  getCandidate(
+  @Get('applications/:id')
+  getApplication(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.getCandidate(id);
+    return this.interviewService.getApplication(id, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_UPDATE)
-  @Patch('candidates/:id')
+  @Patch('applications/:id')
   updateCandidate(
     @Param('id', ParseUUIDPipe)
     id: string,
-
     @Body()
     dto: UpdateCandidateDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.updateCandidate(id, dto);
+    return this.interviewService.updateCandidate(id, dto, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_UPDATE)
-  @Patch('candidates/:id/status')
-  updateCandidateStatus(
+  @Patch('applications/:id/status')
+  updateApplicationStatus(
     @Param('id', ParseUUIDPipe)
     id: string,
-
     @Body()
-    dto: UpdateCandidateStatusDto,
+    dto: UpdateApplicationStatusDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.updateCandidateStatus(id, dto);
+    return this.interviewService.updateApplicationStatus(id, dto, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
-  @Post('candidates/:id/convert')
+  @Post('applications/:id/convert')
   convertToEmployee(
     @Param('id', ParseUUIDPipe)
     id: string,
     @Body()
     dto: ConvertCandidateDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.convertToEmployee(id, dto);
+    return this.interviewService.convertToEmployee(id, dto, user);
   }
 
+  // ------------------- INTERVIEWS -------------------
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
   @Post('interviews')
   scheduleInterview(
     @Body()
     dto: ScheduleInterviewDto,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.scheduleInterview(dto);
+    return this.interviewService.scheduleInterview(dto, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
   @Get('interviews')
-  getInterviews() {
-    return this.interviewService.getInterviews();
+  getInterviews(@CurrentUser() user: any) {
+    return this.interviewService.getInterviews(user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_READ)
@@ -108,8 +141,9 @@ export class HrInterviewController {
   getInterview(
     @Param('id', ParseUUIDPipe)
     id: string,
+    @CurrentUser() user: any,
   ) {
-    return this.interviewService.getInterview(id);
+    return this.interviewService.getInterview(id, user);
   }
 
   @Permissions(PermissionEnum.INTERVIEW_CREATE)
@@ -117,10 +151,8 @@ export class HrInterviewController {
   addFeedback(
     @Param('id', ParseUUIDPipe)
     id: string,
-
     @Body()
     dto: InterviewFeedbackDto,
-
     @CurrentUser()
     user: any,
   ) {

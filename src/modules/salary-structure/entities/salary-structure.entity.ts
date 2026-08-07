@@ -1,19 +1,21 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
+  Index,
 } from 'typeorm';
 
 import { Employee } from '../../employees/entities/employee.entity';
+import { SalaryStructureComponent } from './salary-structure-component.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity('salary_structures')
-export class SalaryStructure {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Index(['tenantId', 'employeeId'])
+export class SalaryStructure extends TenantAwareEntity {
 
   @Column({
     name: 'employee_id',
@@ -23,9 +25,10 @@ export class SalaryStructure {
   @ManyToOne(() => Employee, (employee) => employee.salaryStructures, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({
-    name: 'employee_id',
-  })
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'employee_id', referencedColumnName: 'id' },
+  ])
   employee!: Employee;
 
   @Column({
@@ -41,93 +44,18 @@ export class SalaryStructure {
 
   @Column({
     type: 'decimal',
-
     precision: 12,
-
     scale: 2,
-
-    default: 0,
-  })
-  hra!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-  })
-  allowance!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-  })
-  bonus!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-  })
-  pf!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-  })
-  esic!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    default: 0,
-
-    name: 'professional_tax',
-  })
-  professionalTax!: number;
-
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
     name: 'gross_salary',
   })
   grossSalary!: number;
 
-  @Column({
-    type: 'decimal',
-
-    precision: 12,
-
-    scale: 2,
-
-    name: 'net_salary',
-  })
-  netSalary!: number;
+  @OneToMany(
+    () => SalaryStructureComponent,
+    (component) => component.salaryStructure,
+    { cascade: true },
+  )
+  components!: SalaryStructureComponent[];
 
   @Column({
     type: 'date',
@@ -137,19 +65,17 @@ export class SalaryStructure {
   effectiveFrom!: string;
 
   @Column({
+    type: 'date',
+    name: 'effective_to',
+    nullable: true,
+  })
+  effectiveTo?: string | null;
+
+  @Column({
     default: true,
 
     name: 'is_active',
   })
   isActive!: boolean;
 
-  @CreateDateColumn({
-    name: 'created_at',
-  })
-  createdAt!: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-  })
-  updatedAt!: Date;
 }

@@ -1,7 +1,6 @@
 import { RoleEnum } from '../enums/role.enum';
 import { PermissionEnum } from '../enums/permission.enum';
 
-
 export const RBAC_CONFIG = {
   [RoleEnum.SUPER_ADMIN]: [...Object.values(PermissionEnum)],
 
@@ -64,6 +63,51 @@ export const RBAC_CONFIG = {
     PermissionEnum.INTERVIEW_READ,
     PermissionEnum.INTERVIEW_UPDATE,
     PermissionEnum.INTERVIEW_DELETE,
+
+    PermissionEnum.TEAM_CREATE,
+    PermissionEnum.TEAM_READ,
+    PermissionEnum.TEAM_UPDATE,
+    PermissionEnum.TEAM_DELETE,
+
+    PermissionEnum.ACTIVITY_LOG_READ,
+    PermissionEnum.ACTIVITY_LOG_EXPORT,
+
+    PermissionEnum.CAREER_MOVEMENT_CREATE,
+    PermissionEnum.CAREER_MOVEMENT_READ,
+    PermissionEnum.CAREER_MOVEMENT_APPROVE,
+    PermissionEnum.CAREER_MOVEMENT_EXECUTE,
+
+    PermissionEnum.RESIGNATION_CREATE,
+    PermissionEnum.RESIGNATION_READ,
+    PermissionEnum.RESIGNATION_APPROVE,
+    PermissionEnum.RESIGNATION_EXECUTE,
+
+    PermissionEnum.LEAVE_LEDGER_READ,
+
+    PermissionEnum.LEAVE_POLICY_CREATE,
+    PermissionEnum.LEAVE_POLICY_READ,
+    PermissionEnum.LEAVE_POLICY_UPDATE,
+    PermissionEnum.LEAVE_POLICY_DELETE,
+
+    PermissionEnum.LEAVE_TYPE_CREATE,
+    PermissionEnum.LEAVE_TYPE_READ,
+    PermissionEnum.LEAVE_TYPE_UPDATE,
+    PermissionEnum.LEAVE_TYPE_DELETE,
+
+    PermissionEnum.NOTIFICATION_READ,
+    PermissionEnum.NOTIFICATION_UPDATE,
+    PermissionEnum.NOTIFICATION_DELETE,
+
+    PermissionEnum.NOTIFICATION_SETTINGS_READ,
+    PermissionEnum.NOTIFICATION_SETTINGS_UPDATE,
+
+    PermissionEnum.SHIFT_CREATE,
+    PermissionEnum.SHIFT_READ,
+    PermissionEnum.SHIFT_UPDATE,
+    PermissionEnum.SHIFT_DELETE,
+
+    PermissionEnum.AUDIT_LOG_READ,
+    PermissionEnum.AUTH_LOG_READ,
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],
@@ -87,9 +131,25 @@ export const RBAC_CONFIG = {
 
     PermissionEnum.SALARY_READ,
 
+    PermissionEnum.TEAM_READ,
+
     PermissionEnum.TRAINING_READ,
     PermissionEnum.TRAINING_UPDATE,
 
+    PermissionEnum.RESIGNATION_CREATE,
+    PermissionEnum.RESIGNATION_READ,
 
+    // PermissionEnum.LEAVE_LEDGER_READ,
+
+    // PermissionEnum.LEAVE_POLICY_READ,
+
+    // PermissionEnum.LEAVE_TYPE_READ,
+
+    PermissionEnum.NOTIFICATION_READ,
+    PermissionEnum.NOTIFICATION_UPDATE,
+
+    PermissionEnum.NOTIFICATION_SETTINGS_READ,
+
+    PermissionEnum.SHIFT_READ,
   ],
 };
