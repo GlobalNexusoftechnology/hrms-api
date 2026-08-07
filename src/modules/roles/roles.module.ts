@@ -14,4 +14,4 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
   providers: [RolesService, RBACInitializerService],
   exports: [TypeOrmModule, RBACInitializerService],
 })
-export class RolesModule {}
+export class RolesModule { }
