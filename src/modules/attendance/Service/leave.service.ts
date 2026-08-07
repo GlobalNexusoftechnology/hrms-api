@@ -179,7 +179,7 @@ export class LeaveService {
     );
     if (totalDays === 0) {
       throw new BadRequestException(
-        'The selected date range contains 0 deductible leave days based on the policy rules.',
+        'The selected dates fall on a weekend or public holiday, which do not count as leave days under this policy.',
       );
     }
 

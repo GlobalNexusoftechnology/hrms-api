@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: yourusername/hrms-backend:latest
+    image: mubasshir090/hrms-backend:latest
     container_name: hrms_backend_prod
     expose:
       - "6543"
@@ -27,7 +27,7 @@ services:
         max-file: "3"
 
   frontend:
-    image: yourusername/hrms-frontend:latest
+    image: mubasshir090/hrms-frontend:latest
     container_name: hrms_frontend_prod
     ports:
       - "80:80"
