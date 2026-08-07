@@ -40,18 +40,19 @@ COPY package*.json ./
 
 RUN npm install --omit=dev
 
-# Copy compiled application
 COPY --from=builder /usr/src/app/dist ./dist
 
-# Copy uploads folder
+# Copy uploads if they exist
 COPY uploads ./uploads
 
-# Create upload directories and set permissions
+# Create writable directories
 RUN mkdir -p \
     /usr/src/app/uploads/profiles \
     /usr/src/app/uploads/documents \
     /usr/src/app/uploads/organization/documents \
- && chown -R node:node /usr/src/app/uploads
+    /usr/src/app/logs \
+    && chown -R node:node /usr/src/app/uploads \
+    && chown -R node:node /usr/src/app/logs
 
 USER node
 
