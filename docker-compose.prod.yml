@@ -1,59 +1,56 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
     image: mubasshir090/hrms-backend:latest
     container_name: hrms_backend_prod
-    expose:
-      - "6543"
-    environment:
-      - NODE_ENV=production
-      # Update with your Hostinger DB credentials
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5432
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+
+    ports:
+      - "6543:6543"
+
     env_file:
       - ./.env
-    networks:
-      - hrms-network
+
+    environment:
+      NODE_ENV: production
+      DB_HOST: host.docker.internal
+      DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     depends_on:
       - redis
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  frontend:
-    image: mubasshir090/hrms-frontend:latest
-    container_name: hrms_frontend_prod
-    ports:
-      - "80:80"
+    restart: unless-stopped
+
     networks:
       - hrms-network
-    depends_on:
-      - backend
-    restart: unless-stopped
+
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     container_name: hrms_redis_prod
-    expose:
-      - "6379"
+
+    command: redis-server --appendonly yes
+
     volumes:
       - redis_data:/data
+
+    restart: unless-stopped
+
     networks:
       - hrms-network
-    restart: unless-stopped
+
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
