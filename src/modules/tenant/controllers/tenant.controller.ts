@@ -15,6 +15,7 @@ import { TenantService } from '../tenant.service';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { UpdateTenantStatusDto } from '../dto/update-tenant-status.dto';
 import { TenantFilterDto } from '../dto/tenant-filter.dto';
+import { Public } from 'src/modules/auth/decorators/public.decorator';
 
 @ApiTags('Tenants')
 @ApiBearerAuth()
@@ -22,6 +23,7 @@ import { TenantFilterDto } from '../dto/tenant-filter.dto';
 export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Get paginated list of all SaaS tenants with filters' })
   async findAll(@Query() filterDto: TenantFilterDto) {

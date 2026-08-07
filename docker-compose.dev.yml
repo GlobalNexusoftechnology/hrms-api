@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: hrms_backend
+    ports:
+      - "6543:6543"
+    environment:
+      # --- IMPORTANT FOR HOSTINGER ---
+      # If you are using a database on the Hostinger VPS itself (not inside Docker),
+      # you can usually use the public IP or internal IP of the VPS.
+      # If you want to use a local Postgres running on the host server, you might use:
+      # - DB_HOST=host.docker.internal 
+      # Otherwise, put your actual database domain/IP here:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      # Link to the Redis container below
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Add your other environment variables here, or use the env_file below:
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    build: 
+      context: ../HRMS-Clinic
+      dockerfile: Dockerfile
+      args:
+        # --- IMPORTANT FOR HOSTINGER ---
+        # When you build the image, Vite needs to know the production URL 
+        # of your backend API. E.g., https://api.yourdomain.com
+        - VITE_API_URL=http://localhost:6543
+    container_name: hrms_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: hrms_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

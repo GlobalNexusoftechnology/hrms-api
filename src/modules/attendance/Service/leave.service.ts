@@ -23,6 +23,7 @@ import { NotificationType } from '../../../common/enums/NotificationType.enum';
 import { Holiday } from '../../holiday/entities/holiday.entity';
 import { WeekendSetting } from '../../weekend_settings/entities/weekend_setting.entity';
 import { TenantQueryService } from "../../../common/services/tenant-query.service";
+import { RoleEnum } from '../../../common/enums/role.enum';
 
 @Injectable()
 export class LeaveService {
@@ -147,12 +148,13 @@ export class LeaveService {
 
     // Minimum Service Validation
     if (policy.minimumServiceDays > 0) {
-      if (!employee.joiningDate) {
+      const joiningDate = employee.joiningDate || employee.createdAt;
+      if (!joiningDate) {
         throw new BadRequestException(
           'Employee joining date is not set, cannot verify minimum service days.',
         );
       }
-      const daysServed = today.diff(dayjs(employee.joiningDate), 'day');
+      const daysServed = today.diff(dayjs(joiningDate), 'day');
       if (daysServed < policy.minimumServiceDays) {
         throw new BadRequestException(
           `This leave type requires a minimum service of ${policy.minimumServiceDays} days.`,
@@ -467,6 +469,29 @@ export class LeaveService {
         throw new BadRequestException('Already reviewed');
       }
 
+      const reviewer = await manager.findOne(Employee, {
+        where: { id: reviewerId },
+        relations: { role: true },
+      });
+
+      if (leave.employeeId === reviewerId) {
+        if (reviewer?.role?.name !== RoleEnum.SUPER_ADMIN) {
+          throw new BadRequestException('You cannot approve your own leave.');
+        }
+      } else {
+        const employee = await manager.findOne(Employee, {
+          where: { id: leave.employeeId },
+          relations: { role: true },
+        });
+
+        if (
+          reviewer?.role?.name !== RoleEnum.SUPER_ADMIN &&
+          (reviewer?.role?.authorityLevel ?? 0) <= (employee?.role?.authorityLevel ?? 0)
+        ) {
+          throw new BadRequestException('You must have a higher authority level to review this leave.');
+        }
+      }
+
       if (status === LeaveStatusEnum.APPROVED) {
         // TOTAL DAYS (Re-calculated based on policy rules)
         const policy = await manager.findOne(LeavePolicy, {
@@ -608,6 +633,8 @@ export class LeaveService {
         workedMinutes: 0,
 
         overtimeMinutes: 0,
+        
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId as string,
       });
     }
   }
