@@ -55,19 +55,31 @@ jobs:
 
             cd /root/hrms-api
 
-            echo "Pulling latest backend image..."
+            echo "Updating VPS source code..."
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "VPS source code updated."
+
+            echo "Pulling latest Docker image..."
+
             docker compose -f docker-compose.prod.yml pull backend
 
             echo "Starting backend container..."
+
             docker compose -f docker-compose.prod.yml up -d backend
 
             echo "Waiting for backend..."
+
             sleep 10
 
             echo "Running database migrations..."
+
             docker exec hrms_backend_prod npm run migration:run:prod
 
             echo "Checking backend container..."
+
             docker ps --filter "name=hrms_backend_prod"
 
             echo "===================================="
