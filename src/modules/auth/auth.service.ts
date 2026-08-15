@@ -221,7 +221,7 @@ export class AuthService {
         throw new UnauthorizedException('Refresh token expired');
       }
 
-      const employee = await this.employeesService.findById(payload.employeeId);
+      const employee = await this.employeesService.findByIdForAuth(payload.employeeId);
 
       if (!employee) {
         throw new UnauthorizedException('Employee not found');
