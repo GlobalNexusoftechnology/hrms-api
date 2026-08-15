@@ -45,6 +45,20 @@ jobs:
           node-version: 20
           cache: npm
 
+      # ============================================================
+      # Setup npm
+      # ============================================================
+
+      - name: Setup npm
+        run: |
+          npm install --global npm@10.8.2
+
+          echo "Node version:"
+          node --version
+
+          echo "npm version:"
+          npm --version
+
 
       # ============================================================
       # 3. Install dependencies
