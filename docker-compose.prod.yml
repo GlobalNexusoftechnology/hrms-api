@@ -1,6 +1,7 @@
 services:
   backend:
-    image: mubasshir090/hrms-backend:latest
+    image: mubasshir090/hrms-backend:${IMAGE_TAG}
+
     container_name: hrms_backend_prod
 
     ports:

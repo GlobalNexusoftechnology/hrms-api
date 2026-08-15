@@ -5,85 +5,768 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hrms-backend-production
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: mubasshir090/hrms-backend
+
 jobs:
-  deploy:
-    name: Build and Deploy Backend
+  build-and-deploy:
+
+    name: Build, Push & Deploy Backend
+
     runs-on: ubuntu-latest
 
     steps:
 
-      # 1. Checkout code
-      - name: Checkout code
+      # ============================================================
+      # 1. Checkout
+      # ============================================================
+
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Login to Docker Hub
+
+      # ============================================================
+      # 2. Setup Node.js
+      # ============================================================
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+
+      # ============================================================
+      # 3. Install dependencies
+      # ============================================================
+
+      - name: Install dependencies
+        run: npm ci
+
+
+      # ============================================================
+      # 4. Validate backend build
+      #
+      # If this fails:
+      # → TypeScript / NestJS build problem
+      # ============================================================
+
+      - name: Validate backend build
+        run: npm run build
+
+
+      # ============================================================
+      # 5. Login to Docker Hub
+      # ============================================================
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 3. Build Docker image
-      - name: Build Docker image
+
+      # ============================================================
+      # 6. Verify Docker access
+      # ============================================================
+
+      - name: Verify Docker access
         run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "VERIFYING DOCKER ACCESS"
+          echo "=========================================="
+
+          docker version
+
+          docker info > /dev/null
+
+          echo ""
+          echo "Docker access: PASSED"
+
+
+      # ============================================================
+      # 7. Setup Docker Buildx
+      # ============================================================
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+
+      # ============================================================
+      # 8. Build Docker image
+      #
+      # Two tags:
+      #
+      # latest
+      #   → current production image
+      #
+      # github.sha
+      #   → immutable deployment version
+      # ============================================================
+
+      - name: Build Docker image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "BUILDING BACKEND DOCKER IMAGE"
+          echo "=========================================="
+
+          echo "Image:"
+          echo "${IMAGE_NAME}:${IMAGE_TAG}"
+
           docker build \
-            -t mubasshir090/hrms-backend:latest \
+            -t "${IMAGE_NAME}:${IMAGE_TAG}" \
+            -t "${IMAGE_NAME}:latest" \
             .
 
-      # 4. Push Docker image
-      - name: Push Docker image
+          echo ""
+          echo "Docker build: PASSED"
+
+
+      # ============================================================
+      # 9. Inspect Docker image
+      # ============================================================
+
+      - name: Inspect Docker image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker push mubasshir090/hrms-backend:latest
+          set -Eeuo pipefail
 
-      # 5. Setup SSH
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+          echo "=========================================="
+          echo "INSPECTING DOCKER IMAGE"
+          echo "=========================================="
 
-      # 6. Deploy to VPS
-      - name: Deploy to VPS
+          docker image inspect \
+            "${IMAGE_NAME}:${IMAGE_TAG}" \
+            > /dev/null
+
+          docker image inspect \
+            "${IMAGE_NAME}:${IMAGE_TAG}" \
+            --format='Image: {{.RepoTags}}'
+
+          docker image inspect \
+            "${IMAGE_NAME}:${IMAGE_TAG}" \
+            --format='Size: {{.Size}} bytes'
+
+          echo ""
+          echo "Docker image inspection: PASSED"
+
+
+      # ============================================================
+      # 10. Verify Docker image contents
+      #
+      # Verify that NestJS compiled output exists.
+      # ============================================================
+
+      - name: Verify Docker image contents
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          ssh -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
+          set -Eeuo pipefail
 
-            set -e
+          echo "=========================================="
+          echo "VERIFYING DOCKER IMAGE CONTENTS"
+          echo "=========================================="
 
-            echo "===================================="
-            echo "Starting backend deployment"
-            echo "===================================="
+          docker create \
+            --name hrms_backend_check \
+            "${IMAGE_NAME}:${IMAGE_TAG}"
+
+          cleanup() {
+            docker rm -f hrms_backend_check > /dev/null 2>&1 || true
+          }
+
+          trap cleanup EXIT
+
+          docker cp \
+            hrms_backend_check:/usr/src/app/dist \
+            ./docker-dist-check
+
+          if [ ! -f "./docker-dist-check/main.js" ]; then
+            echo ""
+            echo "ERROR: dist/main.js was not found!"
+            exit 1
+          fi
+
+          echo "dist/main.js exists."
+
+          echo ""
+          echo "Docker image content verification: PASSED"
+
+
+      # ============================================================
+      # 11. Push immutable SHA image
+      # ============================================================
+
+      - name: Push Docker image - SHA
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "PUSHING DOCKER IMAGE - SHA"
+          echo "=========================================="
+
+          docker push \
+            "${IMAGE_NAME}:${IMAGE_TAG}"
+
+          echo ""
+          echo "Docker push SHA: PASSED"
+
+
+      # ============================================================
+      # 12. Push latest image
+      # ============================================================
+
+      - name: Push Docker image - latest
+        run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "PUSHING DOCKER IMAGE - LATEST"
+          echo "=========================================="
+
+          docker push \
+            "${IMAGE_NAME}:latest"
+
+          echo ""
+          echo "Docker push latest: PASSED"
+
+
+      # ============================================================
+      # 13. Configure SSH
+      # ============================================================
+
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "CONFIGURING SSH"
+          echo "=========================================="
+
+          if [ -z "$VPS_HOST" ]; then
+            echo "ERROR: VPS_HOST secret is empty!"
+            exit 1
+          fi
+
+          if [ -z "$VPS_SSH_KEY" ]; then
+            echo "ERROR: VPS_SSH_KEY secret is empty!"
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$VPS_SSH_KEY" \
+            > ~/.ssh/hrms_backend_deploy
+
+          chmod 600 ~/.ssh/hrms_backend_deploy
+
+          ssh-keygen \
+            -y \
+            -f ~/.ssh/hrms_backend_deploy \
+            > /tmp/hrms_backend_public_key
+
+          echo "SSH private key is valid."
+
+          ssh-keyscan \
+            -T 10 \
+            -H \
+            "$VPS_HOST" \
+            > ~/.ssh/known_hosts
+
+          if [ ! -s ~/.ssh/known_hosts ]; then
+            echo "ERROR: VPS host key could not be retrieved!"
+            exit 1
+          fi
+
+          chmod 644 ~/.ssh/known_hosts
+
+          echo ""
+          echo "SSH configuration: PASSED"
+
+
+      # ============================================================
+      # 14. Test VPS TCP connection
+      # ============================================================
+
+      - name: Test VPS TCP connection
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "TESTING VPS TCP CONNECTION"
+          echo "=========================================="
+
+          timeout 15 bash -c \
+            "cat < /dev/null > /dev/tcp/${VPS_HOST}/22"
+
+          echo ""
+          echo "VPS TCP connection: PASSED"
+
+
+      # ============================================================
+      # 15. Test VPS SSH connection
+      # ============================================================
+
+      - name: Test VPS SSH connection
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "TESTING VPS SSH CONNECTION"
+          echo "=========================================="
+
+          ssh \
+            -i ~/.ssh/hrms_backend_deploy \
+            -p 22 \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=10 \
+            -o ServerAliveCountMax=3 \
+            "${VPS_USERNAME}@${VPS_HOST}" \
+            "echo 'SSH connection successful'"
+
+          echo ""
+          echo "VPS SSH connection: PASSED"
+
+
+      # ============================================================
+      # 16. Verify VPS Docker
+      # ============================================================
+
+      - name: Verify VPS Docker
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "VERIFYING VPS DOCKER"
+          echo "=========================================="
+
+          ssh \
+            -i ~/.ssh/hrms_backend_deploy \
+            -p 22 \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            "${VPS_USERNAME}@${VPS_HOST}" \
+            "docker version && docker compose version"
+
+          echo ""
+          echo "VPS Docker verification: PASSED"
+
+
+      # ============================================================
+      # 17. Login to Docker Hub on VPS
+      # ============================================================
+
+      - name: Login to Docker Hub on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "=========================================="
+          echo "LOGGING INTO DOCKER HUB ON VPS"
+          echo "=========================================="
+
+          printf '%s' "$DOCKERHUB_TOKEN" | \
+          ssh \
+            -i ~/.ssh/hrms_backend_deploy \
+            -p 22 \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            "${VPS_USERNAME}@${VPS_HOST}" \
+            "docker login -u '$DOCKERHUB_USERNAME' --password-stdin"
+
+          echo ""
+          echo "VPS Docker Hub login: PASSED"
+
+
+      # ============================================================
+      # 18. Pull exact Docker image on VPS
+      # ============================================================
+
+      - name: Pull Docker image on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+
+          ssh \
+            -i ~/.ssh/hrms_backend_deploy \
+            -p 22 \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            "${VPS_USERNAME}@${VPS_HOST}" \
+            "IMAGE_TAG='$IMAGE_TAG' IMAGE_NAME='$IMAGE_NAME' bash -s" << 'EOF'
+
+            set -Eeuo pipefail
+
+            EXPECTED_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
+
+            echo "=========================================="
+            echo "PULLING BACKEND IMAGE ON VPS"
+            echo "=========================================="
+
+            echo "Image:"
+            echo "$EXPECTED_IMAGE"
+
+            docker pull "$EXPECTED_IMAGE"
+
+            echo ""
+            echo "VPS Docker pull: PASSED"
+
+          EOF
+
+
+      # ============================================================
+      # 19. Deploy backend using Docker Compose
+      # ============================================================
+
+      - name: Deploy backend using Docker Compose
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+
+          ssh \
+            -i ~/.ssh/hrms_backend_deploy \
+            -p 22 \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=10 \
+            -o ServerAliveCountMax=3 \
+            "${VPS_USERNAME}@${VPS_HOST}" \
+            "IMAGE_TAG='$IMAGE_TAG' IMAGE_NAME='$IMAGE_NAME' bash -s" << 'EOF'
+
+            set -Eeuo pipefail
 
             cd /root/hrms-api
 
-            echo "Updating VPS source code..."
+            export IMAGE_TAG
+            export IMAGE_NAME
 
-            git fetch origin main
-            git reset --hard origin/main
+            EXPECTED_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
 
-            echo "VPS source code updated."
+            echo ""
+            echo "=========================================="
+            echo "DEPLOYING HRMS BACKEND"
+            echo "=========================================="
 
-            echo "Pulling latest Docker image..."
+            echo "Expected image:"
+            echo "$EXPECTED_IMAGE"
 
-            docker compose -f docker-compose.prod.yml pull backend
 
-            echo "Starting backend container..."
+            # ======================================================
+            # Verify Compose configuration
+            # ======================================================
 
-            docker compose -f docker-compose.prod.yml up -d backend
+            echo ""
+            echo "=========================================="
+            echo "VERIFYING DOCKER COMPOSE"
+            echo "=========================================="
 
-            echo "Waiting for backend..."
+            COMPOSE_IMAGE=$(
+              IMAGE_TAG="$IMAGE_TAG" \
+              docker compose \
+                -f docker-compose.prod.yml \
+                config \
+                --images \
+                | grep 'hrms-backend' \
+                | head -1
+            )
+
+            echo "Compose image:"
+            echo "$COMPOSE_IMAGE"
+
+            if [ "$COMPOSE_IMAGE" != "$EXPECTED_IMAGE" ]; then
+
+              echo ""
+              echo "ERROR: Docker Compose resolved wrong image!"
+
+              echo "Expected:"
+              echo "$EXPECTED_IMAGE"
+
+              echo "Actual:"
+              echo "$COMPOSE_IMAGE"
+
+              exit 1
+            fi
+
+            echo ""
+            echo "Compose image verification: PASSED"
+
+
+            # ======================================================
+            # Verify Docker network
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "VERIFYING HRMS NETWORK"
+            echo "=========================================="
+
+            if ! docker network inspect hrms-api_hrms-network \
+              > /dev/null 2>&1; then
+
+              echo ""
+              echo "ERROR: hrms-api_hrms-network does not exist!"
+
+              echo ""
+              echo "Available networks:"
+              docker network ls
+
+              exit 1
+            fi
+
+            echo "HRMS network exists."
+
+
+            # ======================================================
+            # Deploy
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "STARTING BACKEND"
+            echo "=========================================="
+
+            IMAGE_TAG="$IMAGE_TAG" \
+            docker compose \
+              -f docker-compose.prod.yml \
+              up -d \
+              --force-recreate \
+              --remove-orphans \
+              backend
+
+            echo ""
+            echo "Backend Docker Compose deployment: PASSED"
+
+
+            # ======================================================
+            # Wait
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "WAITING FOR BACKEND"
+            echo "=========================================="
 
             sleep 10
 
-            echo "Running database migrations..."
 
-            docker exec hrms_backend_prod npm run migration:run:prod
+            # ======================================================
+            # Container status
+            # ======================================================
 
-            echo "Checking backend container..."
+            echo ""
+            echo "=========================================="
+            echo "CONTAINER STATUS"
+            echo "=========================================="
 
-            docker ps --filter "name=hrms_backend_prod"
+            docker ps \
+              --filter "name=hrms_backend_prod"
 
-            echo "===================================="
-            echo "Backend deployment completed"
-            echo "===================================="
+            if ! docker ps \
+              --filter "name=hrms_backend_prod" \
+              --filter "status=running" \
+              --format '{{.Names}}' \
+              | grep -qx "hrms_backend_prod"; then
+
+              echo ""
+              echo "ERROR: BACKEND CONTAINER IS NOT RUNNING!"
+
+              echo ""
+              echo "BACKEND LOGS:"
+
+              docker logs \
+                --tail 200 \
+                hrms_backend_prod || true
+
+              exit 1
+            fi
+
+            echo ""
+            echo "Container status: PASSED"
+
+
+            # ======================================================
+            # Database migration
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "RUNNING DATABASE MIGRATIONS"
+            echo "=========================================="
+
+            docker exec \
+              hrms_backend_prod \
+              npm run migration:run:prod
+
+            echo ""
+            echo "Database migrations: PASSED"
+
+
+            # ======================================================
+            # HTTP health check
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "BACKEND HTTP HEALTH CHECK"
+            echo "=========================================="
+
+            HTTP_STATUS=$(
+              curl \
+                --silent \
+                --output /dev/null \
+                --write-out "%{http_code}" \
+                --max-time 10 \
+                http://127.0.0.1:6543/ || true
+            )
+
+            echo "HTTP status:"
+            echo "$HTTP_STATUS"
+
+            case "$HTTP_STATUS" in
+              2*|3*|4*)
+                echo ""
+                echo "Backend HTTP check: PASSED"
+                ;;
+              *)
+                echo ""
+                echo "ERROR: Backend HTTP health check FAILED!"
+
+                echo ""
+                echo "BACKEND LOGS:"
+
+                docker logs \
+                  --tail 200 \
+                  hrms_backend_prod || true
+
+                exit 1
+                ;;
+            esac
+
+
+            # ======================================================
+            # Verify exact deployed image
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "VERIFYING DEPLOYED IMAGE"
+            echo "=========================================="
+
+            DEPLOYED_IMAGE=$(
+              docker inspect \
+                hrms_backend_prod \
+                --format '{{.Config.Image}}'
+            )
+
+            echo "Expected:"
+            echo "$EXPECTED_IMAGE"
+
+            echo ""
+            echo "Actual:"
+            echo "$DEPLOYED_IMAGE"
+
+            if [ "$DEPLOYED_IMAGE" != "$EXPECTED_IMAGE" ]; then
+
+              echo ""
+              echo "ERROR: WRONG IMAGE DEPLOYED!"
+
+              echo ""
+              echo "Container logs:"
+
+              docker logs \
+                --tail 200 \
+                hrms_backend_prod || true
+
+              exit 1
+            fi
+
+            echo ""
+            echo "Image verification: PASSED"
+
+
+            # ======================================================
+            # Final container information
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "FINAL BACKEND STATUS"
+            echo "=========================================="
+
+            docker ps \
+              --filter "name=hrms_backend_prod" \
+              --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
+
+            # ======================================================
+            # Cleanup
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "CLEANUP"
+            echo "=========================================="
+
+            docker image prune -f
+
+
+            # ======================================================
+            # SUCCESS
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "HRMS BACKEND DEPLOYMENT SUCCESSFUL"
+            echo "=========================================="
+
+            echo "Version:"
+            echo "$IMAGE_TAG"
+
+            echo ""
+            echo "Image:"
+            echo "$EXPECTED_IMAGE"
+
+            echo "=========================================="
 
           EOF
